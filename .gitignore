@@ -1,0 +1,16 @@
+*.hex
+*.elf
+*.bin
+*.o
+*.d
+.vscode/
+build/
+
+# Visual Studio generated files
+.vs/
+*.user
+*.suo
+*.opendb
+*.VC.db
+*.VC.opendb
+*.log
