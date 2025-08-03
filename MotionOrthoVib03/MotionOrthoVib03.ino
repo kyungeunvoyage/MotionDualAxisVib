@@ -46,7 +46,6 @@ void DA7280setup()
     Wire.begin();
 
     for (int i = 0; i < NUMBER_OF_SENSORS; i++) {
-        //TCA9548A(i);
         hapDrive[i].begin();
         daInitialized[i] = true;
         if (!hapDrive[i].begin()) {
@@ -71,7 +70,7 @@ void soleDA7280(Haptic_Driver& driver, uint8_t channel, int duration, int intens
     Serial.print(" - ");
     Serial.print(duration);
     Serial.println(" ms");
-    delay(2000);
+    //delay(2000);
 }
 
 void setup() {
@@ -79,12 +78,26 @@ void setup() {
     Serial.begin(115200);
     DA7280setup();
     Serial.println("Hello Helllo AND Initiated");
+
+    soleDA7280(hapDrive[0], 0, burst500ms, 100, 175.0);
     
 }
+
+void stopVibration(Haptic_Driver& driver) {
+    driver.setVibrate(0);
+    vibrating = false;
+    Serial.println("[STOP] Vibration stopped");
+}
+
 
 // the loop function runs over and over again until power down or reset
 void loop() 
 {
+    if (vibrating && millis() - vibStart >= vibDuration)
+    {
+        stopVibration(hapDrive[0]);
+    }
+
     if (Serial.available() > 0)
     {
         char command = Serial.read();
@@ -92,7 +105,7 @@ void loop()
         if (command == 'A')
         {
             //activate DA7280 
-            soleDA7280(hapDrive[0], 0, burst75ms, 100, 175.0);
+            soleDA7280(hapDrive[0], 0, burst500ms, 100, 175.0);
         }
     }
 
