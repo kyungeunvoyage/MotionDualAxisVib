@@ -15,12 +15,7 @@
 #include <assert.h>
 
 //================DA7280====================
-#define NUMBER_OF_SENSORS 2
-Haptic_Driver hapDrive[NUMBER_OF_SENSORS];
-hapticSettings hf;
-#define MUX_ADDR 0x70
-bool daInitialized[NUMBER_OF_SENSORS];
-
+Haptic_Driver hapDrive;
 
 int burst75ms = 75;
 int burst200ms = 200;
@@ -32,33 +27,24 @@ unsigned long vibStart = 0;
 unsigned long vibDuration = 0;
 //================DA7280====================
 
+
 //================DA7280 setup====================
+void initDA7280(Haptic_Driver& driver) {
+    
 
-void DA7280setup()
-{
-    hf.motorType = LRA_TYPE;
-    hf.absVolt = 3.5;
-    hf.nomVolt = 2.47;
-    hf.currMax = 295.1;
-    hf.impedance = 8.37;
-    //init frequency 
-    hf.lraFreq = 5;
-    Wire.begin();
-
-    for (int i = 0; i < NUMBER_OF_SENSORS; i++) {
-        hapDrive[i].begin();
-        daInitialized[i] = true;
-        if (!hapDrive[i].begin()) {
-            Serial.print("Could not communicate with Haptic Driver ");
-            Serial.println(i);
-        }
-        hapDrive[i].enableFreqTrack(false);
-        hapDrive[i].setOperationMode(DRO_MODE);
+    if (!driver.begin()) {
+        Serial.println("DA7280 not found.");
+        return;
     }
+
+    Serial.println("DA7280 initialized.");
+
+    driver.setActuatorType(LRA_TYPE);
+    driver.setActuatorLRAfreq(175.0);
+    driver.enableFreqTrack(false);
+    driver.setOperationMode(DRO_MODE);
 }
 //================DA7280 setup====================
-
-
 
 //==================titanLF setup====================
 const int DAC_PIN_A21 = A21; //Teensy 3.5 DAC0 == L in
@@ -93,21 +79,61 @@ int16_t dat[waveformSize] = {
 5255, 5322, 5339, 5295, 5180, 4983, 4692, 4293, 3776, 3129, 2341, 1405, 317, -924,
 -2314, -3840, -5485, -7223, -9021, -10836, -12622, -14325, -15891, -17264, -18393, -19235
 };
+int16_t datCentered[170] = {
+  -10399, -9882, -9039, -7961, -6538, -4972, -2869, -1483, 332, 2130,
+  3868, 5413, 7039, 8429, 9669, 10757, 11693, 12481, 13128, 13645,
+  14044, 14335, 14532, 14647, 14691, 14674, 14607, 14499, 14358, 14190,
+  14003, 13799, 13586, 13368, 13146, 12924, 12705, 12489, 12279, 12075,
+  11878, 11689, 11509, 11337, 11175, 11021, 10877, 10741, 10615, 10496,
+  10386, 10285, 10191, 10104, 10025, 9952, 9887, 9827, 9774, 9726,
+  9684, 9646, 9614, 9586, 9563, 9543, 9528, 9516, 9507, 9502,
+  9499, 9499, 9502, 9507, 9514, 9524, 9535, 9548, 9562, 9578,
+  9596, 9614, 9633, 9654, 9675, 9697, 9719, 9742, 9765, 9789,
+  9813, 9837, 9862, 9886, 9910, 9934, 9958, 9981, 10004, 10027,
+  10049, 10070, 10091, 10111, 10130, 10149, 10167, 10185, 10201, 10217,
+  10232, 10247, 10260, 10273, 10284, 10295, 10305, 10314, 10322, 10330,
+  10336, 10341, 10345, 10349, 10351, 10353, 10353, 10353, 10351, 10349,
+  10345, 10341, 10336, 10330, 10322, 10314, 10305, 10295, 10284, 10273,
+  10260, 10247, 10232, 10217, 10201, 10185, 10167, 10149, 10130, 10111,
+  10091, 10070, 10049, 10027, 10004, 9981, 9958, 9934, 9910, 9886,
+  9862, 9837, 9813, 9789, 9765, 9742, 9719, 9697, 9675, 9654
+};
+int16_t dat2[waveformSize] = {
+  0, 822, 1657, 2496, 3331, 4160, 4983, 5800, 6609, 7412, 8207, 8993, 9771,
+  10540, 11300, 12050, 12789, 13518, 14236, 14941, 15635, 16316, 16983,
+  17637, 18276, 18901, 19510, 20104, 20681, 21242, 21785, 22310, 22818,
+  23307, 23777, 24228, 24659, 25070, 25461, 25831, 26181, 26509, 26816,
+  27101, 27365, 27606, 27824, 28020, 28194, 28344, 28472, 28576, 28657,
+  28714, 28748, 28758, 28743, 28705, 28643, 28556, 28445, 28309, 28148,
+  27963, 27752, 27516, 27255, 26968, 26655, 26316, 25952, 25561, 25144,
+  24701, 24232, 23736, 23213, 22665, 22089, 21487, 20858, 20203, 19521,
+  18813, 18078, 17317, 16530, 15716, 14876, 14010, 13118, 12199, 11255,
+  10285, 9289, 8278, 7242, 6181, 5096, 3986, 2853, 1695, 515, -688, -1913,
+  -3159, -4427, -5715, -7024, -8353, -9701, -11067, -12452, -13854, -15274,
+  -16710, -18162, -19629, -21110, -22605, -24113, -25633, -27164, -28706,
+  -30258, -31819, -32767, -32527, -32269, -31994, -31700, -31388, -31058,
+  -30710, -30344, -29961, -29559, -29140, -28703, -28249, -27777, -27288,
+  -26782, -26258, -25718, -25162, -24588, -23999, -23393, -22771, -22133,
+  -21480, -20811, -20126, -19426, -18712, -17983, -17239, -16481, -15709,
+  -14923, -14123, -13310, -12484, -11644, -10792, -9938, -9071, -8192,
+  -7302, -6400, -5487, -4563, -3629, -2683, -1728, -764, 209, 1191, 2172,
+  3151, 4128, 5102, 6074, 7042, 8006, 8967, 9922, 10873, 11818, 12757,
+  13689, 14615, 15533, 16443, 17344, 18237, 19120, 19993, 20856, 21709,
+  22550, 23380, 24198, 25004, 25796, 26576, 27342, 28094, 28831, 29553,
+  30260, 30951, 31626, 32285, 32767
+};
 
 //===========Arrange DA7280=======================
-void soleDA7280(Haptic_Driver& driver, uint8_t channel, int duration, int intensity, float freq) {
-    driver.setActuatorLRAfreq(freq);
-    driver.setVibrate(intensity);
+void startVibration(Haptic_Driver& driver, int duration) {
+    driver.setVibrate(127);
     vibStart = millis();
     vibDuration = duration;
     vibrating = true;
-    Serial.print("[VIBRATE] Channel ");
-    Serial.print(channel);
-    Serial.print(" - ");
+    Serial.print("[VIBRATE] ");
     Serial.print(duration);
     Serial.println(" ms");
-    //delay(2000);
 }
+
 
 void stopVibration(Haptic_Driver& driver) {
     driver.setVibrate(0);
@@ -118,8 +144,8 @@ void stopVibration(Haptic_Driver& driver) {
 void updateDelayFromTargetHz() {
     float cycleDurationMs = 1000.0 / targetHz;
     delayPerSampleUs_rt = (cycleDurationMs * 1000.0) / waveformSize;
-    Serial.print("Updated delayPerSampleUs: ");
-    Serial.println(delayPerSampleUs);
+    //Serial.print("Updated delayPerSampleUs: ");
+    //Serial.println(delayPerSampleUs);
 }
 
 //====================generate signal==============
@@ -133,14 +159,22 @@ void generateNegDatTrial()
 
 //=================setup===========================
 void setup() {
-    
+
+    Wire.begin();
     Serial.begin(115200);
-    //DA7280setup();
+    while (!Serial); // USB serial 연결 대기
+    delay(100);        // (선택) 약간의 추가 안정화 대기
+
+    
     Serial.println("Hello Helllo AND Initiated");
+    initDA7280(hapDrive);
 
     //titan LF
     analogWriteResolution(12);
     Serial.println("TitanLF Initiated");
+
+    //generate negative
+    generateNegDatTrial();
 
 }
 //=================setup===========================
@@ -151,42 +185,114 @@ void loop()
 {
     if (vibrating && millis() - vibStart >= vibDuration)
     {
-        stopVibration(hapDrive[0]);
+        stopVibration(hapDrive);
     }
 
     if (Serial.available() > 0)
     {
         char command = Serial.read();
 
+        if (command == 'F')
+        {
+            //single LRA 
+            startVibration(hapDrive, burst75ms);
+        }
         if (command == 'A')
         {
-            //activate DA7280 
-            soleDA7280(hapDrive[0], 0, burst500ms, 100, 175.0);
+            //hz update
+            updateDelayFromTargetHz();
+
+            for (int repeat = 0; repeat < 2; repeat++) {  // pulse 10번 반복
+                for (int i = 0; i < waveformSize; i++) {
+                    int val = dat[i];
+
+                    //Teensy에 있는 DAC 는 0~4095 (12비트) 사이 숫자만 출력이 가능하니까 -32767 ~ +32767 값을 0~4095fh 변환해주는거임~ 
+
+                    //previously,맵핑 방향성
+                    int dacValue = map(val, -32767, 32767, 0, 4095);
+
+                    //출력
+                    analogWrite(DAC_PIN_A22, dacValue);
+                    //각각의 점 출력 전에 120마이크로초 기다리는것 --> 샘플링 속도를 조정 
+                    //Serial.println(dacValue);
+                    delayMicroseconds((int)delayPerSampleUs_rt);  //40hz
+                }
+            }
+            delay(150);  // pulse 간 간격
         }
+
 
         else if (command == 'B')
         {
+            Serial.println("B is pressed: dat2 반대 방향으로 출력 (negDatTrial)");
+            //hz update
+            updateDelayFromTargetHz();
+
+            for (int repeat = 0; repeat < 2; repeat++) {
+                for (int i = 0; i < waveformSize; i++) {
+                    int val = negDatTrial[i];
+                    int dacValue = map(val, -32767, 32767, 0, 4095);
+
+                    analogWrite(DAC_PIN_A21, dacValue);
+                    //Serial.println(dacValue);
+                    delayMicroseconds((int)delayPerSampleUs_rt);
+                }
+            }
+            delay(150);
+        }
+
+        else if (command == 'C')
+        {
             //activate DA7280 
-            //soleDA7280(hapDrive[0], 0, burst500ms, 100, 175.0);
+            startVibration(hapDrive, burst75ms);
             //delay(100);
 
             //initiate the targetHz
             updateDelayFromTargetHz();
 
             //activate titan LF
-            for (int repeat = 0; repeat < 10; repeat++)
+            for (int repeat = 0; repeat < 5; repeat++)
             {
                 for (int i = 0; i < waveformSize; i++)
                 {
                     int val = dat[i];
+
+                    //이걸로 intensity를 결정하는 거임. 
+                    //int val_scaled = constrain((int)(val * gain), -32767, 32767);
                     int dacValue = map(val, -32767, 32767, 0, 4095);
+                    //Serial.println(dacValue);
+
                     analogWrite(DAC_PIN_A21, dacValue);
-                    Serial.println(dacValue);
+                    //analogWrite(DAC_PIN_A22, dacValue);
+
                     delayMicroseconds((int)delayPerSampleUs_rt);  //40hz
+
                 }
             }
             delay(150);
         }
+        else if (command == 'D')
+        {
+            //C 비대칭 pulse (the positivie area) 
+            int pulseLength = 170;
+            updateDelayFromTargetHz();  // delayPerSampleUs_rt 업데이트
+
+            const int datMin = -19754;
+            const int datMax = 1049;
+
+            for (int i = 0; i < pulseLength; i++)
+            {
+                int val = dat[i];  // 원본 진폭
+                int dacValue = map(val, datMin, datMax, 0, 4095);  // dat의 실제 범위 기반 정규화
+                analogWrite(DAC_PIN_A21, dacValue);
+                delayMicroseconds((int)delayPerSampleUs_rt);  // 샘플 간 시간 간격 (40Hz 기준)
+            }
+            // pulse 끝나고 0V로 안정화
+            analogWrite(DAC_PIN_A21, 2048);  // 12bit DAC에서 중심값
+
+        }
+
+
     }
 
     
