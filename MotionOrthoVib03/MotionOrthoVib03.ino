@@ -59,6 +59,8 @@ float delayPerSampleUs_rt = (cycleDurationMs * 1000.0) / waveformSize;
 int16_t negDat[256];
 int16_t negDatTrial[256];
 
+int16_t newWave[256];  // switch문 바깥에서 선언 필요
+
 int16_t dat[waveformSize] = {
 -19754, -19235, -18393, -17264, -15891,
 -14325, -12622, -10836, -9021, -7223, -5485, -3840, -2314, -924, 317, 1405,
@@ -175,6 +177,9 @@ void setup() {
 
     //generate negative
     generateNegDatTrial();
+
+    //generate new waveform 
+    CreateWaveForm(0);
 
 }
 //=================setup===========================
@@ -296,4 +301,83 @@ void loop()
     }
 
     
+}
+
+void CreateWaveForm(int selection)
+{
+    switch (selection) 
+    {
+        case 0 : //대칭 Sine Wave
+            for (int i = 0; i < 256; i++) {
+                newWave[i] = (int16_t)(32767 * sin(2 * PI * i / 256));
+            }
+            break;
+        case 1 : //Gaussian-shaped Pulse (비대칭 또는 중심 집중형)
+            float sigma = 40.0;  // 폭 조절
+            for (int i = 0; i < 256; i++) {
+                float x = (i - 128.0);
+                newWave[i] = (int16_t)(32767 * exp(-(x * x) / (2 * sigma * sigma)));
+            }
+            break;
+        case 2 : //Half Sine Pulse(0 → sin → 0)
+            for (int i = 0; i < 256; i++) {
+                newWave[i] = (int16_t)(32767 * sin(PI * i / 256)); // Half sine
+            }
+            break;
+        case 3 : //Trapezoidal Pulse (선형 상승/하강 + plateau)
+            int rise = 64, hold = 128, fall = 64;
+            for (int i = 0; i < 256; i++) {
+                if (i < rise)
+                    newWave[i] = (int16_t)(32767 * i / (float)rise);
+                else if (i < rise + hold)
+                    newWave[i] = 32767;
+                else
+                    newWave[i] = (int16_t)(32767 * (255 - i) / (float)fall);
+            }
+            break;
+        case 4: //Exponential Decay Pulse
+            for (int i = 0; i < 256; i++) {
+                newWave[i] = (int16_t)(32767 * exp(-0.03 * i));
+            }
+            break;
+        case 5: // Impact + Residual Vibration
+            for (int i = 0; i < 10; i++) {
+                newWave[i] = (int16_t)(32767.0 * i / 10.0);  // 급격한 상승
+            }
+            for (int i = 10; i < 256; i++) {
+                float decay = exp(-0.03 * (i - 10));
+                float sine = sin(2.0 * PI * (i - 10) / 15.0);
+                newWave[i] = (int16_t)(32767.0 * decay * sine);
+            }
+            break;
+        case 6: // Fast Double Pulse
+        {
+            int pulse_width = 10;    // 각 펄스의 너비
+            int pulse_gap = 30;      // 두 펄스 사이 간격
+
+            // 전체 배열 0으로 초기화
+            memset(dat, 0, sizeof(dat));
+
+            // 첫 번째 펄스
+            for (int i = 0; i < pulse_width; i++) {
+                dat[i] = (int16_t)(32767.0 * sin(PI * i / pulse_width));
+            }
+
+            // 두 번째 펄스
+            for (int i = 0; i < pulse_width; i++) {
+                int idx = pulse_gap + i;
+                if (idx < 256) {
+                    dat[idx] = (int16_t)(32767.0 * sin(PI * i / pulse_width));
+                }
+            }
+        }
+        break;
+
+        default:
+            Serial.println("Invalid selection");
+            break;
+
+
+
+    }
 }
