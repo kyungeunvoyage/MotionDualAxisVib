@@ -47,19 +47,22 @@ void initDA7280(Haptic_Driver& driver) {
 //================DA7280 setup====================
 
 //==================titanLF setup====================
-const int DAC_PIN_A21 = A21; //Teensy 3.5 DAC0 == L in
-const int DAC_PIN_A22 = A22; //Teensy 3.5 DAC1 == R in
+const int DAC_PIN_A21 = A21; //Teensy 3.5 DAC0 == R in
+const int DAC_PIN_A22 = A22; //Teensy 3.5 DAC1 == L in
 
 const int waveformSize = 256;
 int waveformIndex = 0;
-float targetHz = 40.0;
+float targetHz = 40;
 float cycleDurationMs = 1000.0 / targetHz;
 float delayPerSampleUs = (cycleDurationMs * 1000.0) / waveformSize;
 float delayPerSampleUs_rt = (cycleDurationMs * 1000.0) / waveformSize;
 int16_t negDat[256];
 int16_t negDatTrial[256];
 
+int newWaveCase;
+
 int16_t newWave[256];  // switch문 바깥에서 선언 필요
+int16_t newWave2[256];  // switch문 바깥에서 선언 필요
 
 int16_t dat[waveformSize] = {
 -19754, -19235, -18393, -17264, -15891,
@@ -124,6 +127,14 @@ int16_t dat2[waveformSize] = {
   22550, 23380, 24198, 25004, 25796, 26576, 27342, 28094, 28831, 29553,
   30260, 30951, 31626, 32285, 32767
 };
+int16_t newWave_0[256];  // Symmetric Sine Wave
+int16_t newWave_1[256];  // Gaussian-shaped Pulse
+int16_t newWave_2[256];  // Half Sine Pulse
+int16_t newWave_3[256];  // Trapezoidal Pulse
+int16_t newWave_4[256];  // Exponential Decay
+int16_t newWave_5[256];  // Impact + Residual
+int16_t newWave_6[256];  // Fast Double Pulse
+
 
 //===========Arrange DA7280=======================
 void startVibration(Haptic_Driver& driver, int duration) {
@@ -178,9 +189,8 @@ void setup() {
     //generate negative
     generateNegDatTrial();
 
-    //generate new waveform 
-    CreateWaveForm(0);
 
+    CreateAllWaveforms();  // << 여기서 한 번에 생성!
 }
 //=================setup===========================
 
@@ -188,6 +198,9 @@ void setup() {
 // the loop function runs over and over again until power down or reset
 void loop() 
 {
+    //generate new waveform 
+
+
     if (vibrating && millis() - vibStart >= vibDuration)
     {
         stopVibration(hapDrive);
@@ -196,6 +209,121 @@ void loop()
     if (Serial.available() > 0)
     {
         char command = Serial.read();
+        if (command == '0')
+        {
+            //hz update
+            updateDelayFromTargetHz();
+
+            for (int repeat = 0; repeat < 2; repeat++) {  // pulse 10번 반복
+                for (int i = 0; i < waveformSize; i++) {
+                    int val = newWave_0[i];
+
+                    //Teensy에 있는 DAC 는 0~4095 (12비트) 사이 숫자만 출력이 가능하니까 -32767 ~ +32767 값을 0~4095fh 변환해주는거임~ 
+
+                    //previously,맵핑 방향성
+                    int dacValue = map(val, -32767, 32767, 0, 4095);
+
+                    //출력
+                    analogWrite(DAC_PIN_A22, dacValue);
+                    //각각의 점 출력 전에 120마이크로초 기다리는것 --> 샘플링 속도를 조정 
+                    //Serial.println(dacValue);
+                    delayMicroseconds((int)delayPerSampleUs_rt);  //40hz
+                }
+            }
+            delay(150);  // pulse 간 간격
+        }
+        else if (command == '1')
+        {
+            //hz update
+            updateDelayFromTargetHz();
+
+            for (int repeat = 0; repeat < 2; repeat++) {  // pulse 10번 반복
+                for (int i = 0; i < waveformSize; i++) {
+                    int val = newWave_1[i];
+
+                    //Teensy에 있는 DAC 는 0~4095 (12비트) 사이 숫자만 출력이 가능하니까 -32767 ~ +32767 값을 0~4095fh 변환해주는거임~ 
+
+                    //previously,맵핑 방향성
+                    int dacValue = map(val, -32767, 32767, 0, 4095);
+
+                    //출력
+                    analogWrite(DAC_PIN_A22, dacValue);
+                    //각각의 점 출력 전에 120마이크로초 기다리는것 --> 샘플링 속도를 조정 
+                    //Serial.println(dacValue);
+                    delayMicroseconds((int)delayPerSampleUs_rt);  //40hz
+                }
+            }
+            delay(150);  // pulse 간 간격
+        }
+        else if (command == '2')
+        {
+            //hz update
+            updateDelayFromTargetHz();
+
+            for (int repeat = 0; repeat < 2; repeat++) {  // pulse 10번 반복
+                for (int i = 0; i < waveformSize; i++) {
+                    int val = newWave_2[i];
+
+                    //Teensy에 있는 DAC 는 0~4095 (12비트) 사이 숫자만 출력이 가능하니까 -32767 ~ +32767 값을 0~4095fh 변환해주는거임~ 
+
+                    //previously,맵핑 방향성
+                    int dacValue = map(val, -32767, 32767, 0, 4095);
+
+                    //출력
+                    analogWrite(DAC_PIN_A22, dacValue);
+                    //각각의 점 출력 전에 120마이크로초 기다리는것 --> 샘플링 속도를 조정 
+                    //Serial.println(dacValue);
+                    delayMicroseconds((int)delayPerSampleUs_rt);  //40hz
+                }
+            }
+            delay(150);  // pulse 간 간격
+        }
+        else if (command == '3')
+        {
+            //hz update
+            updateDelayFromTargetHz();
+
+            for (int repeat = 0; repeat < 2; repeat++) {  // pulse 10번 반복
+                for (int i = 0; i < waveformSize; i++) {
+                    int val = newWave_3[i];
+
+                    //Teensy에 있는 DAC 는 0~4095 (12비트) 사이 숫자만 출력이 가능하니까 -32767 ~ +32767 값을 0~4095fh 변환해주는거임~ 
+
+                    //previously,맵핑 방향성
+                    int dacValue = map(val, -32767, 32767, 0, 4095);
+
+                    //출력
+                    analogWrite(DAC_PIN_A22, dacValue);
+                    //각각의 점 출력 전에 120마이크로초 기다리는것 --> 샘플링 속도를 조정 
+                    //Serial.println(dacValue);
+                    delayMicroseconds((int)delayPerSampleUs_rt);  //40hz
+                }
+            }
+            delay(150);  // pulse 간 간격
+        }
+        else if (command == '4')
+        {
+            //hz update
+            updateDelayFromTargetHz();
+
+            for (int repeat = 0; repeat < 2; repeat++) {  // pulse 10번 반복
+                for (int i = 0; i < waveformSize; i++) {
+                    int val = newWave_4[i];
+
+                    //Teensy에 있는 DAC 는 0~4095 (12비트) 사이 숫자만 출력이 가능하니까 -32767 ~ +32767 값을 0~4095fh 변환해주는거임~ 
+
+                    //previously,맵핑 방향성
+                    int dacValue = map(val, -32767, 32767, 0, 4095);
+
+                    //출력
+                    analogWrite(DAC_PIN_A22, dacValue);
+                    //각각의 점 출력 전에 120마이크로초 기다리는것 --> 샘플링 속도를 조정 
+                    //Serial.println(dacValue);
+                    delayMicroseconds((int)delayPerSampleUs_rt);  //40hz
+                }
+            }
+            delay(150);  // pulse 간 간격
+        }
 
         if (command == 'F')
         {
@@ -278,106 +406,120 @@ void loop()
         }
         else if (command == 'D')
         {
-            //C 비대칭 pulse (the positivie area) 
-            int pulseLength = 170;
-            updateDelayFromTargetHz();  // delayPerSampleUs_rt 업데이트
+            //initiate the targetHz
+            updateDelayFromTargetHz();
 
-            const int datMin = -19754;
-            const int datMax = 1049;
-
-            for (int i = 0; i < pulseLength; i++)
+            //activate titan LF
+            for (int repeat = 0; repeat < 5; repeat++)
             {
-                int val = dat[i];  // 원본 진폭
-                int dacValue = map(val, datMin, datMax, 0, 4095);  // dat의 실제 범위 기반 정규화
-                analogWrite(DAC_PIN_A21, dacValue);
-                delayMicroseconds((int)delayPerSampleUs_rt);  // 샘플 간 시간 간격 (40Hz 기준)
+                for (int i = 0; i < waveformSize; i++)
+                {
+                    int val = dat[i];
+
+                    //이걸로 intensity를 결정하는 거임. 
+                    //int val_scaled = constrain((int)(val * gain), -32767, 32767);
+                    int dacValue = map(val, -32767, 32767, 0, 4095);
+                    //Serial.println(dacValue);
+
+                    analogWrite(DAC_PIN_A21, dacValue);
+                    //analogWrite(DAC_PIN_A22, dacValue);
+
+                    delayMicroseconds((int)delayPerSampleUs_rt);  //40hz
+
+                }
             }
-            // pulse 끝나고 0V로 안정화
-            analogWrite(DAC_PIN_A21, 2048);  // 12bit DAC에서 중심값
-
+            delay(150);
         }
+        else if (command == 'G')
+        {
+            //initiate the targetHz
+            updateDelayFromTargetHz();
 
+            //activate titan LF
+            for (int repeat = 0; repeat < 5; repeat++)
+            {
+                for (int i = 0; i < waveformSize; i++)
+                {
+                    int val = newWave[i];
+
+                    //이걸로 intensity를 결정하는 거임. 
+                    //int val_scaled = constrain((int)(val * gain), -32767, 32767);
+                    int dacValue = map(val, -32767, 32767, 0, 4095);
+                    //Serial.println(dacValue);
+
+                    analogWrite(DAC_PIN_A22, dacValue);
+                    //analogWrite(DAC_PIN_A22, dacValue);
+
+                    delayMicroseconds((int)delayPerSampleUs_rt);  //40hz
+
+                }
+            }
+            delay(150);
+        }
 
     }
 
     
 }
 
-void CreateWaveForm(int selection)
-{
-    switch (selection) 
-    {
-        case 0 : //대칭 Sine Wave
-            for (int i = 0; i < 256; i++) {
-                newWave[i] = (int16_t)(32767 * sin(2 * PI * i / 256));
-            }
-            break;
-        case 1 : //Gaussian-shaped Pulse (비대칭 또는 중심 집중형)
-            float sigma = 40.0;  // 폭 조절
-            for (int i = 0; i < 256; i++) {
-                float x = (i - 128.0);
-                newWave[i] = (int16_t)(32767 * exp(-(x * x) / (2 * sigma * sigma)));
-            }
-            break;
-        case 2 : //Half Sine Pulse(0 → sin → 0)
-            for (int i = 0; i < 256; i++) {
-                newWave[i] = (int16_t)(32767 * sin(PI * i / 256)); // Half sine
-            }
-            break;
-        case 3 : //Trapezoidal Pulse (선형 상승/하강 + plateau)
-            int rise = 64, hold = 128, fall = 64;
-            for (int i = 0; i < 256; i++) {
-                if (i < rise)
-                    newWave[i] = (int16_t)(32767 * i / (float)rise);
-                else if (i < rise + hold)
-                    newWave[i] = 32767;
-                else
-                    newWave[i] = (int16_t)(32767 * (255 - i) / (float)fall);
-            }
-            break;
-        case 4: //Exponential Decay Pulse
-            for (int i = 0; i < 256; i++) {
-                newWave[i] = (int16_t)(32767 * exp(-0.03 * i));
-            }
-            break;
-        case 5: // Impact + Residual Vibration
-            for (int i = 0; i < 10; i++) {
-                newWave[i] = (int16_t)(32767.0 * i / 10.0);  // 급격한 상승
-            }
-            for (int i = 10; i < 256; i++) {
-                float decay = exp(-0.03 * (i - 10));
-                float sine = sin(2.0 * PI * (i - 10) / 15.0);
-                newWave[i] = (int16_t)(32767.0 * decay * sine);
-            }
-            break;
-        case 6: // Fast Double Pulse
-        {
-            int pulse_width = 10;    // 각 펄스의 너비
-            int pulse_gap = 30;      // 두 펄스 사이 간격
-
-            // 전체 배열 0으로 초기화
-            memset(dat, 0, sizeof(dat));
-
-            // 첫 번째 펄스
-            for (int i = 0; i < pulse_width; i++) {
-                dat[i] = (int16_t)(32767.0 * sin(PI * i / pulse_width));
-            }
-
-            // 두 번째 펄스
-            for (int i = 0; i < pulse_width; i++) {
-                int idx = pulse_gap + i;
-                if (idx < 256) {
-                    dat[idx] = (int16_t)(32767.0 * sin(PI * i / pulse_width));
-                }
-            }
-        }
-        break;
-
-        default:
-            Serial.println("Invalid selection");
-            break;
-
-
-
+void CreateAllWaveforms() {
+    // CASE 0: Symmetric Sine Wave
+    for (int i = 0; i < 256; i++) {
+        newWave_0[i] = (int16_t)(32767 * sin(2 * PI * i / 256));
     }
+
+    // CASE 1: Gaussian-shaped Pulse
+    float sigma = 40.0;
+    for (int i = 0; i < 256; i++) {
+        float x = (i - 128.0);
+        newWave_1[i] = (int16_t)(32767 * exp(-(x * x) / (2 * sigma * sigma)));
+    }
+
+    // CASE 2: Half Sine Pulse
+    for (int i = 0; i < 256; i++) {
+        newWave_2[i] = (int16_t)(32767 * sin(PI * i / 256));
+    }
+
+    // CASE 3: Trapezoidal Pulse
+    int rise = 64, hold = 128, fall = 64;
+    for (int i = 0; i < 256; i++) {
+        if (i < rise)
+            newWave_3[i] = (int16_t)(32767 * i / (float)rise);
+        else if (i < rise + hold)
+            newWave_3[i] = 32767;
+        else
+            newWave_3[i] = (int16_t)(32767 * (255 - i) / (float)fall);
+    }
+
+    // CASE 4: Exponential Decay
+    for (int i = 0; i < 256; i++) {
+        newWave_4[i] = (int16_t)(32767 * exp(-0.03 * i));
+    }
+
+    // CASE 5: Impact + Residual Vibration
+    for (int i = 0; i < 10; i++) {
+        newWave_5[i] = (int16_t)(32767.0 * i / 10.0);
+    }
+    for (int i = 10; i < 256; i++) {
+        float decay = exp(-0.03 * (i - 10));
+        float sine = sin(2.0 * PI * (i - 10) / 15.0);
+        newWave_5[i] = (int16_t)(32767.0 * decay * sine);
+    }
+
+    // CASE 6: Fast Double Pulse
+    int pulse_width = 10;
+    int pulse_gap = 30;
+    for (int i = 0; i < 256; i++) newWave_6[i] = 0;
+    for (int i = 0; i < pulse_width; i++) {
+        newWave_6[i] = (int16_t)(32767.0 * sin(PI * i / pulse_width));
+    }
+    for (int i = 0; i < pulse_width; i++) {
+        int idx = pulse_gap + i;
+        if (idx < 256) {
+            newWave_6[idx] = (int16_t)(32767.0 * sin(PI * i / pulse_width));
+        }
+    }
+
+    Serial.println("[OK] All waveforms 0~6 have been generated.");
 }
+
