@@ -84,6 +84,7 @@
       <FileType>CppCode</FileType>
       <DeploymentContent>true</DeploymentContent>
     </ClCompile>
+    <ClCompile Include="waveforms.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="src\arduino folders read me.txt">
@@ -93,6 +94,7 @@
     <ProjectCapability Include="VisualMicro" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="waveforms.h" />
     <ClInclude Include="__vm\.MotionOrthoVib03.vsarduino.h" />
   </ItemGroup>
   <PropertyGroup>
