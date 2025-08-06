@@ -127,13 +127,32 @@ int16_t dat2[waveformSize] = {
   22550, 23380, 24198, 25004, 25796, 26576, 27342, 28094, 28831, 29553,
   30260, 30951, 31626, 32285, 32767
 };
-int16_t newWave_0[256];  // Symmetric Sine Wave
-int16_t newWave_1[256];  // Gaussian-shaped Pulse
-int16_t newWave_2[256];  // Half Sine Pulse
-int16_t newWave_3[256];  // Trapezoidal Pulse
-int16_t newWave_4[256];  // Exponential Decay
-int16_t newWave_5[256];  // Impact + Residual
-int16_t newWave_6[256];  // Fast Double Pulse
+int16_t newWave_0[waveformSize];  // Symmetric Sine Wave
+int16_t newWave_1[waveformSize];  // Gaussian-shaped Pulse
+int16_t newWave_2[waveformSize];  // Half Sine Pulse
+int16_t newWave_3[waveformSize];  // Trapezoidal Pulse
+int16_t newWave_4[waveformSize];  // Exponential Decay
+int16_t newWave_5[waveformSize];  // Impact + Residual
+int16_t newWave_6[waveformSize];  // Fast Double Pulse
+int16_t biasWaveform[waveformSize];
+
+int16_t asyTriangular[waveformSize] = {
+      0,   546,  1092,  1638,  2184,  2730,  3276,  3822,  4368,  4914,  5460,  6006,  6552,  7098,  7644,  8190,
+   8736,  9282,  9828, 10374, 10920, 11466, 12012, 12558, 13104, 13650, 14196, 14742, 15288, 15834, 16380, 16926,
+  17472, 18018, 18564, 19110, 19656, 20202, 20748, 21294, 21840, 22386, 22932, 23478, 24024, 24570, 25116, 25662,
+  26208, 26754, 27300, 27846, 28392, 28938, 29484, 30030, 30576, 31122, 31668, 32214, 32760, 32158, 31556, 30954,
+  30352, 29750, 29148, 28546, 27944, 27342, 26740, 26138, 25536, 24934, 24332, 23730, 23128, 22526, 21924, 21322,
+  20720, 20118, 19516, 18914, 18312, 17710, 17108, 16506, 15904, 15302, 14700, 14098, 13496, 12894, 12292, 11690,
+  11088, 10486,  9884,  9282,  8680,  8078,  7476,  6874,  6272,  5670,  5068,  4466,  3864,  3262,  2660,  2058,
+   1456,   854,   252,  -350,  -952, -1554, -2156, -2758, -3360, -3962, -4564, -5166, -5768, -6370, -6972, -7574,
+  -8176, -8778, -9380, -9982,-10584,-11186,-11788,-12390,-12992,-13594,-14196,-14798,-15400,-16002,-16604,-17206,
+ -17808,-18410,-19012,-19614,-20216,-20818,-21420,-22022,-22624,-23226,-23828,-24430,-25032,-25634,-26236,-26838,
+ -27440,-28042,-28644,-29246,-29848,-30450,-31052,-31654,-32256,-31760,-31264,-30768,-30272,-29776,-29280,-28784,
+ -28288,-27792,-27296,-26800,-26304,-25808,-25312,-24816,-24320,-23824,-23328,-22832,-22336,-21840,-21344,-20848,
+ -20352,-19856,-19360,-18864,-18368,-17872,-17376,-16880,-16384,-15888,-15392,-14896,-14400,-13904,-13408,-12912,
+ -12416,-11920,-11424,-10928,-10432, -9936, -9440, -8944, -8448, -7952, -7456, -6960, -6464, -5968, -5472, -4976,
+ -4480, -3984, -3488, -2992, -2496, -2000, -1504, -1008,  -512,     0
+};
 
 
 //===========Arrange DA7280=======================
@@ -189,8 +208,8 @@ void setup() {
     //generate negative
     generateNegDatTrial();
 
-
     CreateAllWaveforms();  // << 여기서 한 번에 생성!
+    generatePositiveBiasedWaveform();
 }
 //=================setup===========================
 
@@ -456,6 +475,58 @@ void loop()
             }
             delay(150);
         }
+        else if (command == 'H')
+        {
+            //initiate the targetHz
+            updateDelayFromTargetHz();
+
+            //activate titan LF
+            for (int repeat = 0; repeat < 5; repeat++)
+            {
+                for (int i = 0; i < waveformSize; i++)
+                {
+                    int val = biasWaveform[i];
+
+                    //이걸로 intensity를 결정하는 거임. 
+                    //int val_scaled = constrain((int)(val * gain), -32767, 32767);
+                    int dacValue = map(val, -32767, 32767, 0, 4095);
+                    //Serial.println(dacValue);
+
+                    analogWrite(DAC_PIN_A22, dacValue);
+                    //analogWrite(DAC_PIN_A22, dacValue);
+
+                    delayMicroseconds((int)delayPerSampleUs_rt);  //40hz
+
+                }
+            }
+            delay(150);
+        }
+        else if (command == 'I')
+        {
+            //initiate the targetHz
+            updateDelayFromTargetHz();
+
+            //activate titan LF
+            for (int repeat = 0; repeat < 5; repeat++)
+            {
+                for (int i = 0; i < waveformSize; i++)
+                {
+                    int val = asyTriangular[i];
+
+                    //이걸로 intensity를 결정하는 거임. 
+                    //int val_scaled = constrain((int)(val * gain), -32767, 32767);
+                    int dacValue = map(val, -32767, 32767, 0, 4095);
+                    //Serial.println(dacValue);
+
+                    analogWrite(DAC_PIN_A22, dacValue);
+                    //analogWrite(DAC_PIN_A22, dacValue);
+
+                    delayMicroseconds((int)delayPerSampleUs_rt);  //40hz
+
+                }
+            }
+            delay(150);
+        }
 
     }
 
@@ -521,5 +592,17 @@ void CreateAllWaveforms() {
     }
 
     Serial.println("[OK] All waveforms 0~6 have been generated.");
+}
+void generatePositiveBiasedWaveform() {
+    float bias = 0.6;         // 전체 waveform이 양극으로 얼마나 치우쳐 있는지 (0.0 ~ 1.0)
+    float decayRate = 0.025;  // 감쇠 속도
+    float sineFreq = 20.0;    // 사인 진동 주기
+
+    for (int i = 0; i < waveformSize; i++) {
+        float decay = exp(-decayRate * i);
+        float sine = sin(2.0 * PI * i / sineFreq);
+        float biased = decay * (bias + (1.0 - bias) * sine);  // bias로 양쪽 비대칭 조절
+        biasWaveform[i] = (int16_t)(32767 * biased);
+    }
 }
 
