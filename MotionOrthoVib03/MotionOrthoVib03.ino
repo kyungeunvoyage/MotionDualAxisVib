@@ -351,7 +351,7 @@ void loop()
                     //Serial.println(dacValue);
 
                     analogWrite(DAC_PIN_A21, dacValue);
-                    //analogWrite(DAC_PIN_A22, dacValue);
+                    analogWrite(DAC_PIN_A22, dacValue);
 
                     delayMicroseconds((int)delayPerSampleUs_rt);  //40hz
 
