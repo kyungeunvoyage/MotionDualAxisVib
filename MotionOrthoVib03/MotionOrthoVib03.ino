@@ -165,6 +165,7 @@ void loop()
         {
             //hz update
             updateDelayFromTargetHz();
+            startVibration(hapDrive, burst75ms);
 
             for (int repeat = 0; repeat < 2; repeat++) {  // pulse 10번 반복
                 for (int i = 0; i < waveformSize; i++) {
@@ -186,26 +187,7 @@ void loop()
         }
         else if (command == '2')
         {
-            //hz update
-            updateDelayFromTargetHz();
-
-            for (int repeat = 0; repeat < 2; repeat++) {  // pulse 10번 반복
-                for (int i = 0; i < waveformSize; i++) {
-                    int val = newWave_2[i];
-
-                    //Teensy에 있는 DAC 는 0~4095 (12비트) 사이 숫자만 출력이 가능하니까 -32767 ~ +32767 값을 0~4095fh 변환해주는거임~ 
-
-                    //previously,맵핑 방향성
-                    int dacValue = map(val, -32767, 32767, 0, 4095);
-
-                    //출력
-                    analogWrite(DAC_PIN_A22, dacValue);
-                    //각각의 점 출력 전에 120마이크로초 기다리는것 --> 샘플링 속도를 조정 
-                    //Serial.println(dacValue);
-                    delayMicroseconds((int)delayPerSampleUs_rt);  //40hz
-                }
-            }
-            delay(150);  // pulse 간 간격
+            startVibration(hapDrive, burst75ms);
         }
         else if (command == '3')
         {
