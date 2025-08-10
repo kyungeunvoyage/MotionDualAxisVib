@@ -1,0 +1,379 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Waveform Pulse → int16_t[256] (Time-Normalized)</title>
+    <style>
+        :root {
+            --bg: #0b1020;
+            --panel: #101933;
+            --ink: #e6e9f2;
+            --muted: #99a2c2;
+            --accent: #7aa2ff;
+            --good: #36d399;
+            --warn: #ffb86b;
+            --grid: rgba(255,255,255,.08);
+            --midline: rgba(255,255,255,.25);
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        body {
+            margin: 0;
+            background: radial-gradient(1200px 800px at 70% -20%, #1a2458 0%, var(--bg) 60%);
+            color: var(--ink);
+            font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial
+        }
+
+        .wrap {
+            max-width: 1100px;
+            margin: 28px auto;
+            padding: 0 16px
+        }
+
+        h1 {
+            font-size: 22px;
+            margin: 0 0 8px
+        }
+
+        p.hint {
+            color: var(--muted);
+            margin: 0 0 16px
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1.25fr .95fr;
+            gap: 16px
+        }
+
+        @media (max-width:980px) {
+            .grid {
+                grid-template-columns: 1fr
+            }
+        }
+
+        .card {
+            background: linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));
+            border: 1px solid rgba(255,255,255,.1);
+            border-radius: 16px;
+            box-shadow: 0 8px 20px rgba(0,0,0,.25)
+        }
+
+            .card .hd {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 12px 14px;
+                border-bottom: 1px solid rgba(255,255,255,.08)
+            }
+
+                .card .hd h2 {
+                    font-size: 14px;
+                    margin: 0;
+                    color: var(--muted);
+                    letter-spacing: .3px;
+                    font-weight: 600
+                }
+
+            .card .bd {
+                padding: 12px
+            }
+
+        canvas {
+            width: 100%;
+            height: 320px;
+            background: conic-gradient(from 180deg at 0 0,#0e142b,#0d1330,#0f1433);
+            border-radius: 14px;
+            display: block;
+            border: 1px solid rgba(255,255,255,.10)
+        }
+
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            margin-top: 10px
+        }
+
+            .toolbar .spacer {
+                flex: 1
+            }
+
+        button, .chip, select, input[type=number], input[type=checkbox] {
+            font: inherit
+        }
+
+        button {
+            padding: 8px 12px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,.18);
+            background: #15214a;
+            color: var(--ink);
+            cursor: pointer
+        }
+
+            button:hover {
+                filter: brightness(1.08)
+            }
+
+            button:active {
+                transform: translateY(1px)
+            }
+
+            button.primary {
+                background: linear-gradient(145deg,#7aa2ff,#5f86ff);
+                color: #04060e;
+                border: 0;
+                font-weight: 700
+            }
+
+            button.good {
+                background: linear-gradient(145deg,#36d399,#4fe1b4);
+                color: #04140e;
+                border: 0;
+                font-weight: 700
+            }
+
+            button.warn {
+                background: linear-gradient(145deg,#ffb86b,#ff9e53);
+                color: #140a04;
+                border: 0;
+                font-weight: 700
+            }
+
+        .out {
+            width: 100%;
+            min-height: 240px;
+            font-family: ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+            font-size: 12.5px;
+            line-height: 1.45;
+            color: #ecf2ff;
+            background: #0b0f22;
+            border: 1px solid rgba(255,255,255,.10);
+            border-radius: 12px;
+            padding: 10px;
+            white-space: pre;
+            overflow: auto
+        }
+
+        .mini {
+            font-size: 11.5px;
+            color: var(--muted)
+        }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <h1>Draw a single pulse → export as <span class="mini">int16_t dat[256]</span></h1>
+        <p class="hint">어디에 그려도, 그린 구간만 자동으로 시간 정규화(Time-Normalize)하여 0..N-1 범위로 늘이거나 줄여서 내보냅니다.</p>
+
+        <div class="grid">
+            <div class="card">
+                <div class="hd"><h2>Canvas</h2></div>
+                <div class="bd">
+                    <canvas id="pad" width="1024" height="340"></canvas>
+                    <div class="toolbar">
+                        <button id="undoBtn">Undo</button>
+                        <button id="clearBtn" class="warn">Clear</button>
+                        <div class="spacer"></div>
+                        <label class="chip"><input type="checkbox" id="timeNorm" checked> Time-normalize (fit drawn region)</label>
+                        <label class="chip"><input type="checkbox" id="normalize" checked> Normalize peak to 32767</label>
+                        <label class="chip"><input type="checkbox" id="symZero" checked> Force baseline to 0</label>
+                        <label class="chip">Stroke: <input id="strokeWidth" type="number" value="2" min="1" max="8" style="width:60px"> px</label>
+                        <button id="exportBtn" class="good">Export → int16_t[256]</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="hd"><h2>Output</h2></div>
+                <div class="bd">
+                    <div class="mini" style="margin-bottom:8px">샘플 수는 시리얼/펌웨어 요구에 맞게 변경하세요.</div>
+                    <div style="margin-bottom:10px"><label>Samples <input type="number" id="nSamples" value="256" min="8" max="4096" step="8" /></label> <span class="mini">(균등 리샘플링)</span></div>
+                    <pre class="out" id="out">// Export will appear here…</pre>
+                    <div class="toolbar">
+                        <button id="copyBtn" class="primary">Copy to clipboard</button>
+                        <button id="exampleBtn">Load example pulse</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+(function(){
+  const pad = document.getElementById('pad');
+  const ctx = pad.getContext('2d');
+  const W = pad.width, H = pad.height;
+  const mid = Math.round(H/2);
+
+  let colY = new Array(W).fill(NaN); // y per column (NaN = untouched)
+  let history = [];
+  let drawing = false; let lastX = null, lastY = null;
+
+  function pushHistory(){ history.push(colY.slice()); if(history.length>50) history.shift(); }
+
+  function lerp(a,b,t){ return a + (b-a)*t; }
+
+  function drawGrid(){
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle = 'rgba(255,255,255,0.02)'; ctx.fillRect(0,0,W,H);
+    // grid
+    ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--grid');
+    ctx.lineWidth = 1; ctx.beginPath();
+    for(let x=0; x<=W; x+=64){ ctx.moveTo(x,0); ctx.lineTo(x,H); }
+    for(let y=0; y<=H; y+=40){ ctx.moveTo(0,y); ctx.lineTo(W,y); }
+    ctx.stroke();
+    // midline
+    ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--midline');
+    ctx.beginPath(); ctx.moveTo(0, mid + .5); ctx.lineTo(W, mid + .5); ctx.stroke();
+    renderPreview();
+  }
+
+  function renderPreview(){
+    const scale = 1; // visual kept simple here
+    ctx.save(); ctx.beginPath(); let started=false;
+    for(let x=0; x<W; x++){
+      const y = colY[x]; if(Number.isNaN(y)) continue;
+      const yy = mid + (y-mid)*scale;
+      if(!started){ ctx.moveTo(x,yy); started=true; } else { ctx.lineTo(x,yy); }
+    }
+    ctx.strokeStyle = '#9ad1ff';
+    ctx.lineWidth = parseInt(document.getElementById('strokeWidth').value||'2');
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.stroke(); ctx.restore();
+  }
+
+  function interpolateGaps(arr){
+    // Fill leading/trailing NaNs with mid, and interior NaNs by linear interpolation
+    let i=0; while(i<W && Number.isNaN(arr[i])) i++;
+    for(let k=0; k<i; k++) arr[k]=mid;
+    while(i<W){
+      let j=i+1; while(j<W && Number.isNaN(arr[j])) j++;
+      if(j>=W){ for(let k=i+1;k<W;k++) arr[k]=mid; break; }
+      const yi=arr[i], yj=arr[j], n=j-i;
+      for(let k=1;k<n;k++) arr[i+k]=Math.round(lerp(yi,yj,k/n));
+      i=j;
+    }
+  }
+
+  function pointerPos(e){
+    const r = pad.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    let x = Math.round((clientX - r.left) * (W / r.width));
+    let y = Math.round((clientY - r.top) * (H / r.height));
+    x = Math.max(0, Math.min(W-1, x)); y = Math.max(0, Math.min(H-1, y));
+    return {x,y};
+  }
+
+  function startDraw(e){ e.preventDefault(); pushHistory(); drawing=true; const {x,y}=pointerPos(e); lastX=x; lastY=y; colY[x]=y; drawGrid(); }
+  function moveDraw(e){ if(!drawing) return; const {x,y}=pointerPos(e); if(x===lastX){ colY[x]=y; lastY=y; drawGrid(); return; }
+    const x0=lastX, y0=lastY, x1=x, y1=y, step=x1>x0?1:-1;
+    for(let xi=x0; xi!==x1+step; xi+=step){ const t=(xi-x0)/(x1-x0); colY[xi]=Math.round(lerp(y0,y1,t)); }
+    lastX=x; lastY=y; drawGrid(); }
+  function endDraw(){ drawing=false; lastX=null; lastY=null; }
+
+  pad.addEventListener('mousedown', startDraw); pad.addEventListener('mousemove', moveDraw); window.addEventListener('mouseup', endDraw);
+  pad.addEventListener('touchstart', startDraw, {passive:false}); pad.addEventListener('touchmove', moveDraw, {passive:false}); pad.addEventListener('touchend', endDraw);
+
+  document.getElementById('strokeWidth').addEventListener('change', drawGrid);
+  document.getElementById('undoBtn').addEventListener('click', ()=>{ if(history.length){ colY=history.pop(); drawGrid(); }});
+  document.getElementById('clearBtn').addEventListener('click', ()=>{ pushHistory(); colY.fill(NaN); drawGrid(); out.textContent='// cleared'; });
+  document.getElementById('exampleBtn').addEventListener('click', ()=>{
+    pushHistory(); colY.fill(NaN);
+    // asymmetric pulse demo
+    const cx = Math.floor(W*0.45), rise=60, fall=180, amp=Math.floor(H*0.35);
+    for(let i=-rise;i<=fall;i++){
+      const x=cx+i; if(x<0||x>=W) continue; let y;
+      if(i<0){ const t=(i+rise)/rise; y = mid - amp*(0.2 + 0.8*t*t); }
+      else { const t=i/fall; y = mid - amp*Math.exp(-4*t); }
+      colY[x]=Math.round(y);
+    }
+    drawGrid();
+  });
+
+  function toInt16ArrayText(){
+    const n = parseInt(document.getElementById('nSamples').value||'256',10);
+    const normalize = document.getElementById('normalize').checked;
+    const symZero = document.getElementById('symZero').checked;
+    const timeNorm = document.getElementById('timeNorm').checked;
+
+    // 1) Fill gaps and build vFull in [-1,1]
+    const y = colY.slice();
+    interpolateGaps(y);
+    const vFull = new Float64Array(W);
+    for(let x=0;x<W;x++){
+      let v = (mid - y[x]) / mid; // top=+1, mid=0, bottom=-1
+      if(symZero && Math.abs(v) < 1e-4) v = 0;
+      vFull[x] = v;
+    }
+
+    function resampleRange(arr, a, b, n){
+      const out = new Float64Array(n);
+      const span = Math.max(1, b - a);
+      for(let i=0;i<n;i++){
+        const xf = a + (i*span)/(n-1);
+        const x0 = Math.floor(xf);
+        const x1 = Math.min(arr.length-1, x0+1);
+        const t = xf - x0;
+        out[i] = lerp(arr[x0], arr[x1], t);
+      }
+      return out;
+    }
+
+    // 2) Time-normalize (optional)
+    let samples;
+    if(timeNorm){
+      const thr = 1e-3; // active threshold
+      let i0 = 0, i1 = W-1;
+      while(i0 < W && Math.abs(vFull[i0]) <= thr) i0++;
+      while(i1 > i0 && Math.abs(vFull[i1]) <= thr) i1--;
+      if(i1 <= i0){ samples = new Float64Array(n); }
+      else {
+        samples = resampleRange(vFull, i0, i1, n);
+      }
+      if(n>=2){ samples[0]=0; samples[n-1]=0; } // clean edges
+    } else {
+      samples = resampleRange(vFull, 0, W-1, n);
+    }
+
+    // 3) Amplitude normalize and quantize
+    let scale = 32767;
+    if(normalize){
+      let peak = 0; for(let i=0;i<n;i++) peak = Math.max(peak, Math.abs(samples[i]));
+      scale = peak>0 ? 32767/peak : 0;
+    }
+    const q = new Int16Array(n);
+    for(let i=0;i<n;i++){
+      let val = Math.round(samples[i]*scale);
+      if(val>32767) val=32767; if(val<-32768) val=-32768; q[i]=val;
+    }
+
+    // 4) Format
+    const cols = 9; let s = `int16_t dat[${n}] = {\n`;
+    for(let i=0;i<n;i++){
+      s += (i%cols===0?'  ':' ') + q[i] + (i<n-1?',':'');
+      if(i%cols===cols-1 || i===n-1) s+='\n';
+    }
+    s += '};';
+    return s;
+  }
+
+  const out = document.getElementById('out');
+  document.getElementById('exportBtn').addEventListener('click', ()=>{ out.textContent = toInt16ArrayText(); });
+  document.getElementById('copyBtn').addEventListener('click', async ()=>{
+    const text = out.textContent.trim(); if(!text){ out.textContent='// Nothing to copy — click Export first'; return; }
+    try{ await navigator.clipboard.writeText(text); out.textContent += '\n\n// Copied ✔'; }
+    catch(e){ out.textContent += '\n\n// Clipboard blocked; select and copy manually.'; }
+  });
+
+  drawGrid();
+})();
+    </script>
+</body>
+</html>
