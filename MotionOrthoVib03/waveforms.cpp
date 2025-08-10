@@ -94,6 +94,15 @@ int16_t newWave_5[256];  // Impact + Residual
 int16_t newWave_6[256];  // Fast Double Pulse
 int16_t biasWaveform[256];
 
+struct WaveRef { const int16_t* data; int len; };
+WaveRef getWave(const char* name) {
+    if (!strcmp(name, "newWave_custom")) return { newWave_custom, 256 };
+    // else if ... 다른 파형들
+    return { nullptr, 0 };
+}
+
+
+
 void CreateAllWaveforms() {
     // CASE 0: Symmetric Sine Wave
     for (int i = 0; i < 256; i++) {
@@ -166,4 +175,3 @@ void generatePositiveBiasedWaveform() {
         biasWaveform[i] = (int16_t)(32767 * biased);
     }
 }
-

@@ -2,7 +2,6 @@
 
 #ifndef _WAVEFORMS_h
 #define _WAVEFORMS_h
-
 #include <Arduino.h>
 
 // 배열 선언
@@ -21,6 +20,8 @@ extern int16_t newWave_5[256];
 extern int16_t newWave_6[256];
 extern int16_t biasWaveform[256];
 extern int16_t negDatTrial[256];
+
+extern int16_t newWave_custom[256];
 
 // 함수 선언
 void CreateAllWaveforms();

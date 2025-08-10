@@ -2,378 +2,377 @@
 <html lang="en">
 <head>
     <meta charset="utf-8" />
+    <title>Draw a Pulse → int16_t (auto-append to .h/.cpp)</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Waveform Pulse → int16_t[256] (Time-Normalized)</title>
     <style>
-        :root {
-            --bg: #0b1020;
-            --panel: #101933;
-            --ink: #e6e9f2;
-            --muted: #99a2c2;
-            --accent: #7aa2ff;
-            --good: #36d399;
-            --warn: #ffb86b;
-            --grid: rgba(255,255,255,.08);
-            --midline: rgba(255,255,255,.25);
-        }
-
-        * {
-            box-sizing: border-box
-        }
-
         body {
-            margin: 0;
-            background: radial-gradient(1200px 800px at 70% -20%, #1a2458 0%, var(--bg) 60%);
-            color: var(--ink);
-            font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial
+            font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+            margin: 16px;
         }
 
-        .wrap {
-            max-width: 1100px;
-            margin: 28px auto;
-            padding: 0 16px
-        }
-
-        h1 {
-            font-size: 22px;
-            margin: 0 0 8px
-        }
-
-        p.hint {
-            color: var(--muted);
-            margin: 0 0 16px
-        }
-
-        .grid {
-            display: grid;
-            grid-template-columns: 1.25fr .95fr;
-            gap: 16px
-        }
-
-        @media (max-width:980px) {
-            .grid {
-                grid-template-columns: 1fr
-            }
-        }
-
-        .card {
-            background: linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));
-            border: 1px solid rgba(255,255,255,.1);
-            border-radius: 16px;
-            box-shadow: 0 8px 20px rgba(0,0,0,.25)
-        }
-
-            .card .hd {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                padding: 12px 14px;
-                border-bottom: 1px solid rgba(255,255,255,.08)
-            }
-
-                .card .hd h2 {
-                    font-size: 14px;
-                    margin: 0;
-                    color: var(--muted);
-                    letter-spacing: .3px;
-                    font-weight: 600
-                }
-
-            .card .bd {
-                padding: 12px
-            }
-
-        canvas {
-            width: 100%;
-            height: 320px;
-            background: conic-gradient(from 180deg at 0 0,#0e142b,#0d1330,#0f1433);
-            border-radius: 14px;
-            display: block;
-            border: 1px solid rgba(255,255,255,.10)
-        }
-
-        .toolbar {
+        .row {
             display: flex;
+            gap: 16px;
             flex-wrap: wrap;
-            gap: 8px;
-            align-items: center;
-            margin-top: 10px
         }
 
-            .toolbar .spacer {
-                flex: 1
-            }
-
-        button, .chip, select, input[type=number], input[type=checkbox] {
-            font: inherit
+        .col {
+            flex: 1 1 360px;
+            min-width: 320px;
         }
 
-        button {
-            padding: 8px 12px;
-            border-radius: 10px;
-            border: 1px solid rgba(255,255,255,.18);
-            background: #15214a;
-            color: var(--ink);
-            cursor: pointer
+        #canvas {
+            border: 1px solid #ccc;
+            touch-action: none;
+            background: #fff;
         }
 
-            button:hover {
-                filter: brightness(1.08)
-            }
+        label {
+            display: block;
+            margin: 8px 0 4px;
+            font-weight: 600;
+        }
 
-            button:active {
-                transform: translateY(1px)
-            }
-
-            button.primary {
-                background: linear-gradient(145deg,#7aa2ff,#5f86ff);
-                color: #04060e;
-                border: 0;
-                font-weight: 700
-            }
-
-            button.good {
-                background: linear-gradient(145deg,#36d399,#4fe1b4);
-                color: #04140e;
-                border: 0;
-                font-weight: 700
-            }
-
-            button.warn {
-                background: linear-gradient(145deg,#ffb86b,#ff9e53);
-                color: #140a04;
-                border: 0;
-                font-weight: 700
-            }
-
-        .out {
+        input[type="text"], input[type="number"] {
             width: 100%;
-            min-height: 240px;
-            font-family: ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
-            font-size: 12.5px;
-            line-height: 1.45;
-            color: #ecf2ff;
-            background: #0b0f22;
-            border: 1px solid rgba(255,255,255,.10);
-            border-radius: 12px;
-            padding: 10px;
-            white-space: pre;
-            overflow: auto
+            padding: 8px;
+            box-sizing: border-box;
         }
 
-        .mini {
-            font-size: 11.5px;
-            color: var(--muted)
+        .btn {
+            padding: 8px 12px;
+            margin: 6px 6px 0 0;
+            cursor: pointer;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 160px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        }
+
+        .hint {
+            color: #555;
+            font-size: 12px;
+        }
+
+        .pill {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: #f1f1f1;
+            margin-left: 6px;
+            font-size: 12px;
         }
     </style>
 </head>
 <body>
-    <div class="wrap">
-        <h1>Draw a single pulse → export as <span class="mini">int16_t dat[256]</span></h1>
-        <p class="hint">어디에 그려도, 그린 구간만 자동으로 시간 정규화(Time-Normalize)하여 0..N-1 범위로 늘이거나 줄여서 내보냅니다.</p>
+    <h2>Draw a Pulse → <code>int16_t dat[N]</code> (Time-normalized)</h2>
 
-        <div class="grid">
-            <div class="card">
-                <div class="hd"><h2>Canvas</h2></div>
-                <div class="bd">
-                    <canvas id="pad" width="1024" height="340"></canvas>
-                    <div class="toolbar">
-                        <button id="undoBtn">Undo</button>
-                        <button id="clearBtn" class="warn">Clear</button>
-                        <div class="spacer"></div>
-                        <label class="chip"><input type="checkbox" id="timeNorm" checked> Time-normalize (fit drawn region)</label>
-                        <label class="chip"><input type="checkbox" id="normalize" checked> Normalize peak to 32767</label>
-                        <label class="chip"><input type="checkbox" id="symZero" checked> Force baseline to 0</label>
-                        <label class="chip">Stroke: <input id="strokeWidth" type="number" value="2" min="1" max="8" style="width:60px"> px</label>
-                        <button id="exportBtn" class="good">Export → int16_t[256]</button>
-                    </div>
+    <div class="row">
+        <div class="col">
+            <canvas id="canvas" width="900" height="260"></canvas>
+            <div class="hint">마우스/펜으로 한 번의 펄스를 그리세요. 우클릭 또는 “Clear”로 초기화.</div>
+
+            <div class="row" style="align-items:flex-end;margin-top:8px;">
+                <div class="col">
+                    <label>Variable name <span class="pill">C identifier</span></label>
+                    <input id="varName" type="text" placeholder="e.g., newWave_custom" value="newWave_custom">
+                </div>
+                <div class="col">
+                    <label>Samples (N)</label>
+                    <input id="nSamples" type="number" min="8" max="4096" step="1" value="256">
                 </div>
             </div>
 
-            <div class="card">
-                <div class="hd"><h2>Output</h2></div>
-                <div class="bd">
-                    <div class="mini" style="margin-bottom:8px">샘플 수는 시리얼/펌웨어 요구에 맞게 변경하세요.</div>
-                    <div style="margin-bottom:10px"><label>Samples <input type="number" id="nSamples" value="256" min="8" max="4096" step="8" /></label> <span class="mini">(균등 리샘플링)</span></div>
-                    <pre class="out" id="out">// Export will appear here…</pre>
-                    <div class="toolbar">
-                        <button id="copyBtn" class="primary">Copy to clipboard</button>
-                        <button id="exampleBtn">Load example pulse</button>
-                    </div>
-                </div>
+            <div style="margin-top:8px;">
+                <label><input type="checkbox" id="optTimeNorm" checked> Time-normalize (trim to active region → resample to N)</label>
+                <label><input type="checkbox" id="optPeakNorm" checked> Normalize peak to 32767</label>
+                <label><input type="checkbox" id="optBaselineZero" checked> Force baseline ≈ 0</label>
             </div>
+
+            <div style="margin-top:8px;">
+                <button class="btn" id="btnExport">Export</button>
+                <button class="btn" id="btnClear">Clear</button>
+                <button class="btn" id="btnExample">Load example pulse</button>
+            </div>
+        </div>
+
+        <div class="col">
+            <label>Header extern (waveforms.h)</label>
+            <textarea id="outHeader" readonly></textarea>
+            <button class="btn" id="copyHeader">Copy C Header Snippet</button>
+            <button class="btn" id="appendHeader">Append to waveforms.h…</button>
+
+            <label style="margin-top:12px;">CPP definition (waveforms.cpp)</label>
+            <textarea id="outCpp" readonly></textarea>
+            <button class="btn" id="copyCpp">Copy CPP Definition</button>
+            <button class="btn" id="appendCpp">Append to waveforms.cpp…</button>
         </div>
     </div>
 
+    <p class="hint">
+        ※ 파일 자동 추가는 Chrome/Edge 등 File System Access API 지원 브라우저에서만 동작합니다.
+        동작 순서: <b>Export</b> → <b>Append to waveforms.h</b> → <b>Append to waveforms.cpp</b> → 빌드.
+    </p>
+
     <script>
-(function(){
-  const pad = document.getElementById('pad');
-  const ctx = pad.getContext('2d');
-  const W = pad.width, H = pad.height;
-  const mid = Math.round(H/2);
+        (function () {
+            // ===== Canvas drawing buffer =====
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            const W = canvas.width, H = canvas.height;
+            let drawing = false;
+            // internal buffer at pixel resolution: y in [-1..1], baseline ~0 when untouched = 0
+            const buf = new Float32Array(W).fill(0);
 
-  let colY = new Array(W).fill(NaN); // y per column (NaN = untouched)
-  let history = [];
-  let drawing = false; let lastX = null, lastY = null;
+            function yFromScreen(y) {
+                // screen y (0..H) to normalized value [-1..1], up positive
+                const v = 1 - (y / H) * 2;
+                return Math.max(-1, Math.min(1, v));
+            }
 
-  function pushHistory(){ history.push(colY.slice()); if(history.length>50) history.shift(); }
+            function drawAll() {
+                ctx.clearRect(0, 0, W, H);
+                // grid
+                ctx.strokeStyle = '#f0f0f0'; ctx.lineWidth = 1;
+                for (let i = 1; i < 6; i++) {
+                    const y = i * H / 6;
+                    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+                }
+                // axis 0
+                ctx.strokeStyle = '#ddd';
+                const y0 = H / 2;
+                ctx.beginPath(); ctx.moveTo(0, y0); ctx.lineTo(W, y0); ctx.stroke();
 
-  function lerp(a,b,t){ return a + (b-a)*t; }
+                // waveform
+                ctx.strokeStyle = '#000'; ctx.lineWidth = 2;
+                ctx.beginPath();
+                for (let x = 0; x < W; x++) {
+                    const v = buf[x];
+                    const sy = (1 - (v + 1) / 2) * H;
+                    if (x === 0) ctx.moveTo(0, sy);
+                    else ctx.lineTo(x, sy);
+                }
+                ctx.stroke();
+            }
 
-  function drawGrid(){
-    ctx.clearRect(0,0,W,H);
-    ctx.fillStyle = 'rgba(255,255,255,0.02)'; ctx.fillRect(0,0,W,H);
-    // grid
-    ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--grid');
-    ctx.lineWidth = 1; ctx.beginPath();
-    for(let x=0; x<=W; x+=64){ ctx.moveTo(x,0); ctx.lineTo(x,H); }
-    for(let y=0; y<=H; y+=40){ ctx.moveTo(0,y); ctx.lineTo(W,y); }
-    ctx.stroke();
-    // midline
-    ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--midline');
-    ctx.beginPath(); ctx.moveTo(0, mid + .5); ctx.lineTo(W, mid + .5); ctx.stroke();
-    renderPreview();
-  }
+            function setPoint(x, yNorm) {
+                x = Math.max(0, Math.min(W - 1, x | 0));
+                buf[x] = yNorm;
+            }
 
-  function renderPreview(){
-    const scale = 1; // visual kept simple here
-    ctx.save(); ctx.beginPath(); let started=false;
-    for(let x=0; x<W; x++){
-      const y = colY[x]; if(Number.isNaN(y)) continue;
-      const yy = mid + (y-mid)*scale;
-      if(!started){ ctx.moveTo(x,yy); started=true; } else { ctx.lineTo(x,yy); }
-    }
-    ctx.strokeStyle = '#9ad1ff';
-    ctx.lineWidth = parseInt(document.getElementById('strokeWidth').value||'2');
-    ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.stroke(); ctx.restore();
-  }
+            function lerp(a, b, t) { return a + (b - a) * t; }
 
-  function interpolateGaps(arr){
-    // Fill leading/trailing NaNs with mid, and interior NaNs by linear interpolation
-    let i=0; while(i<W && Number.isNaN(arr[i])) i++;
-    for(let k=0; k<i; k++) arr[k]=mid;
-    while(i<W){
-      let j=i+1; while(j<W && Number.isNaN(arr[j])) j++;
-      if(j>=W){ for(let k=i+1;k<W;k++) arr[k]=mid; break; }
-      const yi=arr[i], yj=arr[j], n=j-i;
-      for(let k=1;k<n;k++) arr[i+k]=Math.round(lerp(yi,yj,k/n));
-      i=j;
-    }
-  }
+            function onPointerDown(e) {
+                e.preventDefault();
+                if (e.button === 2) { // right click to clear
+                    clearBuf();
+                    return;
+                }
+                drawing = true;
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                setPoint(x, yFromScreen(y));
+                drawAll();
+            }
 
-  function pointerPos(e){
-    const r = pad.getBoundingClientRect();
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    let x = Math.round((clientX - r.left) * (W / r.width));
-    let y = Math.round((clientY - r.top) * (H / r.height));
-    x = Math.max(0, Math.min(W-1, x)); y = Math.max(0, Math.min(H-1, y));
-    return {x,y};
-  }
+            function onPointerMove(e) {
+                if (!drawing) return;
+                const rect = canvas.getBoundingClientRect();
+                let x = e.clientX - rect.left;
+                let y = e.clientY - rect.top;
+                const yN = yFromScreen(y);
 
-  function startDraw(e){ e.preventDefault(); pushHistory(); drawing=true; const {x,y}=pointerPos(e); lastX=x; lastY=y; colY[x]=y; drawGrid(); }
-  function moveDraw(e){ if(!drawing) return; const {x,y}=pointerPos(e); if(x===lastX){ colY[x]=y; lastY=y; drawGrid(); return; }
-    const x0=lastX, y0=lastY, x1=x, y1=y, step=x1>x0?1:-1;
-    for(let xi=x0; xi!==x1+step; xi+=step){ const t=(xi-x0)/(x1-x0); colY[xi]=Math.round(lerp(y0,y1,t)); }
-    lastX=x; lastY=y; drawGrid(); }
-  function endDraw(){ drawing=false; lastX=null; lastY=null; }
+                // interpolate if skipping pixels
+                const prev = onPointerMove.prevX ?? x;
+                const start = Math.max(0, Math.min(W - 1, Math.floor(Math.min(prev, x))));
+                const end = Math.max(0, Math.min(W - 1, Math.ceil(Math.max(prev, x))));
+                if (end >= start) {
+                    for (let xi = start; xi <= end; xi++) {
+                        const t = (end === start) ? 1 : (xi - start) / (end - start);
+                        const v = lerp(buf[xi], yN, t); // blend to reduce gaps
+                        buf[xi] = v;
+                    }
+                }
+                onPointerMove.prevX = x;
+                drawAll();
+            }
+            function onPointerUp() { drawing = false; onPointerMove.prevX = undefined; }
 
-  pad.addEventListener('mousedown', startDraw); pad.addEventListener('mousemove', moveDraw); window.addEventListener('mouseup', endDraw);
-  pad.addEventListener('touchstart', startDraw, {passive:false}); pad.addEventListener('touchmove', moveDraw, {passive:false}); pad.addEventListener('touchend', endDraw);
+            function clearBuf() {
+                buf.fill(0);
+                drawAll();
+            }
 
-  document.getElementById('strokeWidth').addEventListener('change', drawGrid);
-  document.getElementById('undoBtn').addEventListener('click', ()=>{ if(history.length){ colY=history.pop(); drawGrid(); }});
-  document.getElementById('clearBtn').addEventListener('click', ()=>{ pushHistory(); colY.fill(NaN); drawGrid(); out.textContent='// cleared'; });
-  document.getElementById('exampleBtn').addEventListener('click', ()=>{
-    pushHistory(); colY.fill(NaN);
-    // asymmetric pulse demo
-    const cx = Math.floor(W*0.45), rise=60, fall=180, amp=Math.floor(H*0.35);
-    for(let i=-rise;i<=fall;i++){
-      const x=cx+i; if(x<0||x>=W) continue; let y;
-      if(i<0){ const t=(i+rise)/rise; y = mid - amp*(0.2 + 0.8*t*t); }
-      else { const t=i/fall; y = mid - amp*Math.exp(-4*t); }
-      colY[x]=Math.round(y);
-    }
-    drawGrid();
-  });
+            canvas.addEventListener('contextmenu', e => e.preventDefault());
+            canvas.addEventListener('mousedown', onPointerDown);
+            canvas.addEventListener('mousemove', onPointerMove);
+            window.addEventListener('mouseup', onPointerUp);
+            drawAll();
 
-  function toInt16ArrayText(){
-    const n = parseInt(document.getElementById('nSamples').value||'256',10);
-    const normalize = document.getElementById('normalize').checked;
-    const symZero = document.getElementById('symZero').checked;
-    const timeNorm = document.getElementById('timeNorm').checked;
+            // ===== Controls =====
+            const varNameEl = document.getElementById('varName');
+            const nSamplesEl = document.getElementById('nSamples');
+            const optTimeNorm = document.getElementById('optTimeNorm');
+            const optPeakNorm = document.getElementById('optPeakNorm');
+            const optBaselineZero = document.getElementById('optBaselineZero');
 
-    // 1) Fill gaps and build vFull in [-1,1]
-    const y = colY.slice();
-    interpolateGaps(y);
-    const vFull = new Float64Array(W);
-    for(let x=0;x<W;x++){
-      let v = (mid - y[x]) / mid; // top=+1, mid=0, bottom=-1
-      if(symZero && Math.abs(v) < 1e-4) v = 0;
-      vFull[x] = v;
-    }
+            document.getElementById('btnClear').onclick = clearBuf;
 
-    function resampleRange(arr, a, b, n){
-      const out = new Float64Array(n);
-      const span = Math.max(1, b - a);
-      for(let i=0;i<n;i++){
-        const xf = a + (i*span)/(n-1);
-        const x0 = Math.floor(xf);
-        const x1 = Math.min(arr.length-1, x0+1);
-        const t = xf - x0;
-        out[i] = lerp(arr[x0], arr[x1], t);
-      }
-      return out;
-    }
+            document.getElementById('btnExample').onclick = () => {
+                // simple asymmetric pulse example in center
+                buf.fill(0);
+                const a = Math.floor(W * 0.35), b = Math.floor(W * 0.65);
+                for (let x = a; x <= b; x++) {
+                    const t = (x - a) / (b - a);
+                    const v = Math.sin(Math.PI * t) * (0.2 + 0.8 * t); // rising amplitude
+                    buf[x] = Math.max(0, Math.min(1, v)); // positive-only
+                }
+                drawAll();
+            };
 
-    // 2) Time-normalize (optional)
-    let samples;
-    if(timeNorm){
-      const thr = 1e-3; // active threshold
-      let i0 = 0, i1 = W-1;
-      while(i0 < W && Math.abs(vFull[i0]) <= thr) i0++;
-      while(i1 > i0 && Math.abs(vFull[i1]) <= thr) i1--;
-      if(i1 <= i0){ samples = new Float64Array(n); }
-      else {
-        samples = resampleRange(vFull, i0, i1, n);
-      }
-      if(n>=2){ samples[0]=0; samples[n-1]=0; } // clean edges
-    } else {
-      samples = resampleRange(vFull, 0, W-1, n);
-    }
+            // ===== Export → int16_t =====
+            const outHeader = document.getElementById('outHeader');
+            const outCpp = document.getElementById('outCpp');
 
-    // 3) Amplitude normalize and quantize
-    let scale = 32767;
-    if(normalize){
-      let peak = 0; for(let i=0;i<n;i++) peak = Math.max(peak, Math.abs(samples[i]));
-      scale = peak>0 ? 32767/peak : 0;
-    }
-    const q = new Int16Array(n);
-    for(let i=0;i<n;i++){
-      let val = Math.round(samples[i]*scale);
-      if(val>32767) val=32767; if(val<-32768) val=-32768; q[i]=val;
-    }
+            document.getElementById('btnExport').onclick = () => {
+                const name = sanitizeName(varNameEl.value || 'newWave_custom');
+                varNameEl.value = name; // reflect
 
-    // 4) Format
-    const cols = 9; let s = `int16_t dat[${n}] = {\n`;
-    for(let i=0;i<n;i++){
-      s += (i%cols===0?'  ':' ') + q[i] + (i<n-1?',':'');
-      if(i%cols===cols-1 || i===n-1) s+='\n';
-    }
-    s += '};';
-    return s;
-  }
+                const N = clamp(parseInt(nSamplesEl.value || '256', 10), 8, 4096);
+                nSamplesEl.value = String(N);
 
-  const out = document.getElementById('out');
-  document.getElementById('exportBtn').addEventListener('click', ()=>{ out.textContent = toInt16ArrayText(); });
-  document.getElementById('copyBtn').addEventListener('click', async ()=>{
-    const text = out.textContent.trim(); if(!text){ out.textContent='// Nothing to copy — click Export first'; return; }
-    try{ await navigator.clipboard.writeText(text); out.textContent += '\n\n// Copied ✔'; }
-    catch(e){ out.textContent += '\n\n// Clipboard blocked; select and copy manually.'; }
-  });
+                // 1) Get active region
+                let lo = 0, hi = W - 1;
+                if (optTimeNorm.checked) {
+                    const thr = 1e-3;
+                    while (lo < W && Math.abs(buf[lo]) <= thr) lo++;
+                    while (hi >= 0 && Math.abs(buf[hi]) <= thr) hi--;
+                    if (hi <= lo) { lo = 0; hi = W - 1; } // fallback: whole range
+                }
 
-  drawGrid();
-})();
+                // 2) Sample → resample to N
+                const raw = [];
+                for (let i = 0; i < N; i++) {
+                    const t = (N === 1) ? 0 : i / (N - 1); // 0..1
+                    const x = lerp(lo, hi, t);
+                    const ix0 = Math.floor(x), ix1 = Math.min(W - 1, ix0 + 1);
+                    const frac = x - ix0;
+                    const v = lerp(buf[ix0], buf[ix1], frac);
+                    raw.push(v);
+                }
+
+                // 3) Baseline & Peak normalize
+                let arr = raw.slice();
+                if (optBaselineZero.checked) {
+                    // remove DC offset
+                    const mean = arr.reduce((s, v) => s + v, 0) / arr.length;
+                    for (let i = 0; i < arr.length; i++) arr[i] -= mean;
+                }
+                if (optPeakNorm.checked) {
+                    const peak = Math.max(1e-9, ...arr.map(v => Math.abs(v)));
+                    for (let i = 0; i < arr.length; i++) arr[i] /= peak;
+                }
+
+                // 4) map to int16_t range [-32767..32767]
+                const i16 = arr.map(v => {
+                    const x = Math.max(-1, Math.min(1, v));
+                    return Math.round(x * 32767);
+                });
+
+                // 5) format outputs
+                outHeader.value = formatHeader(name, N);
+                outCpp.value = formatCpp(name, i16);
+            };
+
+            function sanitizeName(s) {
+                // valid C identifier: letters, digits, underscore; not starting with digit
+                s = s.replace(/[^A-Za-z0-9_]/g, '_');
+                if (/^[0-9]/.test(s)) s = '_' + s;
+                if (!s) s = 'newWave_custom';
+                return s;
+            }
+            function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+            function formatHeader(name, N) {
+                return `// Auto-generated extern (do not duplicate)\nextern int16_t ${name}[${N}];\n`;
+            }
+            function formatCpp(name, data) {
+                const lines = [];
+                const perLine = 15;
+                for (let i = 0; i < data.length; i += perLine) {
+                    const slice = data.slice(i, i + perLine);
+                    lines.push('  ' + slice.map((v, idx) => String(v)).join(', ') + (i + perLine < data.length ? ',' : ''));
+                }
+                return `// ${name} (auto-generated)\nint16_t ${name}[${data.length}] = {\n${lines.join('\n')}\n};\n`;
+            }
+
+            // Copy buttons
+            document.getElementById('copyHeader').onclick = () => copyText(outHeader.value);
+            document.getElementById('copyCpp').onclick = () => copyText(outCpp.value);
+
+            async function copyText(txt) {
+                try { await navigator.clipboard.writeText(txt); alert('Copied!'); }
+                catch { // fallback
+                    const ta = document.createElement('textarea');
+                    ta.value = txt; document.body.appendChild(ta); ta.select();
+                    document.execCommand('copy'); ta.remove(); alert('Copied (fallback)!');
+                }
+            }
+
+            // ===== File append (File System Access API) =====
+            const hasFS = 'showOpenFilePicker' in window;
+            document.getElementById('appendHeader').onclick = async () => {
+                if (!hasFS) return alert('This browser does not support file write. Use Chrome/Edge.');
+                if (!outHeader.value.trim()) return alert('먼저 Export를 눌러서 내용을 생성하세요.');
+                const [handle] = await window.showOpenFilePicker({
+                    types: [{ description: 'C/C++ header', accept: { 'text/plain': ['.h'] } }],
+                    excludeAcceptAllOption: false, multiple: false
+                });
+                let txt = await (await handle.getFile()).text();
+                const externLine = outHeader.value.trim().split('\n').pop(); // last line is extern
+                if (txt.includes(externLine.replace(/\/\/.*\n?/g, ''))) {
+                    alert('Header already contains this extern.');
+                    return;
+                }
+                // insert before #endif if present
+                const endifIdx = txt.lastIndexOf('#endif');
+                const insertion = (txt.endsWith('\n') ? '' : '\n') + externLine + '\n';
+                if (endifIdx !== -1) {
+                    txt = txt.slice(0, endifIdx) + insertion + txt.slice(endifIdx);
+                } else {
+                    txt += insertion;
+                }
+                const w = await handle.createWritable();
+                await w.write(txt); await w.close();
+                alert('Extern appended to header.');
+            };
+
+            document.getElementById('appendCpp').onclick = async () => {
+                if (!hasFS) return alert('This browser does not support file write. Use Chrome/Edge.');
+                if (!outCpp.value.trim()) return alert('먼저 Export를 눌러서 내용을 생성하세요.');
+                const [handle] = await window.showOpenFilePicker({
+                    types: [{ description: 'C++ source', accept: { 'text/plain': ['.cpp'] } }],
+                    excludeAcceptAllOption: false, multiple: false
+                });
+                let txt = await (await handle.getFile()).text();
+
+                // Dup check by variable name
+                const name = (document.getElementById('varName').value || '').trim();
+                const rx = new RegExp(`\\bint16_t\\s+${sanitizeName(name)}\\s*\\[`, 'm');
+                if (rx.test(txt)) {
+                    alert('CPP already contains this variable.');
+                    return;
+                }
+                txt += (txt.endsWith('\n') ? '' : '\n') + outCpp.value.trim() + '\n';
+                const w = await handle.createWritable();
+                await w.write(txt); await w.close();
+                alert('Definition appended to cpp.');
+            };
+
+        })();
     </script>
 </body>
 </html>
