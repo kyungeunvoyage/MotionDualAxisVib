@@ -4,13 +4,13 @@
 #define _WAVEFORMS_h
 #include <Arduino.h>
 
-// ¹è¿­ ¼±¾ð
+// ï¿½è¿­ ï¿½ï¿½ï¿½ï¿½
 extern int16_t dat[256];
 extern int16_t datCentered[170];
 extern int16_t dat2[256];
 extern int16_t asyTriangular[256];
 
-// »ý¼ºµÈ waveform ÀúÀå ¹è¿­
+// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ waveform ï¿½ï¿½ï¿½ï¿½ ï¿½è¿­
 extern int16_t newWave_0[256];
 extern int16_t newWave_1[256];
 extern int16_t newWave_2[256];
@@ -23,9 +23,10 @@ extern int16_t negDatTrial[256];
 
 extern int16_t newWave_custom[256];
 
-// ÇÔ¼ö ¼±¾ð
+// ï¿½Ô¼ï¿½ ï¿½ï¿½ï¿½ï¿½
 void CreateAllWaveforms();
 void generatePositiveBiasedWaveform();
 void generateNegDatTrial();
 
+extern int16_t two_high[256];
 #endif

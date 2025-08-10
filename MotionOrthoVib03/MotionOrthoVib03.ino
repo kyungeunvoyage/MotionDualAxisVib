@@ -99,6 +99,9 @@ void generateNegDatTrial()
     Serial.println("negative generated");
 }
 
+int loopTimesFive = 5;
+int loopTimesThree = 3;
+
 //=================setup===========================
 void setup() {
 
@@ -194,9 +197,9 @@ void loop()
             //hz update
             updateDelayFromTargetHz();
 
-            for (int repeat = 0; repeat < 2; repeat++) {  // pulse 10번 반복
+            for (int repeat = 0; repeat < 5; repeat++) {  // pulse 10번 반복
                 for (int i = 0; i < waveformSize; i++) {
-                    int val = newWave_3[i];
+                    int val = two_high[i];
 
                     //Teensy에 있는 DAC 는 0~4095 (12비트) 사이 숫자만 출력이 가능하니까 -32767 ~ +32767 값을 0~4095fh 변환해주는거임~ 
 
