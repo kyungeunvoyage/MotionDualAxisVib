@@ -182,7 +182,7 @@
 <body>
     <div class="wrap">
         <h1>Draw a single pulse → export as <span class="mini">C int16_t array</span></h1>
-        <p class="hint">“예전처럼 선으로 그려지는” 클래식 드로잉. Time-normalize로 그린 구간만 0..N-1에 맞춰 리샘플합니다.</p>
+        <!--<p class="hint">“예전처럼 선으로 그려지는” 클래식 드로잉. Time-normalize로 그린 구간만 0..N-1에 맞춰 리샘플합니다.</p>-->
 
         <div class="grid">
             <div class="card">
@@ -468,7 +468,7 @@
 
             // File System Access (Chromium)
             const fsNote = document.getElementById('fsNote');
-            fsNote.textContent = (window.showOpenFilePicker ? 'File write available (Chromium). 아래 버튼으로 파일에 직접 추가할 수 있어요.' : 'Direct file write unavailable. 복사/다운로드를 사용하세요.');
+            fsNote.textContent = (window.showOpenFilePicker ? 'File write available (Chromium). ' : 'Direct file write unavailable. ');
 
             async function appendToPickedFile(snippet) {
                 if (!window.showOpenFilePicker) { alert('File System Access API not available.'); return; }
