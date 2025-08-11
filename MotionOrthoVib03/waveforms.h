@@ -23,7 +23,6 @@ extern int16_t negDatTrial[256];
 
 extern int16_t newWave_custom[256];
 
-// �Լ� ����
 void CreateAllWaveforms();
 void generatePositiveBiasedWaveform();
 void generateNegDatTrial();
@@ -31,4 +30,8 @@ void generateNegDatTrial();
 extern int16_t two_high[256];
 extern int16_t high_high[256];
 extern int16_t possible01[256];
+extern int16_t peak_high[256];
+extern int16_t slowReturnTwice[256];
+extern int16_t slowReturnTwiceNeg[256];
+extern int16_t slowReturnTwice2[256];
 #endif
