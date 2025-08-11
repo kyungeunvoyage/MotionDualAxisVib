@@ -34,4 +34,6 @@ extern int16_t peak_high[256];
 extern int16_t slowReturnTwice[256];
 extern int16_t slowReturnTwiceNeg[256];
 extern int16_t slowReturnTwice2[256];
+extern int16_t rightKickSlowReturn[256];
+extern int16_t leftKickSlowReturn[256];
 #endif

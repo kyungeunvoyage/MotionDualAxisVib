@@ -147,6 +147,17 @@ void playArrayWithGainCentered(const int16_t* arr, int n, float gain, int dacPin
 }
 //================gain setting=====================
 
+//느린 복귀를 위해 raw 
+void playArrayRaw(const int16_t* arr, int n, float gain, int dacPin, float delayUs) {
+    for (int i = 0; i < n; i++) {
+        long v = lroundf(arr[i] * gain);
+        v = constrain(v, -32767, 32767);
+        int dac = map((int16_t)v, -32767, 32767, 0, 4095);
+        analogWrite(dacPin, dac);
+        delayMicroseconds((int)delayUs);
+    }
+}
+
 // the loop function runs over and over again until power down or reset
 void loop() 
 {
@@ -214,8 +225,12 @@ void loop()
             const float GAIN = 3.0f; // <- 필요 시 2~6 사이에서 올려보며 조정
             for (int repeat = 0; repeat < 5; repeat++) {
                 playArrayWithGainCentered(high_high, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+                delay(500);
             }
+            //한바퀴 끝나고 그다음에 어떻게 할지임 
             delay(150);
+            //delay(500); 하면 개빨라지는디
+            //delay(1000);
         }
 
         else if (command == '3')
@@ -303,7 +318,14 @@ void loop()
             delay(200);
 
         }
-        if (command == 'A')
+        else if (command == 'L') {                 // 왼쪽 킥
+            targetHz = 3.2f;                         // 복귀 ~300ms
+            updateDelayFromTargetHz();
+            const float GAIN = 3.0f;
+            playArrayRaw(leftKickSlowReturn, 256, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+        }
+
+        else if (command == 'A')
         {
             //hz update
             updateDelayFromTargetHz();
