@@ -56,7 +56,7 @@ const int DAC_PIN_A22 = A22; //Teensy 3.5 DAC1 == L in
 
 const int waveformSize = 256;
 int waveformIndex = 0;
-float targetHz = 40;
+float targetHz = 30;
 float cycleDurationMs = 1000.0 / targetHz;
 float delayPerSampleUs = (cycleDurationMs * 1000.0) / waveformSize;
 float delayPerSampleUs_rt = (cycleDurationMs * 1000.0) / waveformSize;
@@ -126,6 +126,26 @@ void setup() {
 }
 //=================setup===========================
 
+//================gain setting=====================
+inline int toDac_12bit_centered(int16_t v) {
+    // -32767..32767 -> 0..4095
+    return map(v, -32767, 32767, 0, 4095);
+}
+
+void playArrayWithGainCentered(const int16_t* arr, int n, float gain, int dacPin, float delayUs) {
+    // 평균값 산출
+    long sum = 0;
+    for (int i = 0; i < n; ++i) sum += arr[i];
+    float mean = (float)sum / (float)n;
+
+    for (int i = 0; i < n; ++i) {
+        float v = (arr[i] - mean) * gain;                // 중심화 + 게인
+        int16_t v16 = (int16_t)constrain((long)lround(v), -32767, 32767);
+        analogWrite(dacPin, toDac_12bit_centered(v16));
+        delayMicroseconds((int)delayUs);
+    }
+}
+//================gain setting=====================
 
 // the loop function runs over and over again until power down or reset
 void loop() 
@@ -186,17 +206,23 @@ void loop()
                     delayMicroseconds((int)delayPerSampleUs_rt);  //40hz
                 }
             }
-            delay(150);  // pulse 간 간격
+            delay(200);  // pulse 간 간격
         }
         else if (command == '2')
         {
-            startVibration(hapDrive, burst75ms);
+            updateDelayFromTargetHz();
+            const float GAIN = 3.0f; // <- 필요 시 2~6 사이에서 올려보며 조정
+            for (int repeat = 0; repeat < 5; repeat++) {
+                playArrayWithGainCentered(high_high, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+            }
+            delay(150);
         }
+
         else if (command == '3')
         {
             //hz update
             updateDelayFromTargetHz();
-
+            startVibration(hapDrive, burst75ms);
             for (int repeat = 0; repeat < 5; repeat++) {  // pulse 10번 반복
                 for (int i = 0; i < waveformSize; i++) {
                     int val = two_high[i];
@@ -217,26 +243,17 @@ void loop()
         }
         else if (command == '4')
         {
-            //hz update
+            //주기를 느리게~ 하는 
+            targetHz = 0.5f;
             updateDelayFromTargetHz();
 
-            for (int repeat = 0; repeat < 2; repeat++) {  // pulse 10번 반복
-                for (int i = 0; i < waveformSize; i++) {
-                    int val = newWave_4[i];
-
-                    //Teensy에 있는 DAC 는 0~4095 (12비트) 사이 숫자만 출력이 가능하니까 -32767 ~ +32767 값을 0~4095fh 변환해주는거임~ 
-
-                    //previously,맵핑 방향성
-                    int dacValue = map(val, -32767, 32767, 0, 4095);
-
-                    //출력
-                    analogWrite(DAC_PIN_A22, dacValue);
-                    //각각의 점 출력 전에 120마이크로초 기다리는것 --> 샘플링 속도를 조정 
-                    //Serial.println(dacValue);
-                    delayMicroseconds((int)delayPerSampleUs_rt);  //40hz
-                }
+            for (int i = 0; i < waveformSize; i++)
+            {
+                int val = dat[i];
+                int dacValue = map(val, -32767, 32767, 0, 4095);
+                analogWrite(DAC_PIN_A22, dacValue);
+                delayMicroseconds((int)delayPerSampleUs_rt);
             }
-            delay(150);  // pulse 간 간격
         }
 
         if (command == 'F')

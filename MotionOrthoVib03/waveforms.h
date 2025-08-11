@@ -29,4 +29,6 @@ void generatePositiveBiasedWaveform();
 void generateNegDatTrial();
 
 extern int16_t two_high[256];
+extern int16_t high_high[256];
+extern int16_t possible01[256];
 #endif
