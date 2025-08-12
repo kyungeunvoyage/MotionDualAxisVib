@@ -123,6 +123,7 @@ void setup() {
 
     CreateAllWaveforms();  // << 여기서 한 번에 생성!
     generatePositiveBiasedWaveform();
+    
 }
 //=================setup===========================
 
@@ -235,36 +236,29 @@ void loop()
 
         else if (command == '3')
         {
-            //hz update
             updateDelayFromTargetHz();
-            //startVibration(hapDrive, burst75ms);
-            for (int repeat = 0; repeat < 5; repeat++) {  // pulse 10번 반복
-                for (int i = 0; i < waveformSize; i++) {
-                    int val = two_high[i];
 
-                    //Teensy에 있는 DAC 는 0~4095 (12비트) 사이 숫자만 출력이 가능하니까 -32767 ~ +32767 값을 0~4095fh 변환해주는거임~ 
+            // high_high 배열의 시간 역전 
+            for (int i = 0; i < 256; i++) high_high[i] = high_high[255 - i];
 
-                    //previously,맵핑 방향성
-                    int dacValue = map(val, -32767, 32767, 0, 4095);
-
-                    //출력
-                    analogWrite(DAC_PIN_A22, dacValue);
-                    //각각의 점 출력 전에 120마이크로초 기다리는것 --> 샘플링 속도를 조정 
-                    //Serial.println(dacValue);
-                    delayMicroseconds((int)delayPerSampleUs_rt);  //40hz
-                }
+            const float GAIN = 3.0f; // <- 필요 시 2~6 사이에서 올려보며 조정
+            for (int repeat = 0; repeat < 5; repeat++) {
+                playArrayWithGainCentered(high_high, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+                delay(500);
             }
-            delay(150);  // pulse 간 간격
         }
         else if (command == '4')
         {
             //주기를 느리게~ 하는 
             updateDelayFromTargetHz();
 
-            const float GAIN = 2.0f; 
+            //high high 배열의 부호 반전 
+            for (int i = 0; i < 256; i++) high_high[i] = -high_high[i];
+
+            const float GAIN = 3.0f;
             for (int repeat = 0; repeat < 5; repeat++)
             {
-                playArrayWithGainCentered(slowReturnTwice, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+                playArrayWithGainCentered(high_high, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
                 delay(500);
                 Serial.println("peak_high");
             }
