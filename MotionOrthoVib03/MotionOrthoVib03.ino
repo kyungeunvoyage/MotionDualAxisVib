@@ -123,6 +123,12 @@ void setup() {
 
     CreateAllWaveforms();  // << 여기서 한 번에 생성!
     generatePositiveBiasedWaveform();
+
+    //time phase 
+    for (int i = 0; i < 256; i++) high_highTP[i] = high_high[255 - i];
+
+    //Polarity reverse
+    for (int i = 0; i < 256; i++) high_highPR[i] = high_high[255 - i];
     
 }
 //=================setup===========================
@@ -239,14 +245,14 @@ void loop()
             updateDelayFromTargetHz();
 
             // high_high 배열의 시간 역전 
-            for (int i = 0; i < 256; i++) high_high[i] = high_high[255 - i];
-
             const float GAIN = 3.0f; // <- 필요 시 2~6 사이에서 올려보며 조정
             for (int repeat = 0; repeat < 5; repeat++) {
-                playArrayWithGainCentered(high_high, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+                playArrayWithGainCentered(high_highTP, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
                 delay(500);
             }
         }
+
+        //high_highPR : change Polarity 
         else if (command == '4')
         {
             //주기를 느리게~ 하는 
@@ -258,7 +264,7 @@ void loop()
             const float GAIN = 3.0f;
             for (int repeat = 0; repeat < 5; repeat++)
             {
-                playArrayWithGainCentered(high_high, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+                playArrayWithGainCentered(high_highPR, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
                 delay(500);
                 Serial.println("peak_high");
             }
@@ -269,10 +275,10 @@ void loop()
             //주기를 느리게~ 하는 
             updateDelayFromTargetHz();
 
-            const float GAIN = 2.0f;
+            const float GAIN = 3.0f;
             for (int repeat = 0; repeat < 5; repeat++)
             {
-                playArrayWithGainCentered(slowReturnTwiceNeg, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+                playArrayWithGainCentered(slowUpScale, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
                 delay(500);
                 Serial.println("peak_high");
             }
