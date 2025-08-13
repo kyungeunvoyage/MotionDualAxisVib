@@ -278,7 +278,7 @@ void loop()
             const float GAIN = 3.0f;
             for (int repeat = 0; repeat < 5; repeat++)
             {
-                playArrayWithGainCentered(slowUpScale, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+                playArrayWithGainCentered(stableSteep, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
                 delay(500);
                 Serial.println("peak_high");
             }

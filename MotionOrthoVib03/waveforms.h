@@ -41,4 +41,6 @@ extern int16_t slowReturnTwice2[256];
 extern int16_t rightKickSlowReturn[256];
 extern int16_t leftKickSlowReturn[256];
 extern int16_t slowUpScale[256];
+extern int16_t stableSteep[256];
+extern int16_t cultberson_wave[256];
 #endif
