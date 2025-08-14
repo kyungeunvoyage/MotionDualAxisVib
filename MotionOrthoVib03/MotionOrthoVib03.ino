@@ -181,50 +181,26 @@ void loop()
         char command = Serial.read();
         if (command == '0')
         {
-            //hz update
             updateDelayFromTargetHz();
-
-            for (int repeat = 0; repeat < 2; repeat++) {  // pulse 10번 반복
-                for (int i = 0; i < waveformSize; i++) {
-                    int val = newWave_0[i];
-
-                    //Teensy에 있는 DAC 는 0~4095 (12비트) 사이 숫자만 출력이 가능하니까 -32767 ~ +32767 값을 0~4095fh 변환해주는거임~ 
-
-                    //previously,맵핑 방향성
-                    int dacValue = map(val, -32767, 32767, 0, 4095);
-
-                    //출력
-                    analogWrite(DAC_PIN_A22, dacValue);
-                    //각각의 점 출력 전에 120마이크로초 기다리는것 --> 샘플링 속도를 조정 
-                    //Serial.println(dacValue);
-                    delayMicroseconds((int)delayPerSampleUs_rt);  //40hz
-                }
+            const float GAIN = 3.0f; // <- 필요 시 2~6 사이에서 올려보며 조정
+            for (int repeat = 0; repeat < 5; repeat++) {
+                playArrayWithGainCentered(wave_slowUpHardDrop, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+                delay(500);
             }
-            delay(150);  // pulse 간 간격
+            //한바퀴 끝나고 그다음에 어떻게 할지임 
+            //delay(150);
+            //delay(500); 하면 개빨라지는디
+            //delay(1000);
         }
         else if (command == '1')
         {
             //hz update
             updateDelayFromTargetHz();
-            startVibration(hapDrive, burst75ms);
-
-            for (int repeat = 0; repeat < 2; repeat++) {  // pulse 10번 반복
-                for (int i = 0; i < waveformSize; i++) {
-                    int val = newWave_1[i];
-
-                    //Teensy에 있는 DAC 는 0~4095 (12비트) 사이 숫자만 출력이 가능하니까 -32767 ~ +32767 값을 0~4095fh 변환해주는거임~ 
-
-                    //previously,맵핑 방향성
-                    int dacValue = map(val, -32767, 32767, 0, 4095);
-
-                    //출력
-                    analogWrite(DAC_PIN_A22, dacValue);
-                    //각각의 점 출력 전에 120마이크로초 기다리는것 --> 샘플링 속도를 조정 
-                    //Serial.println(dacValue);
-                    delayMicroseconds((int)delayPerSampleUs_rt);  //40hz
-                }
+            const float GAIN = 3.0f; // <- 필요 시 2~6 사이에서 올려보며 조정
+            for (int repeat = 0; repeat < 5; repeat++) {
+                playArrayWithGainCentered(wave_expRiseLinFall, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+                delay(500);
             }
-            delay(200);  // pulse 간 간격
         }
         else if (command == '2')
         {
@@ -278,7 +254,7 @@ void loop()
             const float GAIN = 3.0f;
             for (int repeat = 0; repeat < 5; repeat++)
             {
-                playArrayWithGainCentered(stableSteep, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+                playArrayWithGainCentered(wave_impulseDampedTail, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
                 delay(500);
                 Serial.println("peak_high");
             }
@@ -290,7 +266,7 @@ void loop()
             //slowReturnTwice2
             for (int repeat = 0; repeat < 5; repeat++)
             {
-                playArrayWithGainCentered(slowReturnTwice2, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+                playArrayWithGainCentered(wave_asymHalfSine, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
                 delay(500);
                 Serial.println("peak_high");
             }
@@ -300,29 +276,28 @@ void loop()
 
         if (command == 'F')
         {
-            // 아주 단순: 미드(2048)에서 짧게 위로 스텝, 천천히 복귀
-            //DAC를 중간값 2048로 설정하고, 200ms 유지함. 
-            //-> 기준점(미드)에서 대기 
-            analogWrite(DAC_PIN_A22, 2048); delay(200);
-
-            //갑자기 3400(≈ 2.74V)로 올려 30ms 유지.
-            //    → 손에 ‘툭’ 하고 빠른 임팩트(양의 스텝).-- 가장 큰 impact 
-
-            //선형으로 천천히 내려옴 (그래서 잘 안느껴짐)
-            analogWrite(DAC_PIN_A22, 3400); delay(30);      // 툭
-            for (int k = 0; k < 300; k++) {                        // 300ms 동안 천천히 복귀
-                int v = 3400 - (k * (3400 - 2048) / 300);
-                analogWrite(DAC_PIN_A22, v);
-                delay(1);
-            }
-            delay(200);
-
-        }
-        else if (command == 'L') {                 // 왼쪽 킥
-            targetHz = 3.2f;                         // 복귀 ~300ms
             updateDelayFromTargetHz();
             const float GAIN = 3.0f;
-            playArrayRaw(leftKickSlowReturn, 256, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+            //slowReturnTwice2
+            for (int repeat = 0; repeat < 5; repeat++)
+            {
+                playArrayWithGainCentered(wave_amBurstAsym, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+                delay(500);
+                Serial.println("peak_high");
+            }
+
+        }
+        else if (command == 'L') 
+        {                 // 왼쪽 킥
+            updateDelayFromTargetHz();
+            const float GAIN = 3.0f;
+            //slowReturnTwice2
+            for (int repeat = 0; repeat < 5; repeat++)
+            {
+                playArrayWithGainCentered(wave_quadPushLinReturn, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+                delay(500);
+                Serial.println("peak_high");
+            }
         }
 
         else if (command == 'A')

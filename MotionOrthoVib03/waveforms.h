@@ -43,4 +43,13 @@ extern int16_t leftKickSlowReturn[256];
 extern int16_t slowUpScale[256];
 extern int16_t stableSteep[256];
 extern int16_t cultberson_wave[256];
+
+extern int16_t wave_slowUpHardDrop[256];
+extern int16_t wave_expRiseLinFall[256];
+extern int16_t wave_impulseDampedTail[256];
+extern int16_t wave_asymHalfSine[256];
+extern int16_t wave_amBurstAsym[256];
+extern int16_t wave_quadPushLinReturn[256];
+
+
 #endif
