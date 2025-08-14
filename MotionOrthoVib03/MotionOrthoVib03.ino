@@ -181,16 +181,27 @@ void loop()
         char command = Serial.read();
         if (command == '0')
         {
+            //YY
+            // 
+            //update hz
             updateDelayFromTargetHz();
-            const float GAIN = 3.0f; // <- 필요 시 2~6 사이에서 올려보며 조정
-            for (int repeat = 0; repeat < 5; repeat++) {
-                playArrayWithGainCentered(wave_slowUpHardDrop, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+
+            //for comb1 (yz) 
+            const float GAIN = 3.0f; 
+            for (int repeat = 0; repeat < 10; repeat++)
+            {
+                //Left flesh
+                playArrayWithGainCentered(high_high, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+                delay(500); //(phase)
+
+                //시간차 조정 어떻게 하냐? 
+                
+                //Right Flesh
+                playArrayWithGainCentered(high_highPR, waveformSize, GAIN, DAC_PIN_A21, delayPerSampleUs_rt);
+                //하나의 pulse 이후 쉬기
                 delay(500);
             }
-            //한바퀴 끝나고 그다음에 어떻게 할지임 
-            //delay(150);
-            //delay(500); 하면 개빨라지는디
-            //delay(1000);
+
         }
         else if (command == '1')
         {
@@ -289,15 +300,7 @@ void loop()
         }
         else if (command == 'L') 
         {                 // 왼쪽 킥
-            updateDelayFromTargetHz();
-            const float GAIN = 3.0f;
-            //slowReturnTwice2
-            for (int repeat = 0; repeat < 5; repeat++)
-            {
-                playArrayWithGainCentered(wave_quadPushLinReturn, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
-                delay(500);
-                Serial.println("peak_high");
-            }
+
         }
 
         else if (command == 'A')
