@@ -323,12 +323,8 @@ static void buildTimeScheduleUs(const int16_t* w, int N, float delayPerSampleUs,
 }
 
 // A22는 정상, A21은 폴라리티 반전(옵션)해서 "offsetA21_us"만큼 늦게 시작하여 동시 스케줄링 출력
-void playHalfSineWithRatioDualOffset(const int16_t* w, int N,
-    float gainA22, float gainA21,
-    int dacPinA22, int dacPinA21,
-    float delayPerSampleUs, float rRise, float rFall,
-    bool invertA21, uint32_t offsetA21_us,
-    int repeats = 5)
+void playHalfSineWithRatioDualOffset(const int16_t* w, int N, float gainA22, float gainA21,int dacPinA22, int dacPinA21,float delayPerSampleUs, float rRise, float rFall,
+    bool invertA21, uint32_t offsetA21_us,int repeats = 5)
 {
     // DC 중심화(평균 제거)
     long sum = 0;
@@ -495,15 +491,41 @@ void loop()
         }
         else if (command == '6')
         {
-            updateDelayFromTargetHz();
-            const float GAIN = 3.0f;
-            //slowReturnTwice2
-            for (int repeat = 0; repeat < 5; repeat++)
-            {
-                playArrayWithGainCentered(wave_asymHalfSine, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
-                delay(500);
-                Serial.println("peak_high");
-            }
+            const float GAIN_A22 = 3.0f;   // A22 (정상)
+            const float GAIN_A21 = 3.0f;   // A21 (반대 파형)
+            const float rRise = 1.0f, rFall = 2.0f; // 1:2 비율
+            const bool  invertA21 = true;  // A21 폴라리티 반전
+            const uint32_t OFFSET_A21_US = 30000; // A22가 50 ms 먼저 (A21은 50 ms 지연)
+
+            playHalfSineWithRatioDualOffset(
+                wave_asymHalfSine, waveformSize,
+                GAIN_A22, GAIN_A21,
+                DAC_PIN_A22, DAC_PIN_A21,
+                delayPerSampleUs_rt,
+                rRise, rFall,
+                invertA21, OFFSET_A21_US,
+                /*repeats=*/5
+            );
+
+        }
+
+        else if (command == '7')
+        {
+            const float GAIN_A22 = 3.0f;   // A22 (정상)
+            const float GAIN_A21 = 5.0f;   // A21 (반대 파형)
+            const float rRise = 1.0f, rFall = 2.0f; // 1:2 비율
+            const bool  invertA21 = true;  // A21 폴라리티 반전
+            const uint32_t OFFSET_A21_US = 50000; // A22가 50 ms 먼저 (A21은 50 ms 지연)
+
+            playHalfSineWithRatioDualOffset(
+                wave_asymHalfSine, waveformSize,
+                GAIN_A22, GAIN_A21,
+                DAC_PIN_A22, DAC_PIN_A21,
+                delayPerSampleUs_rt,
+                rRise, rFall,
+                invertA21, OFFSET_A21_US,
+                /*repeats=*/5
+            );
 
         }
 
