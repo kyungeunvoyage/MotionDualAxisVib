@@ -128,8 +128,7 @@ void setup() {
     for (int i = 0; i < 256; i++) high_highTP[i] = high_high[255 - i];
 
     //Polarity reverse
-    for (int i = 0; i < 256; i++) high_highPR[i] = high_high[255 - i];
-    
+    for (int i = 0; i < 256; i++) high_highPR[i] = -high_high[i];
 }
 //=================setup===========================
 
@@ -196,7 +195,195 @@ void playAsymTiming(const int16_t* w, int N, float gain, int dacPin,
     playArraySegmentWithGain(w, 0, p + 1, gain, dacPin, delayRiseUs);
     playArraySegmentWithGain(w, p + 1, N, gain, dacPin, delayFallUs);
 }
+
+// 원하는 rise:fall 비율(rRise:rFall)로 wave_asymHalfSine을 재생
+// - 전체 주기(= delayPerSampleUs * N)는 유지
+// - rise 구간과 fall 구간에 서로 다른 per-sample 지연을 배분
+void playHalfSineWithRatio(const int16_t* w, int N, float gain, int dacPin,
+    float delayPerSampleUs, float rRise, float rFall,
+    int repeats = 5)
+{
+    // 전체 주기(us)
+    uint32_t T_total_us = (uint32_t)(delayPerSampleUs * N);
+
+    // 비율→비중
+    float k = rRise / (rRise + rFall);
+
+    // 피크 위치(최대값 기준)
+    int peak = findPeakIndex(w, N);
+    int Sr = peak + 1;              // rise 샘플 수
+    int Sf = N - (peak + 1);        // fall 샘플 수
+    if (Sf <= 0) Sf = 1;
+
+    // 구간별 per-sample 지연(us)
+    uint32_t delayRiseUs = (uint32_t)((T_total_us * k) / Sr);
+    uint32_t delayFallUs = (uint32_t)((T_total_us * (1.0f - k)) / Sf);
+
+    // 재생
+    for (int repeat = 0; repeat < repeats; ++repeat) {
+        playAsymTiming(w, N, gain, dacPin, delayRiseUs, delayFallUs);
+        delay(500);
+        Serial.println("peak_high");
+    }
+
+    // 디버그
+    Serial.print(F("[RATIO] rise:fall = "));
+    Serial.print(rRise); Serial.print(':'); Serial.println(rFall);
+    Serial.print(F("  delayRiseUs=")); Serial.print(delayRiseUs);
+    Serial.print(F("  delayFallUs=")); Serial.println(delayFallUs);
+}
+
+//==============DUO play==========================
+// rise와 fall에 서로 다른 per-sample 지연을 주면서
+// 두 DAC 핀으로 동시 출력 (A22 정상, A21은 invert 가능)
+void playAsymTimingDual(const int16_t* w, int N,
+    float gainA22, float gainA21,
+    int dacPinA22, int dacPinA21,
+    uint32_t delayRiseUs, uint32_t delayFallUs,
+    bool invertA21)
+{
+    int p = findPeakIndex(w, N);
+
+    // RISE: [0 .. p]
+    for (int i = 0; i <= p; ++i) {
+        int32_t v22 = (int32_t)(w[i] * gainA22);
+        int32_t v21 = (int32_t)(((invertA21) ? -w[i] : w[i]) * gainA21);
+
+        // 12-bit DAC 매핑 (0..4095), 중앙 바이어스
+        analogWrite(dacPinA22, (uint16_t)((v22 + 32768) >> 4));
+        analogWrite(dacPinA21, (uint16_t)((v21 + 32768) >> 4));
+        delayMicroseconds(delayRiseUs);
+    }
+
+    // FALL: [p+1 .. N-1]
+    for (int i = p + 1; i < N; ++i) {
+        int32_t v22 = (int32_t)(w[i] * gainA22);
+        int32_t v21 = (int32_t)(((invertA21) ? -w[i] : w[i]) * gainA21);
+
+        analogWrite(dacPinA22, (uint16_t)((v22 + 32768) >> 4));
+        analogWrite(dacPinA21, (uint16_t)((v21 + 32768) >> 4));
+        delayMicroseconds(delayFallUs);
+    }
+}
+
+// ratio( rRise : rFall )에 맞춰 지연을 배분하고, 듀얼로 동시 재생
+void playHalfSineWithRatioDual(const int16_t* w, int N,
+    float gainA22, float gainA21,
+    int dacPinA22, int dacPinA21,
+    float delayPerSampleUs, float rRise, float rFall,
+    bool invertA21, int repeats = 5)
+{
+    // 전체 주기(us)는 유지
+    const uint32_t T_total_us = (uint32_t)(delayPerSampleUs * N);
+    const float k = rRise / (rRise + rFall);
+
+    const int peak = findPeakIndex(w, N);
+    int Sr = peak + 1;
+    int Sf = N - (peak + 1);
+    if (Sf <= 0) Sf = 1;
+
+    const uint32_t delayRiseUs = (uint32_t)((T_total_us * k) / Sr);
+    const uint32_t delayFallUs = (uint32_t)((T_total_us * (1.0f - k)) / Sf);
+
+    for (int rep = 0; rep < repeats; ++rep) {
+        playAsymTimingDual(w, N, gainA22, gainA21,
+            dacPinA22, dacPinA21,
+            delayRiseUs, delayFallUs, invertA21);
+        delay(500);
+        Serial.println("peak_high");
+    }
+
+    // 디버그
+    Serial.print(F("[DUAL] ratio ")); Serial.print(rRise); Serial.print(':'); Serial.println(rFall);
+    Serial.print(F(" delayRiseUs=")); Serial.print(delayRiseUs);
+    Serial.print(F(" delayFallUs=")); Serial.println(delayFallUs);
+}
+
 //========================================================
+
+//===================duo 시간 차 재생=====================
+// 주어진 비율 rRise:rFall에 맞춰 per-sample dt를 계산해 "샘플 출력 스케줄(μs)"을 만든다.
+static void buildTimeScheduleUs(const int16_t* w, int N, float delayPerSampleUs,
+    float rRise, float rFall, uint32_t* t_us_out) {
+    const uint32_t T_total_us = (uint32_t)(delayPerSampleUs * N);
+    const float k = rRise / (rRise + rFall);
+    const int peak = findPeakIndex(w, N);
+    int Sr = peak + 1;
+    int Sf = N - (peak + 1);
+    if (Sf <= 0) Sf = 1;
+
+    const double dt_rise = (double)T_total_us * k / (double)Sr;
+    const double dt_fall = (double)T_total_us * (1.0 - k) / (double)Sf;
+
+    t_us_out[0] = 0;
+    for (int i = 1; i < N; ++i) {
+        const double dt = (i <= peak) ? dt_rise : dt_fall;
+        t_us_out[i] = (uint32_t)llround((double)t_us_out[i - 1] + dt);
+    }
+}
+
+// A22는 정상, A21은 폴라리티 반전(옵션)해서 "offsetA21_us"만큼 늦게 시작하여 동시 스케줄링 출력
+void playHalfSineWithRatioDualOffset(const int16_t* w, int N,
+    float gainA22, float gainA21,
+    int dacPinA22, int dacPinA21,
+    float delayPerSampleUs, float rRise, float rFall,
+    bool invertA21, uint32_t offsetA21_us,
+    int repeats = 5)
+{
+    // DC 중심화(평균 제거)
+    long sum = 0;
+    for (int i = 0; i < N; ++i) sum += w[i];
+    const float mean = (float)sum / (float)N;
+
+    // 시간 스케줄(공통) 생성
+    static uint32_t t_us[256];
+    buildTimeScheduleUs(w, N, delayPerSampleUs, rRise, rFall, t_us);
+
+    for (int rep = 0; rep < repeats; ++rep) {
+        int i22 = 0, i21 = 0;
+        uint32_t next22 = (N > 0) ? t_us[0] : UINT32_MAX;
+        uint32_t next21 = (N > 0) ? (offsetA21_us + t_us[0]) : UINT32_MAX;
+
+        const uint32_t t0 = micros();
+
+        while (i22 < N || i21 < N) {
+            uint32_t target = UINT32_MAX;
+            if (i22 < N && t_us[i22] < target) target = t_us[i22];
+            if (i21 < N && (offsetA21_us + t_us[i21]) < target) target = offsetA21_us + t_us[i21];
+
+            // busy-wait until next event
+            while ((uint32_t)(micros() - t0) < target) { /* spin */ }
+
+            // 동시 타이밍이면 둘 다 출력
+            if (i22 < N && t_us[i22] == target) {
+                // A22 출력 (센터 매핑)
+                float v = (w[i22] - mean) * gainA22;
+                long v16 = lroundf(v);
+                v16 = constrain(v16, -32767, 32767);
+                analogWrite(dacPinA22, (uint16_t)((v16 + 32768) >> 4));
+                i22++;
+            }
+            if (i21 < N && (offsetA21_us + t_us[i21]) == target) {
+                // A21 출력 (폴라리티 반전 옵션 + 센터 매핑)
+                int16_t src = invertA21 ? (int16_t)(-w[i21]) : w[i21];
+                float v = (src - mean) * gainA21;
+                long v16 = lroundf(v);
+                v16 = constrain(v16, -32767, 32767);
+                analogWrite(dacPinA21, (uint16_t)((v16 + 32768) >> 4));
+                i21++;
+            }
+        }
+
+        delay(500);
+        Serial.println(F("peak_high"));
+    }
+
+    // 디버그
+    Serial.print(F("[DUAL-OFFSET] rRise:rFall="));
+    Serial.print(rRise); Serial.print(':'); Serial.println(rFall);
+    Serial.print(F("  offsetA21_us=")); Serial.println(offsetA21_us);
+}
+//===============================================================================
 
 
 
@@ -240,88 +427,71 @@ void loop()
         }
         else if (command == '1')
         {
-            //hz update
             updateDelayFromTargetHz();
-            const float GAIN = 3.0f; // <- 필요 시 2~6 사이에서 올려보며 조정
-            
-            //기존의 한 주기 지연의 평균으로 전체 주기 (us) 계산
-            uint32_t T_total_us = (prog_uint32_t)delayPerSampleUs_rt * waveformSize;
-
-            //원하는 비율만들기 : Trise : Tfall 
-            float rRise = 1.0f, rFall = 2.0f;
-            float k = rRise / (rRise + rFall);
-
-            int peak = findPeakIndex(wave_asymHalfSine, waveformSize);
-            int Sr = peak + 1;                 // rise 샘플 수
-            int Sf = waveformSize - (peak + 1);  // fall 샘플 수 (0이면 1로 보호)
-            if (Sf <= 0) Sf = 1;
-            
-            uint32_t delayRiseUs = (uint32_t)((T_total_us * k) / Sr);
-            uint32_t delayFallUs = (uint32_t)((T_total_us * (1.0f - k)) / Sf);
-
-            for (int repeat = 0; repeat < 5; ++repeat) {
-                playAsymTiming(wave_asymHalfSine, waveformSize, GAIN, DAC_PIN_A22,
-                    delayRiseUs, delayFallUs);
-                delay(500);
-                Serial.println("peak_high");
-            }
+            const float GAIN = 3.0f;
+            // rise:fall = 1:2
+            playHalfSineWithRatio(wave_asymHalfSine, waveformSize, GAIN, DAC_PIN_A22,
+                delayPerSampleUs_rt, 1.0f, 2.0f, /*repeats=*/5);
         }
         else if (command == '2')
         {
             updateDelayFromTargetHz();
-            const float GAIN = 3.0f; // <- 필요 시 2~6 사이에서 올려보며 조정
-            for (int repeat = 0; repeat < 5; repeat++) {
-                playArrayWithGainCentered(high_high, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
-                delay(500);
-            }
-            //한바퀴 끝나고 그다음에 어떻게 할지임 
-            delay(150);
-            //delay(500); 하면 개빨라지는디
-            //delay(1000);
+            const float GAIN = 3.0f;
+            // rise:fall = 1:3
+            playHalfSineWithRatio(wave_asymHalfSine, waveformSize, GAIN, DAC_PIN_A22,
+                delayPerSampleUs_rt, 1.0f, 3.0f, /*repeats=*/5);
         }
-
         else if (command == '3')
         {
             updateDelayFromTargetHz();
-
-            // high_high 배열의 시간 역전 
-            const float GAIN = 3.0f; // <- 필요 시 2~6 사이에서 올려보며 조정
-            for (int repeat = 0; repeat < 5; repeat++) {
-                playArrayWithGainCentered(high_highTP, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
-                delay(500);
-            }
+            const float GAIN = 3.0f;
+            // rise:fall = 2:1
+            playHalfSineWithRatio(wave_asymHalfSine, waveformSize, GAIN, DAC_PIN_A22,
+                delayPerSampleUs_rt, 2.0f, 1.0f, /*repeats=*/5);
         }
 
-        //high_highPR : change Polarity 
+
         else if (command == '4')
         {
-            //주기를 느리게~ 하는 
+            // 목표 Hz 적용
             updateDelayFromTargetHz();
 
-            //high high 배열의 부호 반전 
-            for (int i = 0; i < 256; i++) high_high[i] = -high_high[i];
+            const float GAIN_A22 = 3.0f;  // A22(정상)
+            const float GAIN_A21 = 3.0f;  // A21(반대 파형)
 
-            const float GAIN = 3.0f;
-            for (int repeat = 0; repeat < 5; repeat++)
-            {
-                playArrayWithGainCentered(high_highPR, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
-                delay(500);
-                Serial.println("peak_high");
-            }
+            // 요구사항: A22 = 1:2, A21 = "반대 파형(폴라리티 반전)"
+            const float rRise = 1.0f, rFall = 2.0f;
+            const bool invertA21 = true;  // 여기만 true면 됨 (타이밍은 동일, 부호만 반전)
+
+            playHalfSineWithRatioDual(wave_asymHalfSine, waveformSize,
+                GAIN_A22, GAIN_A21,
+                DAC_PIN_A22, DAC_PIN_A21,
+                delayPerSampleUs_rt,
+                rRise, rFall,
+                invertA21,
+                /*repeats=*/5);
         }
+
 
         else if (command == '5')
         {
-            //주기를 느리게~ 하는 
             updateDelayFromTargetHz();
 
-            const float GAIN = 3.0f;
-            for (int repeat = 0; repeat < 5; repeat++)
-            {
-                playArrayWithGainCentered(wave_impulseDampedTail, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
-                delay(500);
-                Serial.println("peak_high");
-            }
+            const float GAIN_A22 = 3.0f;   // A22 (정상)
+            const float GAIN_A21 = 3.0f;   // A21 (반대 파형)
+            const float rRise = 1.0f, rFall = 2.0f; // 1:2 비율
+            const bool  invertA21 = true;  // A21 폴라리티 반전
+            const uint32_t OFFSET_A21_US = 50000; // A22가 50 ms 먼저 (A21은 50 ms 지연)
+
+            playHalfSineWithRatioDualOffset(
+                wave_asymHalfSine, waveformSize,
+                GAIN_A22, GAIN_A21,
+                DAC_PIN_A22, DAC_PIN_A21,
+                delayPerSampleUs_rt,
+                rRise, rFall,
+                invertA21, OFFSET_A21_US,
+                /*repeats=*/5
+            );
         }
         else if (command == '6')
         {
