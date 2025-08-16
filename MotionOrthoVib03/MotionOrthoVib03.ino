@@ -165,6 +165,41 @@ void playArrayRaw(const int16_t* arr, int n, float gain, int dacPin, float delay
     }
 }
 
+//================rise and Fall 비율 calculation==========
+// 1) 파형에서 피크 인덱스 찾기 (여기선 최대값 기준)
+int findPeakIndex(const int16_t* w, int N) {
+    int p = 0;
+    int16_t mx = w[0];
+    for (int i = 1; i < N; ++i) {
+        if (w[i] > mx) { mx = w[i]; p = i; }
+    }
+    return p;
+}
+
+// 2) 배열의 일부 구간만 재생 (지연을 인자로)
+void playArraySegmentWithGain(const int16_t* w, int i0, int i1_exclusive,
+    float gain, int dacPin, uint32_t delayPerSampleUs) {
+    for (int i = i0; i < i1_exclusive; ++i) {
+        int32_t v = (int32_t)(w[i] * gain);
+        // 너의 내부 write 함수로 교체 (예: analogWriteResolution(12) + analogWrite),
+        // 또는 playArrayWithGainCentered 내부 코드와 동일하게 출력
+        analogWrite(dacPin, (uint16_t)((v + 32768) >> 4)); // 예시: 12-bit로 매핑
+        delayMicroseconds(delayPerSampleUs);
+    }
+}
+
+// 3) 전체를 rise/fall 서로 다른 지연으로 재생
+void playAsymTiming(const int16_t* w, int N, float gain, int dacPin,
+    uint32_t delayRiseUs, uint32_t delayFallUs) {
+    int p = findPeakIndex(w, N);
+    // rise: [0 .. p] , fall: [p .. N)
+    playArraySegmentWithGain(w, 0, p + 1, gain, dacPin, delayRiseUs);
+    playArraySegmentWithGain(w, p + 1, N, gain, dacPin, delayFallUs);
+}
+//========================================================
+
+
+
 // the loop function runs over and over again until power down or reset
 void loop() 
 {
@@ -208,9 +243,27 @@ void loop()
             //hz update
             updateDelayFromTargetHz();
             const float GAIN = 3.0f; // <- 필요 시 2~6 사이에서 올려보며 조정
-            for (int repeat = 0; repeat < 5; repeat++) {
-                playArrayWithGainCentered(wave_expRiseLinFall, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+            
+            //기존의 한 주기 지연의 평균으로 전체 주기 (us) 계산
+            uint32_t T_total_us = (prog_uint32_t)delayPerSampleUs_rt * waveformSize;
+
+            //원하는 비율만들기 : Trise : Tfall 
+            float rRise = 1.0f, rFall = 2.0f;
+            float k = rRise / (rRise + rFall);
+
+            int peak = findPeakIndex(wave_asymHalfSine, waveformSize);
+            int Sr = peak + 1;                 // rise 샘플 수
+            int Sf = waveformSize - (peak + 1);  // fall 샘플 수 (0이면 1로 보호)
+            if (Sf <= 0) Sf = 1;
+            
+            uint32_t delayRiseUs = (uint32_t)((T_total_us * k) / Sr);
+            uint32_t delayFallUs = (uint32_t)((T_total_us * (1.0f - k)) / Sf);
+
+            for (int repeat = 0; repeat < 5; ++repeat) {
+                playAsymTiming(wave_asymHalfSine, waveformSize, GAIN, DAC_PIN_A22,
+                    delayRiseUs, delayFallUs);
                 delay(500);
+                Serial.println("peak_high");
             }
         }
         else if (command == '2')
