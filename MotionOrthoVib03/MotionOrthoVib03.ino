@@ -129,6 +129,9 @@ void setup() {
 
     //Polarity reverse
     for (int i = 0; i < 256; i++) high_highPR[i] = -high_high[i];
+
+    //envelope
+    makeADSR(0.10f, 0.20f, 0.0f);
 }
 //=================setup===========================
 
@@ -381,6 +384,99 @@ void playHalfSineWithRatioDualOffset(const int16_t* w, int N, float gainA22, flo
 }
 //===============================================================================
 
+//=================================envelope change===============================
+float envA22[256];
+// 간단한 ADSR 스타일 (비율 기반): attack(10%), sustain(20%), decay(70%)
+void makeADSR(float aRatio = 0.10f, float sRatio = 0.20f, float dEnd = 0.0f) {
+    int N = waveformSize;
+    int aN = max(1, (int)(N * aRatio));
+    int sN = max(0, (int)(N * sRatio));
+    int dN = max(1, N - (aN + sN));
+
+    // Attack: 0 -> 1
+    for (int i = 0; i < aN; ++i) {
+        envA22[i] = (float)i / (float)(aN - 1);
+    }
+    // Sustain: 1 유지
+    for (int i = 0; i < sN; ++i) {
+        envA22[aN + i] = 1.0f;
+    }
+    // Decay: 1 -> dEnd
+    for (int i = 0; i < dN; ++i) {
+        float t = (float)i / (float)(dN - 1);
+        envA22[aN + sN + i] = 1.0f + t * (dEnd - 1.0f);
+    }
+}
+
+//지수 감쇠
+void makeExpDecay(float k = 4.0f) { // k가 클수록 빨리 감소
+    for (int i = 0; i < waveformSize; ++i) {
+        float x = (float)i / (float)(waveformSize - 1);
+        envA22[i] = expf(-k * x);
+    }
+}
+
+void playHalfSineWithRatioDualOffsetEnv(
+    const int16_t* w, int N,
+    float gainA22, float gainA21,
+    int dacPinA22, int dacPinA21,
+    float delayPerSampleUs, float rRise, float rFall,
+    bool invertA21, uint32_t offsetA21_us,
+    const float* env,           // <= A22에 곱할 envelope(길이 N, 0~1)
+    int repeats = 5
+) {
+    // 평균 제거(센터 매핑용)
+    long sum = 0;
+    for (int i = 0; i < N; ++i) sum += w[i];
+    const float mean = (float)sum / (float)N;
+
+    // 공통 시간 스케줄
+    static uint32_t t_us[256];
+    buildTimeScheduleUs(w, N, delayPerSampleUs, rRise, rFall, t_us);
+
+    for (int rep = 0; rep < repeats; ++rep) {
+        int i22 = 0, i21 = 0;
+        const uint32_t t0 = micros();
+
+        while (i22 < N || i21 < N) {
+            uint32_t target = UINT32_MAX;
+            if (i22 < N && t_us[i22] < target) target = t_us[i22];
+            if (i21 < N && (offsetA21_us + t_us[i21]) < target) target = offsetA21_us + t_us[i21];
+
+            while ((uint32_t)(micros() - t0) < target) { /* busy wait */ }
+
+            if (i22 < N && t_us[i22] == target) {
+                // A22: envelope 적용
+                float shaped = (w[i22] - mean) * gainA22 * (env ? env[i22] : 1.0f);
+                long v16 = lroundf(shaped);
+                v16 = constrain(v16, -32767, 32767);
+                analogWrite(dacPinA22, (uint16_t)((v16 + 32768) >> 4));
+                i22++;
+            }
+            if (i21 < N && (offsetA21_us + t_us[i21]) == target) {
+                // A21: 기존과 동일 (envelope 미적용)
+                int16_t src = invertA21 ? (int16_t)(-w[i21]) : w[i21];
+                float v = (src - mean) * gainA21;
+                long v16 = lroundf(v);
+                v16 = constrain(v16, -32767, 32767);
+                analogWrite(dacPinA21, (uint16_t)((v16 + 32768) >> 4));
+                i21++;
+            }
+        }
+
+        delay(500);
+        Serial.println(F("peak_high"));
+    }
+
+    Serial.print(F("[DUAL-OFFSET-ENV] rRise:rFall="));
+    Serial.print(rRise); Serial.print(':'); Serial.println(rFall);
+    Serial.print(F("  offsetA21_us=")); Serial.println(offsetA21_us);
+    Serial.println(F("  (A22 envelope applied)"));
+}
+
+
+
+//===============================================================================
 
 
 // the loop function runs over and over again until power down or reset
@@ -529,6 +625,31 @@ void loop()
 
         }
 
+        else if (command == '8')
+        {
+            updateDelayFromTargetHz();
+
+            const float GAIN_A22 = 3.0f;   // A22
+            const float GAIN_A21 = 5.0f;   // A21
+            const float rRise = 1.0f, rFall = 2.0f;
+            const bool  invertA21 = true;
+            const uint32_t OFFSET_A21_US = 50000; // 50 ms
+
+            // 필요 시 런타임에도 다른 형태로 바꿔볼 수 있음:
+            // makeADSR(0.05f, 0.15f, 0.0f);
+            // makeExpDecay(6.0f);
+
+            playHalfSineWithRatioDualOffsetEnv(
+                wave_asymHalfSine, waveformSize,
+                GAIN_A22, GAIN_A21,
+                DAC_PIN_A22, DAC_PIN_A21,
+                delayPerSampleUs_rt,
+                rRise, rFall,
+                invertA21, OFFSET_A21_US,
+                envA22,                 // <= A22에만 envelope 적용!
+                /*repeats=*/5
+            );
+        }
 
         if (command == 'F')
         {
