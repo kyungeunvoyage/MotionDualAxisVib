@@ -18,6 +18,17 @@
 //self-made h file
 #include "waveforms.h"
 
+//============movement 연동=================
+// ---- UI event helpers (for HandMotionSpeed.html) ----
+static inline void UI_START(char c) { Serial.print(F("[UI] START ")); Serial.println(c); }
+static inline void UI_END(char c) { Serial.print(F("[UI] END "));   Serial.println(c); }
+//static inline void UI_PEAK() { Serial.println(F("[UI] PEAK")); }
+
+
+
+
+
+
 //================DA7280====================
 Haptic_Driver hapDrive;
 
@@ -561,6 +572,7 @@ void loop()
 
         else if (command == '4')
         {
+            UI_START('4');
             // 목표 40 Hz 반영
             updateDelayFromTargetHz();  // targetHz = 40일 때 delayPerSampleUs_rt 자동 갱신
 
@@ -580,6 +592,8 @@ void loop()
                 invertA21,
                 PAIRS
             );
+
+            UI_END('4');
         }
 
 

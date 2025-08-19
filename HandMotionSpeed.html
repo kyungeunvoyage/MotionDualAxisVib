@@ -1,0 +1,566 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Movement Guide – Direction Only</title>
+    <style>
+        :root {
+            --bg: #ffffff;
+            --fg: #111111;
+            --muted: #777777;
+            --track-w: 560px; /* horizontal track length */
+            --track-h: 14px; /* track thickness */
+        }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            background: var(--bg);
+            color: var(--fg);
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
+        }
+
+        .wrap {
+            max-width: 760px;
+            margin: 24px auto;
+            padding: 16px;
+        }
+
+        h1 {
+            font-size: 22px;
+            margin: 0 0 10px;
+            letter-spacing: .2px;
+        }
+
+        .desc {
+            font-size: 14px;
+            color: var(--muted);
+            line-height: 1.6;
+            margin-bottom: 16px;
+        }
+
+        .track-area {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin: 8px 0 18px;
+        }
+
+        .dir-label {
+            font-size: 14px;
+            color: var(--muted);
+            width: 120px;
+        }
+
+        .track {
+            position: relative;
+            width: var(--track-w);
+            height: var(--track-h);
+            background: #eee;
+            border-radius: 999px;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,.06);
+        }
+
+            .track.vertical {
+                width: var(--track-h);
+                height: var(--track-w);
+            }
+
+        .dot {
+            position: absolute;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #000;
+            box-shadow: 0 2px 10px rgba(0,0,0,.2);
+            left: 0;
+            top: 0;
+        }
+
+        .arrow {
+            font-size: 18px;
+            width: 32px;
+            text-align: center;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px 16px;
+            align-items: center;
+            padding: 14px 16px;
+            border: 1px solid #e5e5e5;
+            border-radius: 12px;
+            background: #fafafa;
+            margin: 18px 0 14px;
+        }
+
+        .field {
+            display: grid;
+            grid-template-columns: auto 140px;
+            gap: 8px;
+            align-items: center;
+        }
+
+            .field label {
+                font-size: 13px;
+                color: #444;
+            }
+
+            .field input[type="number"], .controls select {
+                width: 130px;
+                padding: 6px 8px;
+                border: 1px solid #ddd;
+                border-radius: 8px;
+                font-size: 14px;
+            }
+
+            .field input[type="number"] {
+                text-align: right;
+            }
+
+            .field input[type="checkbox"] {
+                transform: translateY(1px);
+            }
+
+        .btns {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            appearance: none;
+            border: 1px solid #111;
+            background: #111;
+            color: #fff;
+            padding: 8px 14px;
+            border-radius: 10px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+            button.secondary {
+                background: #fff;
+                color: #111;
+            }
+
+            button:disabled {
+                opacity: .45;
+                cursor: not-allowed;
+            }
+
+        .status {
+            font-size: 13px;
+            color: #333;
+            padding: 8px 0;
+            display: flex;
+            gap: 18px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .mono {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        }
+
+        .badge {
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 12px;
+            border: 1px solid #ddd;
+            background: #f2f2f2;
+        }
+
+            .badge.ok {
+                border-color: #16a34a;
+                color: #065f46;
+                background: #ecfdf5;
+            }
+
+        .note {
+            font-size: 12px;
+            color: #777;
+            margin-top: 6px;
+        }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <h1>Movement Guide – Direction Only</h1>
+        <div class="desc"></div>
+
+        <!-- Direction Track Only -->
+        <div class="track-area">
+            <div class="dir-label">Move Direction</div>
+            <div class="track" id="track">
+                <div class="dot" id="dot"></div>
+            </div>
+            <div class="arrow" id="arrow">→</div>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls">
+            <div class="field">
+                <label for="hz">Frequency (Hz)</label>
+                <input id="hz" type="number" min="1" max="200" step="0.1" value="40" />
+            </div>
+            <div class="field">
+                <label for="pairs">Pair repeats</label>
+                <input id="pairs" type="number" min="1" max="20" step="1" value="5" />
+            </div>
+            <div class="field">
+                <label for="rest">Rest (ms) – between bursts</label>
+                <input id="rest" type="number" min="0" max="3000" step="10" value="500" />
+            </div>
+            <div class="field">
+                <label><input id="useScale" type="checkbox" checked> Hold = (1000/Hz)×Scale</label>
+                <input id="scale" type="number" min="1" max="100" step="1" value="10" />
+            </div>
+            <div class="field">
+                <label for="hold">Hold (ms) – manual</label>
+                <input id="hold" type="number" min="10" max="5000" step="10" value="250" />
+            </div>
+            <div class="field">
+                <label for="axis">Axis</label>
+                <select id="axis">
+                    <option value="lr" selected>Left ↔ Right</option>
+                    <option value="fb">Forward ↕ Backward</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="mapFlip">Direction mapping flip</label>
+                <input id="mapFlip" type="checkbox" />
+            </div>
+
+            <!-- Serial controls -->
+            <div class="field">
+                <label for="cmd">Send command</label>
+                <input id="cmd" type="text" value="4" maxlength="1" />
+            </div>
+            <div class="btns">
+                <button id="startBtn">Start</button>
+                <button id="stopBtn" class="secondary" disabled>Stop</button>
+                <button id="resetBtn" class="secondary">Reset</button>
+                <button id="connectBtn" class="secondary">Connect</button>
+                <button id="sendBtn" class="secondary">Send</button>
+            </div>
+        </div>
+
+        <!-- Status -->
+        <div class="status">
+            <div>Polarity: <span id="polarity" class="mono">—</span></div>
+            <div>Pair <span id="pairIdx" class="mono">0</span>/<span id="pairTotal" class="mono">5</span></div>
+            <div>Cycle <span id="cycleMs" class="mono">25.00</span> ms</div>
+            <div>Hold <span id="holdMsOut" class="mono">250</span> ms</div>
+            <div id="connBadge" class="badge">Serial: Disconnected</div>
+        </div>
+        <div class="note"></div>
+    </div>
+
+    <script>
+        // Elements
+        const track = document.getElementById('track');
+        const dot = document.getElementById('dot');
+        const arrow = document.getElementById('arrow');
+
+        const hzEl = document.getElementById('hz');
+        const pairsEl = document.getElementById('pairs');
+        const restEl = document.getElementById('rest');
+        const useScaleEl = document.getElementById('useScale');
+        const scaleEl = document.getElementById('scale');
+        const holdEl = document.getElementById('hold');
+        const axisEl = document.getElementById('axis');
+        const mapFlipEl = document.getElementById('mapFlip');
+
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const resetBtn = document.getElementById('resetBtn');
+
+        const connectBtn = document.getElementById('connectBtn');
+        const sendBtn = document.getElementById('sendBtn');
+        const cmdEl = document.getElementById('cmd');
+
+        const polarityEl = document.getElementById('polarity');
+        const pairIdxEl = document.getElementById('pairIdx');
+        const pairTotalEl = document.getElementById('pairTotal');
+        const cycleMsEl = document.getElementById('cycleMs');
+        const holdMsOutEl = document.getElementById('holdMsOut');
+        const connBadge = document.getElementById('connBadge');
+
+        // State
+        let running = false;
+        let timers = [];
+        let rafId = null;
+
+        // Serial state
+        let serialPort = null;
+        let textReader = null;
+        let textWriter = null;
+        let serialBuf = '';
+
+        // Utilities
+        function clearTimers() { timers.forEach(t => clearTimeout(t)); timers = []; }
+        function cancelAnim() { if (rafId) { cancelAnimationFrame(rafId); rafId = null; } }
+
+        function computeCycleMs(hz) { return 1000 / Math.max(0.0001, hz); }
+
+        function computeHoldMs() {
+            const hz = parseFloat(hzEl.value) || 40;
+            const cycle = computeCycleMs(hz);
+            let holdMs;
+            if (useScaleEl.checked) {
+                const scale = Math.max(1, parseFloat(scaleEl.value) || 10);
+                holdMs = cycle * scale;     // (1000/Hz) × Scale
+            } else {
+                holdMs = Math.max(10, parseFloat(holdEl.value) || 250);
+            }
+            return { cycle, holdMs };
+        }
+
+        function updateReadouts() {
+            const { cycle, holdMs } = computeHoldMs();
+            cycleMsEl.textContent = cycle.toFixed(2);
+            holdMsOutEl.textContent = Math.round(holdMs);
+        }
+
+        function setUIState(isRunning) {
+            running = isRunning;
+            startBtn.disabled = isRunning;
+            stopBtn.disabled = !isRunning;
+            hzEl.disabled = isRunning;
+            pairsEl.disabled = isRunning;
+            restEl.disabled = isRunning;
+            useScaleEl.disabled = isRunning;
+            scaleEl.disabled = isRunning || !useScaleEl.checked;
+            holdEl.disabled = isRunning || useScaleEl.checked;
+            axisEl.disabled = isRunning;
+            mapFlipEl.disabled = isRunning;
+        }
+
+        function setOrientation(axis) {
+            if (axis === 'fb') { track.classList.add('vertical'); }
+            else { track.classList.remove('vertical'); }
+
+            cancelAnim();
+            requestAnimationFrame(() => {
+                const rect = track.getBoundingClientRect();
+                const s = 22;
+                if (axis === 'fb') {
+                    dot.style.left = ((rect.width - s) / 2) + 'px';
+                    dot.style.top = (rect.height - s) + 'px';
+                    arrow.textContent = '↑';
+                } else {
+                    dot.style.left = '0px';
+                    dot.style.top = ((rect.height - s) / 2) + 'px';
+                    arrow.textContent = '→';
+                }
+            });
+        }
+
+        function animateDot(durationMs, dir, axis) {
+            const rect = track.getBoundingClientRect();
+            const s = 22;
+            cancelAnim();
+            const t0 = performance.now();
+
+            if (axis === 'fb') {
+                const minY = 0, maxY = rect.height - s;
+                const startY = (dir === 1) ? maxY : minY;  // +1: up
+                const endY = (dir === 1) ? minY : maxY;
+                const x = (rect.width - s) / 2;
+                dot.style.left = x + 'px';
+                arrow.textContent = (dir === 1) ? '↑' : '↓';
+
+                const step = (now) => {
+                    const t = Math.min(1, (now - t0) / durationMs);
+                    const eased = 0.5 - 0.5 * Math.cos(Math.PI * t);
+                    dot.style.top = (startY + (endY - startY) * eased) + 'px';
+                    if (t < 1 && running) rafId = requestAnimationFrame(step);
+                };
+                rafId = requestAnimationFrame(step);
+            } else {
+                const minX = 0, maxX = rect.width - s;
+                const startX = (dir === 1) ? minX : maxX;
+                const endX = (dir === 1) ? maxX : minX;
+                const y = (rect.height - s) / 2;
+                dot.style.top = y + 'px';
+                arrow.textContent = (dir === 1) ? '→' : '←';
+
+                const step = (now) => {
+                    const t = Math.min(1, (now - t0) / durationMs);
+                    const eased = 0.5 - 0.5 * Math.cos(Math.PI * t);
+                    dot.style.left = (startX + (endX - startX) * eased) + 'px';
+                    if (t < 1 && running) rafId = requestAnimationFrame(step);
+                };
+                rafId = requestAnimationFrame(step);
+            }
+        }
+
+        function safeStop() {
+            setUIState(false);
+            clearTimers();
+            cancelAnim();
+            polarityEl.textContent = '—';
+        }
+
+        function runSequence() {
+            const hz = Math.max(0.0001, parseFloat(hzEl.value) || 40);
+            const pairRepeats = Math.max(1, parseInt(pairsEl.value, 10) || 5);
+            const restMs = Math.max(0, parseInt(restEl.value, 10) || 500);
+            const { holdMs } = computeHoldMs();
+            const axis = (axisEl.value === 'fb') ? 'fb' : 'lr';
+            const normalDir = mapFlipEl.checked ? -1 : 1;
+            const invertedDir = -normalDir;
+
+            pairTotalEl.textContent = String(pairRepeats);
+            pairIdxEl.textContent = '0';
+
+            setOrientation(axis);
+            setUIState(true);
+            clearTimers();
+            cancelAnim();
+
+            let currentPair = 0;
+
+            const runPair = () => {
+                if (!running) return;
+                if (currentPair >= pairRepeats) {
+                    safeStop();
+                    return;
+                }
+                pairIdxEl.textContent = String(currentPair + 1);
+
+                // (1) Normal
+                polarityEl.textContent = 'Normal';
+                animateDot(holdMs, normalDir, axis);
+                const t1 = setTimeout(() => {
+                    if (!running) return;
+                    // (2) Inverted
+                    polarityEl.textContent = 'Inverted';
+                    animateDot(holdMs, invertedDir, axis);
+                    const t2 = setTimeout(() => {
+                        currentPair += 1;
+                        runPair();
+                    }, holdMs + restMs);
+                    timers.push(t2);
+                }, holdMs + restMs);
+                timers.push(t1);
+            };
+
+            runPair();
+        }
+
+        // ---------- Web Serial ----------
+        async function connectSerial() {
+            try {
+                if (!('serial' in navigator)) {
+                    alert('Web Serial not supported in this browser.');
+                    return;
+                }
+                if (serialPort) {
+                    // toggle: disconnect
+                    await disconnectSerial();
+                    return;
+                }
+
+                serialPort = await navigator.serial.requestPort();
+                await serialPort.open({ baudRate: 115200 });
+
+                // Reader
+                const decoder = new TextDecoderStream();
+                serialPort.readable.pipeTo(decoder.writable).catch(() => { });
+                const reader = decoder.readable.getReader();
+                textReader = reader;
+
+                // Writer
+                const encoder = new TextEncoderStream();
+                encoder.readable.pipeTo(serialPort.writable).catch(() => { });
+                textWriter = encoder.writable.getWriter();
+
+                connectBtn.textContent = 'Disconnect';
+                connBadge.textContent = 'Serial: Connected';
+                connBadge.classList.add('ok');
+
+                serialBuf = '';
+                (async () => {
+                    while (serialPort && textReader) {
+                        const { value, done } = await textReader.read();
+                        if (done) break;
+                        if (!value) continue;
+                        serialBuf += value;
+                        let idx;
+                        while ((idx = serialBuf.indexOf('\n')) >= 0) {
+                            const line = serialBuf.slice(0, idx).trim();
+                            serialBuf = serialBuf.slice(idx + 1);
+
+                            // Protocol: [UI] START X  /  [UI] END X
+                            if (line.startsWith('[UI] START')) {
+                                if (!running) runSequence();
+                            } else if (line.startsWith('[UI] END')) {
+                                if (running) safeStop();
+                            }
+                            // if (line === '[UI] PEAK') { /* optional */ }
+                        }
+                    }
+                })().catch(console.error);
+
+                // Auto clean on physical disconnect (not all browsers fire this)
+                try {
+                    serialPort.addEventListener?.('disconnect', () => disconnectSerial());
+                } catch (_) { }
+
+            } catch (e) {
+                console.error(e);
+                alert('Serial connection failed.');
+                await disconnectSerial();
+            }
+        }
+
+        async function disconnectSerial() {
+            try {
+                if (textReader) { try { await textReader.cancel(); } catch (_) { } textReader = null; }
+                if (textWriter) { try { await textWriter.close(); } catch (_) { } textWriter = null; }
+                if (serialPort) { try { await serialPort.close(); } catch (_) { } serialPort = null; }
+            } finally {
+                connectBtn.textContent = 'Connect';
+                connBadge.textContent = 'Serial: Disconnected';
+                connBadge.classList.remove('ok');
+            }
+        }
+
+        async function sendCommand(c) {
+            if (!serialPort || !textWriter) {
+                alert('Connect first.');
+                return;
+            }
+            const ch = (c || '').toString().slice(0, 1) || '4';
+            await textWriter.write(ch);      // Teensy reads a single byte
+            if (!running) runSequence();     // start UI immediately (device will also emit [UI] START)
+        }
+
+        // init
+        updateReadouts();
+        [hzEl, useScaleEl, scaleEl, holdEl, axisEl].forEach(el => el.addEventListener('input', updateReadouts));
+        setOrientation('lr');
+
+        // buttons / shortcuts
+        startBtn.addEventListener('click', () => { if (!running) runSequence(); });
+        stopBtn.addEventListener('click', () => { if (running) safeStop(); });
+        resetBtn.addEventListener('click', () => {
+            safeStop(); pairIdxEl.textContent = '0'; updateReadouts(); setOrientation(axisEl.value);
+        });
+
+        connectBtn.addEventListener('click', connectSerial);
+        sendBtn.addEventListener('click', () => sendCommand(cmdEl.value));
+
+        window.addEventListener('keydown', (e) => {
+            const k = e.key.toLowerCase();
+            if (k === 's' || e.key === '4') { if (!running) runSequence(); }
+            else if (k === 'x') { if (running) safeStop(); }
+            else if (k === 'r') { safeStop(); pairIdxEl.textContent = '0'; updateReadouts(); setOrientation(axisEl.value); }
+        });
+    </script>
+</body>
+</html>
