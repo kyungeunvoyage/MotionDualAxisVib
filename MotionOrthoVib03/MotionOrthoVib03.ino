@@ -131,7 +131,7 @@ void setup() {
     for (int i = 0; i < 256; i++) high_highPR[i] = -high_high[i];
 
     //envelope
-    makeADSR(0.10f, 0.20f, 0.0f);
+    //makeADSR(0.10f, 0.20f, 0.0f);
 }
 //=================setup===========================
 
@@ -384,38 +384,6 @@ void playHalfSineWithRatioDualOffset(const int16_t* w, int N, float gainA22, flo
 }
 //===============================================================================
 
-//=================================envelope change===============================
-float envA22[256];
-// 간단한 ADSR 스타일 (비율 기반): attack(10%), sustain(20%), decay(70%)
-void makeADSR(float aRatio = 0.10f, float sRatio = 0.20f, float dEnd = 0.0f) {
-    int N = waveformSize;
-    int aN = max(1, (int)(N * aRatio));
-    int sN = max(0, (int)(N * sRatio));
-    int dN = max(1, N - (aN + sN));
-
-    // Attack: 0 -> 1
-    for (int i = 0; i < aN; ++i) {
-        envA22[i] = (float)i / (float)(aN - 1);
-    }
-    // Sustain: 1 유지
-    for (int i = 0; i < sN; ++i) {
-        envA22[aN + i] = 1.0f;
-    }
-    // Decay: 1 -> dEnd
-    for (int i = 0; i < dN; ++i) {
-        float t = (float)i / (float)(dN - 1);
-        envA22[aN + sN + i] = 1.0f + t * (dEnd - 1.0f);
-    }
-}
-
-//지수 감쇠
-void makeExpDecay(float k = 4.0f) { // k가 클수록 빨리 감소
-    for (int i = 0; i < waveformSize; ++i) {
-        float x = (float)i / (float)(waveformSize - 1);
-        envA22[i] = expf(-k * x);
-    }
-}
-
 void playHalfSineWithRatioDualOffsetEnv(
     const int16_t* w, int N,
     float gainA22, float gainA21,
@@ -473,10 +441,58 @@ void playHalfSineWithRatioDualOffsetEnv(
     Serial.print(F("  offsetA21_us=")); Serial.println(offsetA21_us);
     Serial.println(F("  (A22 envelope applied)"));
 }
-
-
-
 //===============================================================================
+
+//===========================Polarity Reverse가 포함된 함수======================
+void playHalfSineWithRatioDualAltPolarity(const int16_t* w, int N, float gainA22_base, float gainA21_base, int dacPinA22, int dacPinA21,
+    float delayPerSampleUs, float rRise, float rFall, bool invertA21_base, int pairRepeats)
+    // 쌍 반복 횟수 (정상→반전 = 1쌍))
+{
+    const uint32_t T_total_us = (uint32_t)(delayPerSampleUs * N);
+    const float k = rRise / (rRise + rFall);
+    const int peak = findPeakIndex(w, N);
+    int Sr = peak + 1;
+    int Sf = N - (peak + 1);
+    if (Sf <= 0) Sf = 1;
+
+    const uint32_t delayRiseUs = (uint32_t)((T_total_us * k) / Sr);
+    const uint32_t delayFallUs = (uint32_t)((T_total_us * (1.0f - k)) / Sf);
+
+    for (int pair = 0; pair < pairRepeats; ++pair) {
+        // (1) 정상 극성
+        {
+            const float g22 = +gainA22_base;
+            const float g21 = +gainA21_base;
+            playAsymTimingDual(
+                w, N,
+                g22, g21,
+                dacPinA22, dacPinA21,
+                delayRiseUs, delayFallUs,
+                invertA21_base // A21은 요청대로 반대 위상 유지
+            );
+            delay(500);
+            Serial.println(F("pair_step: normal"));
+        }
+        // (2) 둘 다 부호 반전 (채널 각각의 -신호)
+        {
+            const float g22 = -gainA22_base; // A22 반전
+            const float g21 = -gainA21_base; // A21 반전
+            playAsymTimingDual(
+                w, N,
+                g22, g21,
+                dacPinA22, dacPinA21,
+                delayRiseUs, delayFallUs,
+                invertA21_base // 관계 유지: A21은 항상 A22와 반대로
+            );
+            delay(500);
+            Serial.println(F("pair_step: inverted"));
+        }
+    }
+
+    Serial.print(F("[DUAL-ALT] pairs=")); Serial.println(pairRepeats);
+    Serial.print(F("  delayRiseUs=")); Serial.print(delayRiseUs);
+    Serial.print(F("  delayFallUs=")); Serial.println(delayFallUs);
+}
 
 
 // the loop function runs over and over again until power down or reset
@@ -522,7 +538,7 @@ void loop()
             updateDelayFromTargetHz();
             const float GAIN = 3.0f;
             // rise:fall = 1:2
-            playHalfSineWithRatio(wave_asymHalfSine, waveformSize, GAIN, DAC_PIN_A22,
+            playHalfSineWithRatio(wave_slowUpHardDrop, waveformSize, GAIN, DAC_PIN_A22,
                 delayPerSampleUs_rt, 1.0f, 2.0f, /*repeats=*/5);
         }
         else if (command == '2')
@@ -530,7 +546,7 @@ void loop()
             updateDelayFromTargetHz();
             const float GAIN = 3.0f;
             // rise:fall = 1:3
-            playHalfSineWithRatio(wave_asymHalfSine, waveformSize, GAIN, DAC_PIN_A22,
+            playHalfSineWithRatio(wave_expRiseLinFall, waveformSize, GAIN, DAC_PIN_A22,
                 delayPerSampleUs_rt, 1.0f, 3.0f, /*repeats=*/5);
         }
         else if (command == '3')
@@ -538,31 +554,34 @@ void loop()
             updateDelayFromTargetHz();
             const float GAIN = 3.0f;
             // rise:fall = 2:1
-            playHalfSineWithRatio(wave_asymHalfSine, waveformSize, GAIN, DAC_PIN_A22,
+            playHalfSineWithRatio(wave_impulseDampedTail, waveformSize, GAIN, DAC_PIN_A22,
                 delayPerSampleUs_rt, 2.0f, 1.0f, /*repeats=*/5);
         }
 
 
         else if (command == '4')
         {
-            // 목표 Hz 적용
-            updateDelayFromTargetHz();
+            // 목표 40 Hz 반영
+            updateDelayFromTargetHz();  // targetHz = 40일 때 delayPerSampleUs_rt 자동 갱신
 
-            const float GAIN_A22 = 3.0f;  // A22(정상)
-            const float GAIN_A21 = 3.0f;  // A21(반대 파형)
+            const float GAIN_A22 = 3.0f;   // A22(정상 기준 게인)
+            const float GAIN_A21 = 3.0f;   // A21(정상 기준 게인)
+            const float rRise = 1.0f, rFall = 2.0f; // 1:2 비율
+            const bool  invertA21 = true;  // A21은 항상 A22와 반대 위상(요청사항 유지)
+            const int   PAIRS = 5;         // "정상→반전" 1쌍 × 5 = 총 10번 울림
 
-            // 요구사항: A22 = 1:2, A21 = "반대 파형(폴라리티 반전)"
-            const float rRise = 1.0f, rFall = 2.0f;
-            const bool invertA21 = true;  // 여기만 true면 됨 (타이밍은 동일, 부호만 반전)
-
-            playHalfSineWithRatioDual(wave_asymHalfSine, waveformSize,
+            // 파형은 기존과 동일하게 사용 (예: wave_asymHalfSine)
+            playHalfSineWithRatioDualAltPolarity(
+                wave_asymHalfSine, waveformSize,
                 GAIN_A22, GAIN_A21,
                 DAC_PIN_A22, DAC_PIN_A21,
                 delayPerSampleUs_rt,
                 rRise, rFall,
                 invertA21,
-                /*repeats=*/5);
+                PAIRS
+            );
         }
+
 
 
         else if (command == '5')
@@ -591,7 +610,7 @@ void loop()
             const float GAIN_A21 = 3.0f;   // A21 (반대 파형)
             const float rRise = 1.0f, rFall = 2.0f; // 1:2 비율
             const bool  invertA21 = true;  // A21 폴라리티 반전
-            const uint32_t OFFSET_A21_US = 30000; // A22가 50 ms 먼저 (A21은 50 ms 지연)
+            const uint32_t OFFSET_A21_US = 50000; // A22가 50 ms 먼저 (A21은 50 ms 지연)
 
             playHalfSineWithRatioDualOffset(
                 wave_asymHalfSine, waveformSize,
@@ -608,13 +627,13 @@ void loop()
         else if (command == '7')
         {
             const float GAIN_A22 = 3.0f;   // A22 (정상)
-            const float GAIN_A21 = 5.0f;   // A21 (반대 파형)
+            const float GAIN_A21 = 3.0f;   // A21 (반대 파형)
             const float rRise = 1.0f, rFall = 2.0f; // 1:2 비율
             const bool  invertA21 = true;  // A21 폴라리티 반전
-            const uint32_t OFFSET_A21_US = 50000; // A22가 50 ms 먼저 (A21은 50 ms 지연)
+            const uint32_t OFFSET_A21_US = 20000; // A22가 50 ms 먼저 (A21은 50 ms 지연)
 
             playHalfSineWithRatioDualOffset(
-                wave_asymHalfSine, waveformSize,
+                wave_impulseDampedTail, waveformSize,
                 GAIN_A22, GAIN_A21,
                 DAC_PIN_A22, DAC_PIN_A21,
                 delayPerSampleUs_rt,
@@ -627,28 +646,7 @@ void loop()
 
         else if (command == '8')
         {
-            updateDelayFromTargetHz();
-
-            const float GAIN_A22 = 3.0f;   // A22
-            const float GAIN_A21 = 5.0f;   // A21
-            const float rRise = 1.0f, rFall = 2.0f;
-            const bool  invertA21 = true;
-            const uint32_t OFFSET_A21_US = 50000; // 50 ms
-
-            // 필요 시 런타임에도 다른 형태로 바꿔볼 수 있음:
-            // makeADSR(0.05f, 0.15f, 0.0f);
-            // makeExpDecay(6.0f);
-
-            playHalfSineWithRatioDualOffsetEnv(
-                wave_asymHalfSine, waveformSize,
-                GAIN_A22, GAIN_A21,
-                DAC_PIN_A22, DAC_PIN_A21,
-                delayPerSampleUs_rt,
-                rRise, rFall,
-                invertA21, OFFSET_A21_US,
-                envA22,                 // <= A22에만 envelope 적용!
-                /*repeats=*/5
-            );
+  
         }
 
         if (command == 'F')
@@ -673,75 +671,31 @@ void loop()
         {
             //hz update
             updateDelayFromTargetHz();
-
-            for (int repeat = 0; repeat < 2; repeat++) {  // pulse 10번 반복
-                for (int i = 0; i < waveformSize; i++) {
-                    int val = dat[i];
-
-                    //Teensy에 있는 DAC 는 0~4095 (12비트) 사이 숫자만 출력이 가능하니까 -32767 ~ +32767 값을 0~4095fh 변환해주는거임~ 
-
-                    //previously,맵핑 방향성
-                    int dacValue = map(val, -32767, 32767, 0, 4095);
-
-                    //출력
-                    analogWrite(DAC_PIN_A22, dacValue);
-                    //각각의 점 출력 전에 120마이크로초 기다리는것 --> 샘플링 속도를 조정 
-                    //Serial.println(dacValue);
-                    delayMicroseconds((int)delayPerSampleUs_rt);  //40hz
-                }
-            }
-            delay(150);  // pulse 간 간격
+            const float GAIN = 3.0f;
+            // rise:fall = 2:1
+            playHalfSineWithRatio(wave_asymHalfSine, waveformSize, GAIN, DAC_PIN_A22,
+                delayPerSampleUs_rt, 2.0f, 1.0f, /*repeats=*/5);
         }
 
 
         else if (command == 'B')
         {
-            Serial.println("B is pressed: dat2 반대 방향으로 출력 (negDatTrial)");
             //hz update
             updateDelayFromTargetHz();
-
-            for (int repeat = 0; repeat < 2; repeat++) {
-                for (int i = 0; i < waveformSize; i++) {
-                    int val = negDatTrial[i];
-                    int dacValue = map(val, -32767, 32767, 0, 4095);
-
-                    analogWrite(DAC_PIN_A21, dacValue);
-                    //Serial.println(dacValue);
-                    delayMicroseconds((int)delayPerSampleUs_rt);
-                }
-            }
-            delay(150);
+            const float GAIN = 3.0f;
+            // rise:fall = 2:1
+            playHalfSineWithRatio(wave_amBurstAsym, waveformSize, GAIN, DAC_PIN_A22,
+                delayPerSampleUs_rt, 2.0f, 1.0f, /*repeats=*/5);
         }
 
         else if (command == 'C')
         {
-            //activate DA7280 
-            startVibration(hapDrive, burst75ms);
-            //delay(100);
-
-            //initiate the targetHz
+            //hz update
             updateDelayFromTargetHz();
-
-            //activate titan LF
-            for (int repeat = 0; repeat < 5; repeat++)
-            {
-                for (int i = 0; i < waveformSize; i++)
-                {
-                    int val = dat[i];
-
-                    //이걸로 intensity를 결정하는 거임. 
-                    //int val_scaled = constrain((int)(val * gain), -32767, 32767);
-                    int dacValue = map(val, -32767, 32767, 0, 4095);
-                    //Serial.println(dacValue);
-
-                    analogWrite(DAC_PIN_A21, dacValue);
-                    //analogWrite(DAC_PIN_A22, dacValue);
-
-                    delayMicroseconds((int)delayPerSampleUs_rt);  //40hz
-
-                }
-            }
-            delay(150);
+            const float GAIN = 3.0f;
+            // rise:fall = 2:1
+            playHalfSineWithRatio(wave_quadPushLinReturn, waveformSize, GAIN, DAC_PIN_A22,
+                delayPerSampleUs_rt, 2.0f, 1.0f, /*repeats=*/5);
         }
         else if (command == 'D')
         {
