@@ -576,15 +576,15 @@ void loop()
             // 목표 40 Hz 반영
             updateDelayFromTargetHz();  // targetHz = 40일 때 delayPerSampleUs_rt 자동 갱신
 
-            const float GAIN_A22 = 3.0f;   // A22(정상 기준 게인)
-            const float GAIN_A21 = 3.0f;   // A21(정상 기준 게인)
+            const float GAIN_A22 = 3.0f;  
+            const float GAIN_A21 = 3.0f;   
             const float rRise = 1.0f, rFall = 2.0f; // 1:2 비율
-            const bool  invertA21 = true;  // A21은 항상 A22와 반대 위상(요청사항 유지)
+            const bool  invertA21 = true; 
             const int   PAIRS = 5;         // "정상→반전" 1쌍 × 5 = 총 10번 울림
 
             // 파형은 기존과 동일하게 사용 (예: wave_asymHalfSine)
             playHalfSineWithRatioDualAltPolarity(
-                wave_asymHalfSine, waveformSize,
+                two_high, waveformSize,
                 GAIN_A22, GAIN_A21,
                 DAC_PIN_A22, DAC_PIN_A21,
                 delayPerSampleUs_rt,
@@ -600,41 +600,53 @@ void loop()
 
         else if (command == '5')
         {
-            updateDelayFromTargetHz();
+            UI_START('5');
+            // 목표 40 Hz 반영
+            updateDelayFromTargetHz();  // targetHz = 40일 때 delayPerSampleUs_rt 자동 갱신
 
-            const float GAIN_A22 = 3.0f;   // A22 (정상)
-            const float GAIN_A21 = 3.0f;   // A21 (반대 파형)
+            const float GAIN_A22 = 3.0f;   // A22(정상 기준 게인)
+            const float GAIN_A21 = 3.0f;   // A21(정상 기준 게인)
             const float rRise = 1.0f, rFall = 2.0f; // 1:2 비율
-            const bool  invertA21 = true;  // A21 폴라리티 반전
-            const uint32_t OFFSET_A21_US = 50000; // A22가 50 ms 먼저 (A21은 50 ms 지연)
+            const bool  invertA21 = true;  
+            const int   PAIRS = 5;         // "정상→반전" 1쌍 × 5 = 총 10번 울림
 
-            playHalfSineWithRatioDualOffset(
-                wave_asymHalfSine, waveformSize,
+            
+            playHalfSineWithRatioDualAltPolarity(
+                wave_impulseDampedTail, waveformSize,
                 GAIN_A22, GAIN_A21,
                 DAC_PIN_A22, DAC_PIN_A21,
                 delayPerSampleUs_rt,
                 rRise, rFall,
-                invertA21, OFFSET_A21_US,
-                /*repeats=*/5
+                invertA21,
+                PAIRS
             );
+
+            UI_END('5');
         }
         else if (command == '6')
         {
-            const float GAIN_A22 = 3.0f;   // A22 (정상)
-            const float GAIN_A21 = 3.0f;   // A21 (반대 파형)
-            const float rRise = 1.0f, rFall = 2.0f; // 1:2 비율
-            const bool  invertA21 = true;  // A21 폴라리티 반전
-            const uint32_t OFFSET_A21_US = 50000; // A22가 50 ms 먼저 (A21은 50 ms 지연)
+            UI_START('6');
+            // 목표 40 Hz 반영
+            updateDelayFromTargetHz();  // targetHz = 40일 때 delayPerSampleUs_rt 자동 갱신
 
-            playHalfSineWithRatioDualOffset(
-                wave_asymHalfSine, waveformSize,
+            const float GAIN_A22 = 3.0f;   // A22(정상 기준 게인)
+            const float GAIN_A21 = 3.0f;   // A21(정상 기준 게인)
+            const float rRise = 1.0f, rFall = 2.0f; // 1:2 비율
+            const bool  invertA21 = true;  
+            const int   PAIRS = 5;         // "정상→반전" 1쌍 × 5 = 총 10번 울림
+
+            // 
+            playHalfSineWithRatioDualAltPolarity(
+                dat, waveformSize,
                 GAIN_A22, GAIN_A21,
                 DAC_PIN_A22, DAC_PIN_A21,
                 delayPerSampleUs_rt,
                 rRise, rFall,
-                invertA21, OFFSET_A21_US,
-                /*repeats=*/5
+                invertA21,
+                PAIRS
             );
+
+            UI_END('6');
 
         }
 
@@ -660,7 +672,14 @@ void loop()
 
         else if (command == '8')
         {
-  
+            updateDelayFromTargetHz();
+            const float GAIN = 3.0f;
+            for (int repeat = 0; repeat < 50; repeat++)
+            {
+                playArrayWithGainCentered(wave_impulseDampedTail, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+                delay(100);
+                Serial.println(repeat + "repeat");
+            }
         }
 
         if (command == 'F')
@@ -671,7 +690,7 @@ void loop()
             for (int repeat = 0; repeat < 5; repeat++)
             {
                 playArrayWithGainCentered(wave_amBurstAsym, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
-                delay(500);
+                //delay(100);
                 Serial.println("peak_high");
             }
 
