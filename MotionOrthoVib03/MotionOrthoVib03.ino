@@ -565,7 +565,7 @@ void loop()
             updateDelayFromTargetHz();
             const float GAIN = 3.0f;
             // rise:fall = 2:1
-            playHalfSineWithRatio(wave_impulseDampedTail, waveformSize, GAIN, DAC_PIN_A22,
+            playHalfSineWithRatio(wave_impulseDampedTail, waveformSize, GAIN, DAC_PIN_A21,
                 delayPerSampleUs_rt, 2.0f, 1.0f, /*repeats=*/5);
         }
 
