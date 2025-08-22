@@ -82,6 +82,7 @@
   <ItemGroup>
     <ClCompile Include="ExploratoryStudy.ino">
       <FileType>CppCode</FileType>
+      <DeploymentContent>true</DeploymentContent>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -91,9 +92,37 @@
   <ItemGroup>
     <ProjectCapability Include="VisualMicro" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="__vm\.ExploratoryStudy.vsarduino.h" />
+  </ItemGroup>
   <PropertyGroup>
     <DebuggerFlavor>VisualMicroDebugger</DebuggerFlavor>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <IncludePath>$(ProjectDir)..\..\..\..\Program Files (x86)\Arduino\hardware\teensy\avr\cores\teensy3;$(ProjectDir)..\..\..\..\program files (x86)\arduino\hardware\tools\arm\arm-none-eabi\include\c++\5.4.1;$(ProjectDir)..\..\..\..\program files (x86)\arduino\hardware\tools\arm\arm-none-eabi\include\c++\5.4.1\arm-none-eabi\armv7e-m\fpu;$(ProjectDir)..\..\..\..\program files (x86)\arduino\hardware\tools\arm\arm-none-eabi\include\c++\5.4.1\backward;$(ProjectDir)..\..\..\..\program files (x86)\arduino\hardware\tools\arm\lib\gcc\arm-none-eabi\5.4.1\include;$(ProjectDir)..\..\..\..\program files (x86)\arduino\hardware\tools\arm\lib\gcc\arm-none-eabi\5.4.1\include-fixed;$(ProjectDir)..\..\..\..\program files (x86)\arduino\hardware\tools\arm\arm-none-eabi\include;$(ProjectDir)..\..\..\..\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\Wire;$(ProjectDir)..\..\..\..\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\Wire\utility;$(ProjectDir)..\..\Documents\Arduino\libraries\SparkFun_Qwiic_Haptic_Driver_DA7280_Arduino_Library-main\src;$(ProjectDir)..\..\..\..\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\Audio;$(ProjectDir)..\..\..\..\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\Audio\utility</IncludePath>
+    <RemoteCCompileToolExe>$(ProjectDir)..\..\..\..\Program Files (x86)\Arduino\hardware\tools\arm\bin\arm-none-eabi-g++</RemoteCCompileToolExe>
+    <RemoteCppCompileToolExe>$(ProjectDir)..\..\..\..\Program Files (x86)\Arduino\hardware\tools\arm\bin\arm-none-eabi-g++</RemoteCppCompileToolExe>
+    <ValidateArchitecture>false</ValidateArchitecture>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\..\..\Program Files (x86)\Arduino\hardware\teensy\avr\cores\teensy3;$(ProjectDir)..\..\..\..\program files (x86)\arduino\hardware\tools\arm\arm-none-eabi\include\c++\5.4.1;$(ProjectDir)..\..\..\..\program files (x86)\arduino\hardware\tools\arm\arm-none-eabi\include\c++\5.4.1\arm-none-eabi\armv7e-m\fpu;$(ProjectDir)..\..\..\..\program files (x86)\arduino\hardware\tools\arm\arm-none-eabi\include\c++\5.4.1\backward;$(ProjectDir)..\..\..\..\program files (x86)\arduino\hardware\tools\arm\lib\gcc\arm-none-eabi\5.4.1\include;$(ProjectDir)..\..\..\..\program files (x86)\arduino\hardware\tools\arm\lib\gcc\arm-none-eabi\5.4.1\include-fixed;$(ProjectDir)..\..\..\..\program files (x86)\arduino\hardware\tools\arm\arm-none-eabi\include;$(ProjectDir)..\..\..\..\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\Wire;$(ProjectDir)..\..\..\..\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\Wire\utility;$(ProjectDir)..\..\Documents\Arduino\libraries\SparkFun_Qwiic_Haptic_Driver_DA7280_Arduino_Library-main\src;$(ProjectDir)..\..\..\..\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\Audio;$(ProjectDir)..\..\..\..\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\Audio\utility;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <GccToolChain>$(ProjectDir)..\..\..\..\Program Files (x86)\Arduino\hardware\tools\arm\bin\arm-none-eabi-g++</GccToolChain>
+      <CppLanguageStandard>gnu++1y</CppLanguageStandard>
+      <CLanguageStandard>gnu11</CLanguageStandard>
+      <CAdditionalWarning />
+      <CppAdditionalWarning />
+      <ForcedIncludeFiles>$(ProjectDir)..\..\..\..\program files\microsoft visual studio\2022\community\common7\ide\extensions\vnvjqa53.4wo\Micro Platforms\default\vm-intelli-pre.h;$(ProjectDir)..\..\AppData\Local\Temp\VMBuilds\ExploratoryStudy\teensy35\Debug\.vmintelli\6db4c70ff5c2fe4160415cb05f076d21\vm-intelli-gcc-defines.h;$(ProjectDir)..\..\..\..\program files\microsoft visual studio\2022\community\common7\ide\extensions\vnvjqa53.4wo\Micro Platforms\default\vm-intelli-post.h;$(ProjectDir)__vm\.ExploratoryStudy.vsarduino.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <UndefineAllPreprocessorDefinitions>true</UndefineAllPreprocessorDefinitions>
+      <IgnoreStandardIncludePath>true</IgnoreStandardIncludePath>
+      <PreprocessorDefinitions>_VMICRO_INTELLISENSE;__HARDWARE_mk64fx512__;__HARDWARE_MK64FX512__;__MK64FX512__;TEENSYDUINO=156;ARDUINO=108019;ARDUINO_TEENSY35;F_CPU=120000000;USB_SERIAL;LAYOUT_US_ENGLISH;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />
+  <ProjectExtensions>
+    <VisualStudio>
+      <UserProperties config.Debug.customdebug_teensy35_debugger_type="universal" />
+    </VisualStudio>
+  </ProjectExtensions>
 </Project>

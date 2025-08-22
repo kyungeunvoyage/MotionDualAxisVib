@@ -126,7 +126,7 @@ void setup() {
     initDA7280(hapDrive);
 
     //titan LF
-    analogWriteResolution(12);
+    //analogWriteResolution(12);
     Serial.println("TitanLF Initiated");
 
     //generate negative
