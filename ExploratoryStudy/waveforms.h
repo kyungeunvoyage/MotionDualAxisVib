@@ -51,5 +51,7 @@ extern int16_t wave_asymHalfSine[256];
 extern int16_t wave_amBurstAsym[256];
 extern int16_t wave_quadPushLinReturn[256];
 
+extern int16_t slowUpHardDropPR[256];
+
 
 #endif

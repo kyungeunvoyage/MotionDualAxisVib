@@ -96,6 +96,8 @@ int16_t biasWaveform[256];
 
 int16_t high_highTP[256];
 int16_t high_highPR[256];
+int16_t slowUpHardDropPR[256];
+
 
 struct WaveRef { const int16_t* data; int len; };
 WaveRef getWave(const char* name) {
