@@ -18,8 +18,8 @@
 #include "waveforms.h"
 
 //==================VCA setup====================
-const int DAC_PIN_A21 = A21; //Teensy 3.5 DAC0 == R in
-const int DAC_PIN_A22 = A22; //Teensy 3.5 DAC1 == L in
+const int DAC_PIN_A21 = A21; //Teensy 3.5 DAC0 == R in radial
+const int DAC_PIN_A22 = A22; //Teensy 3.5 DAC1 == L in ulnar
 
 const int waveformSize = 256;
 int waveformIndex = 0;
@@ -46,15 +46,22 @@ void setup() {
 	//CreateAllWaveforms();  // << 여기서 한 번에 생성!
 	//generatePositiveBiasedWaveform();
 
-	//time phase 
+	//time phase
 	for (int i = 0; i < 256; i++) high_highTP[i] = high_high[255 - i];
 
 	//Polarity reverse
 	for (int i = 0; i < 256; i++) high_highPR[i] = -high_high[i];
 
-	for (int i = 0; i < 256; i++) slowUpHardDropPR[i] = -wave_slowUpHardDrop[i];
-
-}
+	//polarity reverse for Exploratory study
+	for (int i = 0; i < 256; i++)
+	{
+		slowUpHardDropPR[i] = -wave_slowUpHardDrop[i];
+		xpRiseLinFallPR[i] = -wave_expRiseLinFall[i];
+		impulseDampedTailPR[i] = -wave_impulseDampedTail[i];
+		asymHalfSinePR[i] = -wave_asymHalfSine[i];
+		amBurstAsymPR[i] = -wave_amBurstAsym[i];
+		quadPushLinReturnPR[i] = -wave_quadPushLinReturn[i];
+	}
 
 
 //================gain setting=====================
@@ -134,7 +141,7 @@ void playAsymTimingDual(const int16_t* w, int N,
 }
 
 //===========================Duo Polarity Reverse가 포함된 함수======================
-//반대도 플레이하는 경우의수 
+//반대도 플레이하는 경우의수
 void playHalfSineWithRatioDualAltPolarity(const int16_t* w, int N, float gainA22_base, float gainA21_base, int dacPinA22, int dacPinA21,
 	float delayPerSampleUs, float rRise, float rFall, bool invertA21_base, int pairRepeats)
 	// 쌍 반복 횟수 (정상→반전 = 1쌍))
@@ -235,4 +242,3 @@ void loop() {
 		}
 	}
 }
-

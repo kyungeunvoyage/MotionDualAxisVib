@@ -1,388 +1,313 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Exploratory Study Runner · VCA Directionality</title>
-    <style>
-        :root {
-            --bg: #0b0f14;
-            --fg: #e5eef7;
-            --muted: #99a7b5;
-            --accent: #7bd3ff;
-            --card: #121822;
-            --ok: #75e39c;
-            --warn: #ffd36a;
-            --err: #ff8b8b;
-        }
-
-        body {
-            margin: 0;
-            font-family: Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
-            background: var(--bg);
-            color: var(--fg);
-        }
-
-        header {
-            padding: 16px 20px;
-            border-bottom: 1px solid #1f2a38;
-            position: sticky;
-            top: 0;
-            background: linear-gradient(180deg, rgba(11,15,20,.95), rgba(11,15,20,.85));
-            backdrop-filter: blur(8px);
-        }
-
-        h1 {
-            margin: 0;
-            font-size: 20px;
-            letter-spacing: .2px;
-        }
-
-        main {
-            padding: 20px;
-            display: grid;
-            gap: 16px;
-            grid-template-columns: 360px 1fr;
-        }
-
-        section {
-            background: var(--card);
-            border: 1px solid #1b2633;
-            border-radius: 14px;
-            padding: 16px;
-        }
-
-            section h2 {
-                margin: 0 0 10px;
-                font-size: 16px;
-                color: var(--accent);
-            }
-
-        .row {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-
-        label {
-            font-size: 13px;
-            color: var(--muted);
-        }
-
-        input, select, button {
-            background: #0d131c;
-            color: var(--fg);
-            border: 1px solid #223042;
-            border-radius: 10px;
-            padding: 8px 10px;
-            font-size: 14px;
-        }
-
-        button {
-            background: #0e1621;
-            cursor: pointer;
-            transition: .15s ease;
-        }
-
-            button.primary {
-                background: #143047;
-                border-color: #1e4b6d;
-            }
-
-            button:hover {
-                transform: translateY(-1px);
-            }
-
-        .grid2 {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-        }
-
-        .badge {
-            font-size: 12px;
-            padding: 3px 8px;
-            border-radius: 999px;
-            border: 1px solid #294059;
-            color: #bfe7ff;
-        }
-
-        .big {
-            font-size: 24px;
-            font-weight: 700;
-        }
-
-        .center {
-            text-align: center;
-        }
-
-        .hidden {
-            display: none !important;
-        }
-
-        .sep {
-            height: 1px;
-            background: #1b2633;
-            margin: 10px 0;
-        }
-
-        .warn {
-            color: var(--warn);
-        }
-
-        .ok {
-            color: var(--ok);
-        }
-
-        .scale-btn {
-            flex: 1;
-            min-width: 30px;
-            padding: 10px;
-            border-radius: 8px;
-            background: #0e1621;
-            border: 1px solid #223042;
-            cursor: pointer;
-        }
-
-            .scale-btn.active {
-                background: var(--accent);
-                color: #000;
-                font-weight: bold;
-            }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Exploratory Study Runner · VCA Directionality</title>
+  <style>
+    :root { --bg:#0b0f14; --fg:#e5eef7; --muted:#99a7b5; --accent:#7bd3ff; --card:#121822; --ok:#75e39c; --warn:#ffd36a; --err:#ff8b8b; }
+    body { margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; background:var(--bg); color:var(--fg); }
+    header { padding:16px 20px; border-bottom:1px solid #1f2a38; position:sticky; top:0; background:linear-gradient(180deg, rgba(11,15,20,.95), rgba(11,15,20,.85)); backdrop-filter: blur(8px); }
+    h1 { margin:0; font-size:20px; letter-spacing:.2px; }
+    main { padding:20px; display:grid; gap:16px; grid-template-columns: 360px 1fr; }
+    section { background:var(--card); border:1px solid #1b2633; border-radius:14px; padding:16px; }
+    section h2 { margin:0 0 10px; font-size:16px; color:var(--accent); }
+    .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    label { font-size:13px; color:var(--muted); }
+    input, select, button { background:#0d131c; color:var(--fg); border:1px solid #223042; border-radius:10px; padding:8px 10px; font-size:14px; }
+    button { background:#0e1621; cursor:pointer; transition:.15s ease; }
+    button.primary { background:#143047; border-color:#1e4b6d; }
+    button:hover { transform: translateY(-1px); }
+    .grid2 { display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+    .badge { font-size:12px; padding:3px 8px; border-radius:999px; border:1px solid #294059; color:#bfe7ff; }
+    .big { font-size:24px; font-weight:700; }
+    .center { text-align:center; }
+    .hidden { display:none !important; }
+    .sep { height:1px; background:#1b2633; margin:10px 0; }
+    .warn { color: var(--warn); }
+    .ok { color: var(--ok); }
+    .scale-btn { flex:1; min-width:30px; padding:10px; border-radius:8px; background:#0e1621; border:1px solid #223042; cursor:pointer; }
+    .scale-btn.active { background:var(--accent); color:#000; font-weight:bold; }
+    /* 선택된 방향 버튼 강조 */
+    .respSel { border-color:#2f95da; box-shadow:0 0 0 2px rgba(47,149,218,.25) inset; }
+  </style>
 </head>
 <body>
-    <header>
-        <h1>Exploratory Study Runner · VCA Directionality <span class="badge" id="serialStatus">미연결</span></h1>
-    </header>
-    <main>
-        <section>
-            <h2>① 세션 설정</h2>
-            <div class="grid2">
-                <label>Participant ID<br><input id="pid" placeholder="P001" /></label>
-                <label>
-                    Block 순서<br>
-                    <select id="blockOrder">
-                        <option value="UR">A: Ulnar → B: Radial</option>
-                        <option value="RU">A: Radial → B: Ulnar</option>
-                    </select>
-                </label>
-            </div>
-            <div class="grid2" style="margin-top:8px;">
-                <label>
-                    Ulnar 축 (Y=앞/뒤, Z=위/아래)<br>
-                    <select id="axisU"><option>Y</option><option>Z</option></select>
-                </label>
-                <label>
-                    Radial 축 (Y=앞/뒤, Z=위/아래)<br>
-                    <select id="axisR"><option>Y</option><option>Z</option></select>
-                </label>
-            </div>
-            <div class="sep"></div>
-            <div class="row">
-                <button id="btnConnect" class="primary">시리얼 연결</button>
-                <button id="btnStart">세션 시작</button>
-                <button id="btnDownload">CSV 저장</button>
-            </div>
-            <p style="margin-top:8px;" class="warn">* Web Serial은 Chromium 기반 브라우저(Chrome/Edge/Whale 등)에서만 지원됩니다.</p>
-        </section>
+  <header>
+    <h1>Exploratory Study Runner · VCA Directionality <span class="badge" id="serialStatus">미연결</span></h1>
+  </header>
+  <main>
+    <section>
+      <h2>① 세션 설정</h2>
+      <div class="grid2">
+        <label>Participant ID<br><input id="pid" placeholder="P001" /></label>
+        <label>Block 순서<br>
+          <select id="blockOrder">
+            <option value="UR">A: Ulnar → B: Radial</option>
+            <option value="RU">A: Radial → B: Ulnar</option>
+          </select>
+        </label>
+      </div>
+      <div class="grid2" style="margin-top:8px;">
+        <label>Ulnar 축 (Y=앞/뒤, Z=위/아래)<br>
+          <select id="axisU"><option>Y</option><option>Z</option></select>
+        </label>
+        <label>Radial 축 (Y=앞/뒤, Z=위/아래)<br>
+          <select id="axisR"><option>Y</option><option>Z</option></select>
+        </label>
+      </div>
+      <div class="sep"></div>
+      <div class="row">
+        <button id="btnConnect" class="primary">시리얼 연결</button>
+        <button id="btnStart">세션 시작</button>
+        <button id="btnDownload">CSV 저장</button>
+      </div>
+      <div class="row" style="margin-top:8px;">
+        <label style="display:flex;align-items:center;gap:6px;">
+          <input type="checkbox" id="demoMode"/>
+          데모 모드(시리얼 없이 진행)
+        </label>
+      </div>
+    </section>
 
-        <section>
-            <h2>② 진행 패널</h2>
-            <div id="stateBox" class="center" style="padding:10px 8px;">
-                <div class="big" id="phase">대기</div>
-            </div>
-            <div class="sep"></div>
+    <section>
+      <h2>② 진행 패널</h2>
+      <div id="stateBox" class="center" style="padding:10px 8px;">
+        <div class="big" id="phase">대기</div>
+      </div>
+      <div class="sep"></div>
 
-            <div id="responsePanel" class="center hidden">
-                <div class="row center" style="justify-content:center; gap:14px; flex-wrap:wrap;">
-                    <button id="btnUp" style="min-width:120px;">위 (Z+)</button>
-                    <button id="btnDown" style="min-width:120px;">아래 (Z−)</button>
-                    <button id="btnForward" style="min-width:120px;">앞 (Y+)</button>
-                    <button id="btnBackward" style="min-width:120px;">뒤 (Y−)</button>
-                </div>
-                <div style="margin-top:16px;">
-                    <div>확신도 선택 (1–7):</div>
-                    <div class="row" style="justify-content:center; gap:6px; margin-top:6px;">
-                        <button class="scale-btn" data-val="1">1</button>
-                        <button class="scale-btn" data-val="2">2</button>
-                        <button class="scale-btn" data-val="3">3</button>
-                        <button class="scale-btn active" data-val="4">4</button>
-                        <button class="scale-btn" data-val="5">5</button>
-                        <button class="scale-btn" data-val="6">6</button>
-                        <button class="scale-btn" data-val="7">7</button>
-                    </div>
-                </div>
-            </div>
-        </section>
-    </main>
+      <div id="responsePanel" class="center hidden">
+        <div class="row center" style="justify-content:center; gap:14px; flex-wrap:wrap;">
+          <button id="btnUp" class="respBtn" style="min-width:120px;">위 (Z+)</button>
+          <button id="btnDown" class="respBtn" style="min-width:120px;">아래 (Z−)</button>
+          <button id="btnForward" class="respBtn" style="min-width:120px;">앞 (Y+)</button>
+          <button id="btnBackward" class="respBtn" style="min-width:120px;">뒤 (Y−)</button>
+        </div>
+        <div style="margin-top:16px;">
+          <div>확신도 선택 (1–7):</div>
+          <div class="row" style="justify-content:center; gap:6px; margin-top:6px;">
+            <button class="scale-btn" data-val="1">1</button>
+            <button class="scale-btn" data-val="2">2</button>
+            <button class="scale-btn" data-val="3">3</button>
+            <button class="scale-btn" data-val="4">4</button>
+            <button class="scale-btn" data-val="5">5</button>
+            <button class="scale-btn" data-val="6">6</button>
+            <button class="scale-btn" data-val="7">7</button>
+          </div>
+          <div class="row" style="justify-content:center; gap:10px; margin-top:12px;">
+            <button id="btnNext" class="primary" disabled>다음 ▶</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
 
-    <script>
-        const $ = sel => document.querySelector(sel);
-        const $$ = sel => document.querySelectorAll(sel);
-        const sleep = ms => new Promise(r => setTimeout(r, ms));
+  <script>
+    const $ = sel => document.querySelector(sel);
+    const $$ = sel => document.querySelectorAll(sel);
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-        let port, writer;
-        let running = false;
-        let trialStartTs = 0;
+    let port, writer;
+    let running = false;
+    let trialStartTs = 0;
+    let demo = false;
 
-        const WAVEFORMS = [1, 2, 3, 4, 5, 6];
-        const SIGNS = [+1, -1];
-        let trials = [];
-        let currentIndex = -1;
-        const rows = [];
-        const REPS_PER_COMBO = 1;
-        let currentCond = '';
-        let currentConf = 4;
+    const WAVEFORMS = [1,2,3,4,5,6];
+    const SIGNS = [+1,-1];
+    let trials = [];
+    let currentIndex = -1;
+    const rows = [];
+    const REPS_PER_COMBO = 1;
+    let currentCond = '';
+    let currentConf = null; // 확신도 미선택 상태
 
-        async function connectSerial() {
-            try {
-                port = await navigator.serial.requestPort();
-                await port.open({ baudRate: 115200 });
-                writer = port.writable.getWriter();
-                $('#serialStatus').textContent = '연결됨';
-                $('#serialStatus').style.color = 'var(--ok)';
-                alert('시리얼 연결 성공: 이제 세션 시작 버튼을 누르세요.');
-            } catch (e) { alert('Serial 연결 실패: Chrome/Edge/Whale 브라우저인지 확인하고, COM 포트 선택/드라이버를 확인하세요.'); }
+    // 응답(방향) 선택 상태
+    let chosenRespLabel = null, chosenRespSign = null;
+
+    async function connectSerial(){
+      try{
+        demo = $('#demoMode')?.checked === true;
+        if (demo) {
+          $('#serialStatus').textContent = '데모';
+          $('#serialStatus').style.color = 'var(--ok)';
+          alert('데모 모드: 시리얼 없이 진행합니다. 이제 세션 시작을 누르세요.');
+          return;
         }
+        port = await navigator.serial.requestPort();
+        await port.open({ baudRate: 115200 });
+        writer = port.writable.getWriter();
+        $('#serialStatus').textContent = '연결됨';
+        $('#serialStatus').style.color = 'var(--ok)';
+        alert('시리얼 연결 성공: 이제 세션 시작 버튼을 누르세요.');
+      }catch(e){
+        alert('Serial 연결 실패: COM 포트 선택/드라이버를 확인');
+      }
+    }
 
-        async function sendCommand(s) {
-            if (!writer) return;
-            const enc = new TextEncoder();
-            await writer.write(enc.encode(s));
-        }
+    async function sendCommand(s){
+      if (demo) { await new Promise(r=>setTimeout(r,30)); return; }
+      if (!writer) return;
+      const enc = new TextEncoder();
+      await writer.write(enc.encode(s));
+    }
 
-        function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[a[i], a[j]] = [a[j], a[i]]; } return a; }
+    async function startSession(){
+      demo = $('#demoMode')?.checked === true;
+      if (!demo && !port) { alert('먼저 시리얼 연결을 해주세요'); return; }
+      buildTrials();
+      running = true;
+      nextTrial();
+    }
 
-        function buildTrials() {
-            trials = [];
-            const pid = $('#pid').value || 'P000';
-            const orderUR = $('#blockOrder').value === 'UR';
-            const axisU = $('#axisU').value;
-            const axisR = $('#axisR').value;
+    function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 
-            const blocks = orderUR ? [{ side: 'ulnar', axis: axisU }, { side: 'radial', axis: axisR }]
-                : [{ side: 'radial', axis: axisR }, { side: 'ulnar', axis: axisU }];
+    function buildTrials(){
+      trials = [];
+      const pid = $('#pid').value || 'P000';
+      const orderUR = $('#blockOrder').value === 'UR';
+      const axisU = $('#axisU').value;
+      const axisR = $('#axisR').value;
 
-            for (const b of blocks) {
-                for (const wf of WAVEFORMS) {
-                    for (const sgn of SIGNS) {
-                        for (let r = 0; r < REPS_PER_COMBO; r++) {
-                            trials.push({ participant_id: pid, block: b.side === 'ulnar' ? 'A' : 'B', stim_side: b.side, axis: b.axis, waveform: wf, sign: sgn });
-                        }
-                    }
-                }
+      const blocks = orderUR ? [{side:'ulnar',axis:axisU},{side:'radial',axis:axisR}]
+                             : [{side:'radial',axis:axisR},{side:'ulnar',axis:axisU}];
+
+      for (const b of blocks){
+        for (const wf of WAVEFORMS){
+          for (const sgn of SIGNS){
+            for (let r=0; r<REPS_PER_COMBO; r++){
+              trials.push({ participant_id: pid, block: b.side==='ulnar'?'A':'B', stim_side: b.side, axis: b.axis, waveform: wf, sign: sgn });
             }
-            shuffle(trials);
-            currentIndex = -1;
+          }
         }
+      }
+      shuffle(trials);
+      currentIndex = -1;
+    }
 
-        async function startSession() {
-            if (!port) { alert('먼저 시리얼 연결을 해주세요'); return; }
-            buildTrials();
-            running = true;
-            nextTrial();
-        }
+    async function nextTrial(){
+      currentIndex++;
+      if (currentIndex >= trials.length){
+        running = false;
+        $('#phase').textContent = '세션 종료';
+        $('#responsePanel').classList.add('hidden');
+        alert('세션 종료');
+        return;
+      }
 
-        async function nextTrial() {
-            currentIndex++;
-            if (currentIndex >= trials.length) {
-                running = false;
-                $('#phase').textContent = '세션 종료';
-                $('#responsePanel').classList.add('hidden');
-                alert('세션 종료');
-                return;
-            }
+      const t = trials[currentIndex];
+      $('#phase').textContent = demo ? '자극 중… (데모)' : '자극 중…';
+      currentCond = `${t.block},${t.stim_side},${t.axis},WF${t.waveform},sign${t.sign>0?'+':'−'}`;
+      $('#responsePanel').classList.add('hidden');
 
-            const t = trials[currentIndex];
-            $('#phase').textContent = `자극 중…`;
-            currentCond = `${t.block},${t.stim_side},${t.axis},WF${t.waveform},sign${t.sign > 0 ? '+' : '−'}`;
-            $('#responsePanel').classList.add('hidden');
+      // sign에 따라 0/1 전송
+      const trig = t.sign > 0 ? '0' : '1';
+      await sendCommand(trig);
+      trialStartTs = performance.now();
+      await sleep(500);
 
-            const trig = t.sign > 0 ? '0' : '1';
-            await sendCommand(trig);
-            trialStartTs = performance.now();
-            await sleep(500);
+      // 응답 UI 준비
+      $('#responsePanel').classList.remove('hidden');
+      $('#phase').textContent = demo ? '응답 대기 (데모)' : '응답 대기';
+      // 초기화
+      chosenRespLabel = null; chosenRespSign = null; currentConf = null;
+      document.querySelectorAll('.respBtn').forEach(b => b.classList.remove('respSel'));
+      document.querySelectorAll('.scale-btn').forEach(b => b.classList.remove('active'));
+      $('#btnNext').disabled = true;
+    }
 
-            $('#responsePanel').classList.remove('hidden');
-            $('#phase').textContent = '응답 대기';
-            selectConfidence(4);
-        }
+    function selectConfidence(val){
+      currentConf = val;
+      $$('.scale-btn').forEach(btn=>{
+        if (parseInt(btn.dataset.val) === val) btn.classList.add('active');
+        else btn.classList.remove('active');
+      });
+      updateNextEnabled();
+    }
 
-        function selectConfidence(val) {
-            currentConf = val;
-            $$('.scale-btn').forEach(btn => {
-                if (parseInt(btn.dataset.val) === val) { btn.classList.add('active'); }
-                else { btn.classList.remove('active'); }
-            });
-        }
+    function chooseResponse(respLabel, respSign){
+      chosenRespLabel = respLabel;
+      chosenRespSign = respSign;
+      document.querySelectorAll('.respBtn').forEach(b => b.classList.remove('respSel'));
+      const map = { 'Up':'#btnUp', 'Down':'#btnDown', 'Forward':'#btnForward', 'Backward':'#btnBackward' };
+      const el = document.querySelector(map[respLabel]);
+      if (el) el.classList.add('respSel');
+      updateNextEnabled();
+    }
 
-        function handleResponse(respLabel, respSign) {
-            const t = trials[currentIndex];
-            const rt = Math.round(performance.now() - trialStartTs);
-            const row = {
-                timestamp: new Date().toISOString(),
-                participant_id: t.participant_id,
-                block: t.block,
-                stim_side: t.stim_side,
-                axis: t.axis,
-                waveform: t.waveform,
-                sign: t.sign,
-                true_dir: t.sign,
-                response_label: respLabel,
-                response_dir: respSign,
-                correct: (respSign === t.sign) ? 1 : 0,
-                rt_ms: rt,
-                confidence: currentConf,
-                condition_info: currentCond,
-                notes: ''
-            };
-            rows.push(row);
-            $('#responsePanel').classList.add('hidden');
-            $('#phase').textContent = '휴지';
-            sleep(250).then(nextTrial);
-        }
+    function updateNextEnabled(){
+      const btn = $('#btnNext');
+      if (!btn) return;
+      btn.disabled = !(chosenRespSign !== null && currentConf !== null);
+    }
 
-        $('#btnUp').onclick = () => handleResponse('Up', +1);
-        $('#btnDown').onclick = () => handleResponse('Down', -1);
-        $('#btnForward').onclick = () => handleResponse('Forward', +1);
-        $('#btnBackward').onclick = () => handleResponse('Backward', -1);
+    async function commitAndNext(){
+      const t = trials[currentIndex];
+      const rt = Math.round(performance.now() - trialStartTs);
+      const row = {
+        timestamp: new Date().toISOString(),
+        participant_id: t.participant_id,
+        block: t.block,
+        stim_side: t.stim_side,
+        axis: t.axis,
+        waveform: t.waveform,
+        sign: t.sign,
+        true_dir: t.sign,
+        response_label: chosenRespLabel,
+        response_dir: chosenRespSign,
+        correct: (chosenRespSign === t.sign) ? 1 : 0,
+        rt_ms: rt,
+        confidence: currentConf,
+        condition_info: currentCond,
+        demo_mode: demo ? 1 : 0,
+        notes: ''
+      };
+      rows.push(row);
+      $('#responsePanel').classList.add('hidden');
+      $('#phase').textContent = '휴지';
+      await sleep(250);
+      nextTrial();
+    }
 
-        $$('.scale-btn').forEach(btn => {
-            btn.addEventListener('click', () => selectConfidence(parseInt(btn.dataset.val)));
-        });
+    // 이벤트 바인딩
+    $('#btnConnect').addEventListener('click', connectSerial);
+    $('#btnStart').addEventListener('click', startSession);
+    $('#btnDownload').addEventListener('click', ()=>{
+      const csv = toCSV(rows);
+      if (!csv) { alert('저장할 데이터가 없습니다'); return; }
+      const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+      const a = document.createElement('a');
+      const pid = $('#pid').value || 'P000';
+      a.href = URL.createObjectURL(blob);
+      a.download = `${pid}_exploratory_raw.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    });
 
-        function toCSV(rows) {
-            if (!rows.length) return '';
-            const cols = Object.keys(rows[0]);
-            const header = cols.join(',');
-            const esc = v => {
-                if (v == null) return '';
-                const s = String(v);
-                return /[",\n]/.test(s) ? '"' + s.replaceAll('"', '""') + '"' : s;
-            };
-            const lines = rows.map(r => cols.map(c => esc(r[c])).join(','));
-            return header + '\n' + lines.join('\n');
-        }
+    $('#btnUp').onclick       = () => chooseResponse('Up', +1);
+    $('#btnDown').onclick     = () => chooseResponse('Down', -1);
+    $('#btnForward').onclick  = () => chooseResponse('Forward', +1);
+    $('#btnBackward').onclick = () => chooseResponse('Backward', -1);
 
-        function downloadCSV() {
-            const csv = toCSV(rows);
-            if (!csv) { alert('저장할 데이터가 없습니다'); return; }
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const a = document.createElement('a');
-            const pid = $('#pid').value || 'P000';
-            a.href = URL.createObjectURL(blob);
-            a.download = `${pid}_exploratory_raw.csv`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-        }
+    $$('.scale-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=> selectConfidence(parseInt(btn.dataset.val)));
+    });
 
-        $('#btnConnect').addEventListener('click', connectSerial);
-        $('#btnStart').addEventListener('click', startSession);
-        $('#btnDownload').addEventListener('click', downloadCSV);
+    $('#btnNext').addEventListener('click', commitAndNext);
 
-    </script>
+    function toCSV(rows){
+      if (!rows.length) return '';
+      const cols = Object.keys(rows[0]);
+      const header = cols.join(',');
+      const esc = v => {
+        if (v==null) return '';
+        const s = String(v);
+        return /[",\n]/.test(s) ? '"'+s.replaceAll('"','""')+'"' : s;
+      };
+      const lines = rows.map(r => cols.map(c => esc(r[c])).join(','));
+      return header+'\n'+lines.join('\n');
+    }
+  </script>
 </body>
 </html>

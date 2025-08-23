@@ -1,6 +1,6 @@
-// 
-// 
-// 
+//
+//
+//
 
 #include "waveforms.h"
 
@@ -97,6 +97,11 @@ int16_t biasWaveform[256];
 int16_t high_highTP[256];
 int16_t high_highPR[256];
 int16_t slowUpHardDropPR[256];
+int16_t xpRiseLinFallPR[256];
+int16_t impulseDampedTailPR[256];
+int16_t asymHalfSinePR[256];
+int16_t amBurstAsymPR[256];
+int16_t quadPushLinReturnPR[256];
 
 
 struct WaveRef { const int16_t* data; int len; };
