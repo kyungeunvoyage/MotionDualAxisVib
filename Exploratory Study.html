@@ -9,16 +9,15 @@
     body { margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; background:var(--bg); color:var(--fg); }
     header { padding:16px 20px; border-bottom:1px solid #1f2a38; position:sticky; top:0; background:linear-gradient(180deg, rgba(11,15,20,.95), rgba(11,15,20,.85)); backdrop-filter: blur(8px); }
     h1 { margin:0; font-size:20px; letter-spacing:.2px; }
-    main { padding:20px; display:grid; gap:16px; grid-template-columns: 360px 1fr; }
+    main { padding:20px; display:grid; gap:16px; grid-template-columns: 420px 1fr; }
     section { background:var(--card); border:1px solid #1b2633; border-radius:14px; padding:16px; }
     section h2 { margin:0 0 10px; font-size:16px; color:var(--accent); }
     .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
     label { font-size:13px; color:var(--muted); }
-    input, select, button { background:#0d131c; color:var(--fg); border:1px solid #223042; border-radius:10px; padding:8px 10px; font-size:14px; }
+    input, select, button { background:#0d131c; color:#fff; border:1px solid #223042; border-radius:10px; padding:8px 10px; font-size:14px; }
     button { background:#0e1621; cursor:pointer; transition:.15s ease; }
     button.primary { background:#143047; border-color:#1e4b6d; }
     button:hover { transform: translateY(-1px); }
-    .grid2 { display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
     .badge { font-size:12px; padding:3px 8px; border-radius:999px; border:1px solid #294059; color:#bfe7ff; }
     .big { font-size:24px; font-weight:700; }
     .center { text-align:center; }
@@ -28,8 +27,9 @@
     .ok { color: var(--ok); }
     .scale-btn { flex:1; min-width:30px; padding:10px; border-radius:8px; background:#0e1621; border:1px solid #223042; cursor:pointer; }
     .scale-btn.active { background:var(--accent); color:#000; font-weight:bold; }
-    /* 선택된 방향 버튼 강조 */
     .respSel { border-color:#2f95da; box-shadow:0 0 0 2px rgba(47,149,218,.25) inset; }
+    .panel { padding:10px; border:1px dashed #273447; border-radius:12px; margin-bottom:12px; }
+    .hint { font-size:12px; color:var(--muted); }
   </style>
 </head>
 <body>
@@ -39,20 +39,20 @@
   <main>
     <section>
       <h2>① 세션 설정</h2>
-      <div class="grid2">
-        <label>Participant ID<br><input id="pid" placeholder="P001" /></label>
-        <label>Block 순서<br>
+      <div class="row">
+        <label>Participant ID&nbsp;<input id="pid" placeholder="P001" /></label>
+        <label>Block 순서&nbsp;
           <select id="blockOrder">
             <option value="UR">A: Ulnar → B: Radial</option>
             <option value="RU">A: Radial → B: Ulnar</option>
           </select>
         </label>
       </div>
-      <div class="grid2" style="margin-top:8px;">
-        <label>Ulnar 축 (Y=앞/뒤, Z=위/아래)<br>
+      <div class="row" style="margin-top:8px;">
+        <label>Ulnar 축(Y/Z)&nbsp;
           <select id="axisU"><option>Y</option><option>Z</option></select>
         </label>
-        <label>Radial 축 (Y=앞/뒤, Z=위/아래)<br>
+        <label>Radial 축(Y/Z)&nbsp;
           <select id="axisR"><option>Y</option><option>Z</option></select>
         </label>
       </div>
@@ -61,11 +61,8 @@
         <button id="btnConnect" class="primary">시리얼 연결</button>
         <button id="btnStart">세션 시작</button>
         <button id="btnDownload">CSV 저장</button>
-      </div>
-      <div class="row" style="margin-top:8px;">
-        <label style="display:flex;align-items:center;gap:6px;">
-          <input type="checkbox" id="demoMode"/>
-          데모 모드(시리얼 없이 진행)
+        <label style="display:flex;align-items:center;gap:6px;margin-left:auto;">
+          <input type="checkbox" id="demoMode"/> 데모 모드
         </label>
       </div>
     </section>
@@ -74,8 +71,17 @@
       <h2>② 진행 패널</h2>
       <div id="stateBox" class="center" style="padding:10px 8px;">
         <div class="big" id="phase">대기</div>
+        <div class="hint" id="trialInfo"></div>
       </div>
       <div class="sep"></div>
+
+      <!-- 자극 재생(버튼 누를 때마다 펄스 1회) -->
+      <div id="stimPanel" class="panel center hidden">
+        <div class="row" style="justify-content:center; gap:12px;">
+          <button id="btnPlay" class="primary">자극 재생</button>
+          <span id="playHint" class="hint"></span>
+        </div>
+      </div>
 
       <div id="responsePanel" class="center hidden">
         <div class="row center" style="justify-content:center; gap:14px; flex-wrap:wrap;">
@@ -110,7 +116,6 @@
 
     let port, writer;
     let running = false;
-    let trialStartTs = 0;
     let demo = false;
 
     const WAVEFORMS = [1,2,3,4,5,6];
@@ -119,12 +124,18 @@
     let currentIndex = -1;
     const rows = [];
     const REPS_PER_COMBO = 1;
-    let currentCond = '';
-    let currentConf = null; // 확신도 미선택 상태
 
-    // 응답(방향) 선택 상태
+    let currentCond = '';
+    let currentConf = null;
     let chosenRespLabel = null, chosenRespSign = null;
 
+    // 재생/RT 관리 (버튼당 펄스 1회)
+    let isPlaying = false;
+    let playCount = 0;
+    let totalPulses = 0;
+    let lastStimEndTs = 0;
+
+    // ===== Serial =====
     async function connectSerial(){
       try{
         demo = $('#demoMode')?.checked === true;
@@ -145,21 +156,24 @@
       }
     }
 
+    // 10과 11을 해결하기 위한.. byte 이슈
+    async function sendByte(n){          // n: 0..255
+    if (!writer) return;
+    const buf = new Uint8Array([n & 0xFF]);
+    await writer.write(buf);
+    }
+    const code = (t.waveform-1)*2 + (t.sign>0?0:1);
+    await sendByte(code); // 0..11을 '한 바이트'로 전송
+
+
     async function sendCommand(s){
-      if (demo) { await new Promise(r=>setTimeout(r,30)); return; }
+      if (demo) { await sleep(30); return; }
       if (!writer) return;
       const enc = new TextEncoder();
       await writer.write(enc.encode(s));
     }
 
-    async function startSession(){
-      demo = $('#demoMode')?.checked === true;
-      if (!demo && !port) { alert('먼저 시리얼 연결을 해주세요'); return; }
-      buildTrials();
-      running = true;
-      nextTrial();
-    }
-
+    // ===== Trials =====
     function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 
     function buildTrials(){
@@ -185,42 +199,76 @@
       currentIndex = -1;
     }
 
+    async function startSession(){
+      demo = $('#demoMode')?.checked === true;
+      if (!demo && !port) { alert('먼저 시리얼 연결을 해주세요'); return; }
+      buildTrials();
+      running = true;
+      nextTrial();
+    }
+
     async function nextTrial(){
       currentIndex++;
       if (currentIndex >= trials.length){
         running = false;
         $('#phase').textContent = '세션 종료';
         $('#responsePanel').classList.add('hidden');
+        $('#stimPanel').classList.add('hidden');
         alert('세션 종료');
         return;
       }
 
       const t = trials[currentIndex];
-      $('#phase').textContent = demo ? '자극 중… (데모)' : '자극 중…';
+      $('#phase').textContent = '설정/재생 대기';
       currentCond = `${t.block},${t.stim_side},${t.axis},WF${t.waveform},sign${t.sign>0?'+':'−'}`;
+      // $('#trialInfo').textContent = `Block ${t.block} · Side ${t.stim_side} · Axis ${t.axis} · WF${t.waveform} ${t.sign>0?'+':'−'}`;
+
+      // 패널 상태
+      $('#stimPanel').classList.remove('hidden');
       $('#responsePanel').classList.add('hidden');
+      $('#btnNext').disabled = true;
 
-      // sign에 따라 0/1 전송
-      const trig = t.sign > 0 ? '0' : '1';
-      await sendCommand(trig);
-      trialStartTs = performance.now();
-      await sleep(500);
-
-      // 응답 UI 준비
-      $('#responsePanel').classList.remove('hidden');
-      $('#phase').textContent = demo ? '응답 대기 (데모)' : '응답 대기';
-      // 초기화
+      // 선택 초기화
       chosenRespLabel = null; chosenRespSign = null; currentConf = null;
       document.querySelectorAll('.respBtn').forEach(b => b.classList.remove('respSel'));
       document.querySelectorAll('.scale-btn').forEach(b => b.classList.remove('active'));
-      $('#btnNext').disabled = true;
+
+      // 재생 카운터 초기화
+      isPlaying = false;
+      playCount = 0;
+      totalPulses = 0;
+      lastStimEndTs = 0;
+      $('#playHint').textContent = '';
+    }
+
+    async function playStimulus(){
+      if (isPlaying) return;
+      const t = trials[currentIndex];
+
+      isPlaying = true;
+      $('#btnPlay').disabled = true;
+      $('#phase').textContent = demo ? '자극 중… (데모)' : '자극 중…';
+
+      const trig = t.sign > 0 ? '0' : '1'; // +방향/−방향
+      await sendCommand(trig);             // 버튼당 펄스 1회
+      // 완료
+      playCount += 1;
+      totalPulses += 1;
+      lastStimEndTs = performance.now();
+      $('#playHint').textContent = `재생 ${playCount}회, 총 펄스 ${totalPulses}`;
+
+      // 응답 패널 열기(첫 재생 후)
+      $('#responsePanel').classList.remove('hidden');
+      $('#phase').textContent = '응답/추가 재생 가능';
+
+      isPlaying = false;
+      $('#btnPlay').disabled = false;
     }
 
     function selectConfidence(val){
       currentConf = val;
       $$('.scale-btn').forEach(btn=>{
-        if (parseInt(btn.dataset.val) === val) btn.classList.add('active');
-        else btn.classList.remove('active');
+        if (parseInt(btn.dataset.val) === val) btn.classList.add('active'); else btn.classList.remove('active');
       });
       updateNextEnabled();
     }
@@ -236,14 +284,13 @@
     }
 
     function updateNextEnabled(){
-      const btn = $('#btnNext');
-      if (!btn) return;
-      btn.disabled = !(chosenRespSign !== null && currentConf !== null);
+      $('#btnNext').disabled = !(chosenRespSign !== null && currentConf !== null);
     }
 
     async function commitAndNext(){
       const t = trials[currentIndex];
-      const rt = Math.round(performance.now() - trialStartTs);
+      const rt = lastStimEndTs ? Math.round(performance.now() - lastStimEndTs) : null;
+
       const row = {
         timestamp: new Date().toISOString(),
         participant_id: t.participant_id,
@@ -258,18 +305,22 @@
         correct: (chosenRespSign === t.sign) ? 1 : 0,
         rt_ms: rt,
         confidence: currentConf,
+        play_count: playCount,
+        total_pulses: totalPulses,  // = play_count
         condition_info: currentCond,
         demo_mode: demo ? 1 : 0,
         notes: ''
       };
       rows.push(row);
+
       $('#responsePanel').classList.add('hidden');
+      $('#stimPanel').classList.add('hidden');
       $('#phase').textContent = '휴지';
       await sleep(250);
       nextTrial();
     }
 
-    // 이벤트 바인딩
+    // ===== Events =====
     $('#btnConnect').addEventListener('click', connectSerial);
     $('#btnStart').addEventListener('click', startSession);
     $('#btnDownload').addEventListener('click', ()=>{
@@ -285,15 +336,16 @@
       document.body.removeChild(a);
     });
 
+    $('#btnPlay').addEventListener('click', playStimulus);
+
+    // 응답/확신도/다음
     $('#btnUp').onclick       = () => chooseResponse('Up', +1);
     $('#btnDown').onclick     = () => chooseResponse('Down', -1);
     $('#btnForward').onclick  = () => chooseResponse('Forward', +1);
     $('#btnBackward').onclick = () => chooseResponse('Backward', -1);
-
     $$('.scale-btn').forEach(btn=>{
       btn.addEventListener('click', ()=> selectConfidence(parseInt(btn.dataset.val)));
     });
-
     $('#btnNext').addEventListener('click', commitAndNext);
 
     function toCSV(rows){
