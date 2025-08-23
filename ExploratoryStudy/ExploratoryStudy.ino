@@ -198,22 +198,24 @@ void playHalfSineWithRatioDualAltPolarity(const int16_t* w, int N, float gainA22
 
 // the loop function runs over and over again until power down or reset
 void loop() {
-	if (Serial.available() > 0) {
-		char command = Serial.read();
+	//0바이트 이상이 아니라 2바이트 이상 도착했을 때만 처리
+	if (Serial.available() > 2) {
+		int code = Serial.read() & 0xFF;  // 0..11
+		int side = Serial.read() & 0xFF;  // 0=ulnar(A22), 1=radial(A21)
 
 		int code = Serial.read(); // 0..255 (여기선 0..11)
 		int wf  = code / 2;   // 0..5
 		int neg = code % 2;   // 0=+, 1=-
 		const int16_t* wav = neg ? WF_NEG[wf] : WF_POS[wf];
 
-		switch (command) {
+		switch (code) {
 			// case '0' : 기존 단순 재생
 			case '0': {
 				updateDelayFromTargetHz();
 				const float GAIN = 3.0f;
 				for (int repeat = 0; repeat < 5; repeat++) {
 					// + 방향 파형 재생 (예: wave_slowUpHardDrop)
-					playArrayWithGainCentered(wave_slowUpHardDrop, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+					playArrayWithGainCentered(WF_POS[0], waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
 					delay(100);
 					Serial.print(repeat);
 					Serial.println(" repeat");
@@ -228,7 +230,7 @@ void loop() {
 
 				for (int repeat = 0; repeat < 5; repeat++) {
 					// + 방향 파형 재생 (예: wave_slowUpHardDrop)
-					playArrayWithGainCentered(slowUpHardDropPR, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+					playArrayWithGainCentered(WF_POS[1], waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
 					delay(100);
 					Serial.print(repeat);
 					Serial.println(" repeat");
@@ -241,7 +243,7 @@ void loop() {
 
 				for (int repeat = 0; repeat < 5; repeat++) {
 					// + 방향 파형 재생 (예: wave_slowUpHardDrop)
-					playArrayWithGainCentered(slowUpHardDropPR, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+					playArrayWithGainCentered(WF_POS[2], waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
 					delay(100);
 					Serial.print(repeat);
 					Serial.println(" repeat");
@@ -254,7 +256,7 @@ void loop() {
 
 				for (int repeat = 0; repeat < 5; repeat++) {
 					// + 방향 파형 재생 (예: wave_slowUpHardDrop)
-					playArrayWithGainCentered(wave_expRiseLinFall, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+					playArrayWithGainCentered(WF_POS[3], waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
 					delay(100);
 					Serial.print(repeat);
 					Serial.println(" repeat");
@@ -267,7 +269,7 @@ void loop() {
 
 				for (int repeat = 0; repeat < 5; repeat++) {
 					// + 방향 파형 재생 (예: wave_slowUpHardDrop)
-					playArrayWithGainCentered(xpRiseLinFallPR, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+					playArrayWithGainCentered(WF_POS[4], waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
 					delay(100);
 					Serial.print(repeat);
 					Serial.println(" repeat");
@@ -280,7 +282,7 @@ void loop() {
 
 				for (int repeat = 0; repeat < 5; repeat++) {
 					// + 방향 파형 재생 (예: wave_slowUpHardDrop)
-					playArrayWithGainCentered(wave_impulseDampedTail, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+					playArrayWithGainCentered(WF_POS[5], waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
 					delay(100);
 					Serial.print(repeat);
 					Serial.println(" repeat");
@@ -293,7 +295,7 @@ void loop() {
 
 				for (int repeat = 0; repeat < 5; repeat++) {
 					// + 방향 파형 재생 (예: wave_slowUpHardDrop)
-					playArrayWithGainCentered(impulseDampedTailPR, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+					playArrayWithGainCentered(WF_NEG[0], waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
 					delay(100);
 					Serial.print(repeat);
 					Serial.println(" repeat");
@@ -306,7 +308,7 @@ void loop() {
 
 				for (int repeat = 0; repeat < 5; repeat++) {
 					// + 방향 파형 재생 (예: wave_slowUpHardDrop)
-					playArrayWithGainCentered(wave_asymHalfSine, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+					playArrayWithGainCentered(WF_NEG[1], waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
 					delay(100);
 					Serial.print(repeat);
 					Serial.println(" repeat");
@@ -319,7 +321,7 @@ void loop() {
 
 				for (int repeat = 0; repeat < 5; repeat++) {
 					// + 방향 파형 재생 (예: wave_slowUpHardDrop)
-					playArrayWithGainCentered(asymHalfSinePR, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+					playArrayWithGainCentered(WF_NEG[2], waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
 					delay(100);
 					Serial.print(repeat);
 					Serial.println(" repeat");
@@ -332,7 +334,7 @@ void loop() {
 
 				for (int repeat = 0; repeat < 5; repeat++) {
 					// + 방향 파형 재생 (예: wave_slowUpHardDrop)
-					playArrayWithGainCentered(wave_amBurstAsym, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+					playArrayWithGainCentered(WF_NEG[3], waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
 					delay(100);
 					Serial.print(repeat);
 					Serial.println(" repeat");
@@ -345,7 +347,7 @@ void loop() {
 
 				for (int repeat = 0; repeat < 5; repeat++) {
 					// + 방향 파형 재생 (예: wave_slowUpHardDrop)
-					playArrayWithGainCentered(amBurstAsymPR, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+					playArrayWithGainCentered(WF_NEG[4], waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
 					delay(100);
 					Serial.print(repeat);
 					Serial.println(" repeat");
@@ -358,7 +360,7 @@ void loop() {
 
 				for (int repeat = 0; repeat < 5; repeat++) {
 					// + 방향 파형 재생 (예: wave_slowUpHardDrop)
-					playArrayWithGainCentered(quadPushLinReturnPR, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+					playArrayWithGainCentered(WF_NEG[5], waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
 					delay(100);
 					Serial.print(repeat);
 					Serial.println(" repeat");

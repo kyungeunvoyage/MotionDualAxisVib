@@ -104,6 +104,28 @@ int16_t amBurstAsymPR[256];
 int16_t quadPushLinReturnPR[256];
 
 
+// (+)용 파형 배열들의 포인터 테이블
+const int16_t* WF_POS[6] = {
+  wave_slowUpHardDrop,
+  wave_expRiseLinFall,
+  wave_impulseDampedTail,
+  wave_asymHalfSine,
+  wave_amBurstAsym,
+  wave_quadPushLinReturn
+};
+
+// (−)용 파형 배열들의 포인터 테이블 (PR = polarity reversed)
+const int16_t* WF_NEG[6] = {
+  slowUpHardDropPR,
+  xpRiseLinFallPR,
+  impulseDampedTailPR,
+  asymHalfSinePR,
+  amBurstAsymPR,        // 없으면 setup에서 -로 생성
+  quadPushLinReturnPR
+};
+
+
+
 struct WaveRef { const int16_t* data; int len; };
 WaveRef getWave(const char* name) {
     if (!strcmp(name, "newWave_custom")) return { newWave_custom, 256 };

@@ -156,14 +156,14 @@
       }
     }
 
-    // 10과 11을 해결하기 위한.. byte 이슈
+    // 10과 11을 해결하기 위한.. byte 이슈 해결
     async function sendByte(n){          // n: 0..255
-    if (!writer) return;
-    const buf = new Uint8Array([n & 0xFF]);
-    await writer.write(buf);
+      if (!writer) return;
+      const buf = new Uint8Array([n & 0xFF]);
+      await writer.write(buf);
     }
-    const code = (t.waveform-1)*2 + (t.sign>0?0:1);
-    await sendByte(code); // 0..11을 '한 바이트'로 전송
+      //const code = (t.waveform-1)*2 + (t.sign>0?0:1);
+      //await sendByte(code); // 0..11을 '한 바이트'로 전송
 
 
     async function sendCommand(s){
