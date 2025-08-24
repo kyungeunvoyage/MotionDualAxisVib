@@ -144,7 +144,6 @@ void playAsymTimingDual(const int16_t* w, int N,
 //반대도 플레이하는 경우의수
 void playHalfSineWithRatioDualAltPolarity(const int16_t* w, int N, float gainA22_base, float gainA21_base, int dacPinA22, int dacPinA21,
 	float delayPerSampleUs, float rRise, float rFall, bool invertA21_base, int pairRepeats)
-	// 쌍 반복 횟수 (정상→반전 = 1쌍))
 {
 	const uint32_t T_total_us = (uint32_t)(delayPerSampleUs * N);
 	const float k = rRise / (rRise + rFall);
@@ -161,27 +160,15 @@ void playHalfSineWithRatioDualAltPolarity(const int16_t* w, int N, float gainA22
 		{
 			const float g22 = +gainA22_base;
 			const float g21 = +gainA21_base;
-			playAsymTimingDual(
-				w, N,
-				g22, g21,
-				dacPinA22, dacPinA21,
-				delayRiseUs, delayFallUs,
-				invertA21_base // A21은 요청대로 반대 위상 유지
-			);
+			playAsymTimingDual(w, N, g22, g21, dacPinA22, dacPinA21, delayRiseUs, delayFallUs, invertA21_base);
 			delay(500);
 			Serial.println(F("pair_step: normal"));
 		}
-		// (2) 둘 다 부호 반전 (채널 각각의 -신호)
+		// (2) 둘 다 부호 반전
 		{
-			const float g22 = -gainA22_base; // A22 반전
-			const float g21 = -gainA21_base; // A21 반전
-			playAsymTimingDual(
-				w, N,
-				g22, g21,
-				dacPinA22, dacPinA21,
-				delayRiseUs, delayFallUs,
-				invertA21_base // 관계 유지: A21은 항상 A22와 반대로
-			);
+			const float g22 = -gainA22_base;
+			const float g21 = -gainA21_base;
+			playAsymTimingDual(w, N, g22, g21, dacPinA22, dacPinA21, delayRiseUs, delayFallUs, invertA21_base);
 			delay(500);
 			Serial.println(F("pair_step: inverted"));
 		}
@@ -197,187 +184,29 @@ void playHalfSineWithRatioDualAltPolarity(const int16_t* w, int N, float gainA22
 
 // the loop function runs over and over again until power down or reset
 void loop() {
-	//0바이트 이상이 아니라 2바이트 이상 도착했을 때만 처리
 	if (Serial.available() >= 2) {
-		int code = Serial.read() & 0xFF;  // 0..11
-		int side = Serial.read() & 0xFF;  // 0=ulnar(A22), 1=radial(A21)
+		uint8_t code = Serial.read();   // 0..11
+		uint8_t side = Serial.read();   // 0 or 1
+		//0 : 앞, 1 : 뒤 
+		if (code > 11 || side > 1) return;
 
-		if (code < 0 || code > 11) return;
-		if (side != 0 && side != 1) return;
-
-		int wf = code / 2;            // 0..5
-		int neg = code % 2;            // 0=+, 1=-
+		int wf = code >> 1;
+		int neg = code & 1;
 		const int16_t* wav = neg ? WF_NEG[wf] : WF_POS[wf];
 		int dacPin = (side == 0) ? DAC_PIN_A22 : DAC_PIN_A21;
 
 		switch (code) {
-			// case '0' : 기존 단순 재생
-			case '0': {
-				updateDelayFromTargetHz();
-				const float GAIN = 3.0f;
-				for (int repeat = 0; repeat < 5; repeat++) {
-					// + 방향 파형 재생 (예: wave_slowUpHardDrop)
-					playArrayWithGainCentered(WF_POS[0], waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
-					delay(100);
-					Serial.print(repeat);
-					Serial.println(" repeat");
-				}
-				break;
-			}
-
-			// case '1' : 원본 + 극성 반전(-) 파형 연속 재생
-			case '1': {
-				updateDelayFromTargetHz();
-				const float GAIN = 3.0f;
-
-				for (int repeat = 0; repeat < 5; repeat++) {
-					// + 방향 파형 재생 (예: wave_slowUpHardDrop)
-					playArrayWithGainCentered(WF_POS[1], waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
-					delay(100);
-					Serial.print(repeat);
-					Serial.println(" repeat");
-				}
-				break;
-			}
-			case '2': {
-				updateDelayFromTargetHz();
-				const float GAIN = 3.0f;
-
-				for (int repeat = 0; repeat < 5; repeat++) {
-					// + 방향 파형 재생 (예: wave_slowUpHardDrop)
-					playArrayWithGainCentered(WF_POS[2], waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
-					delay(100);
-					Serial.print(repeat);
-					Serial.println(" repeat");
-				}
-				break;
-			}
-			case '3': {
-				updateDelayFromTargetHz();
-				const float GAIN = 3.0f;
-
-				for (int repeat = 0; repeat < 5; repeat++) {
-					// + 방향 파형 재생 (예: wave_slowUpHardDrop)
-					playArrayWithGainCentered(WF_POS[3], waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
-					delay(100);
-					Serial.print(repeat);
-					Serial.println(" repeat");
-				}
-				break;
-			}
-			case '4': {
-				updateDelayFromTargetHz();
-				const float GAIN = 3.0f;
-
-				for (int repeat = 0; repeat < 5; repeat++) {
-					// + 방향 파형 재생 (예: wave_slowUpHardDrop)
-					playArrayWithGainCentered(WF_POS[4], waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
-					delay(100);
-					Serial.print(repeat);
-					Serial.println(" repeat");
-				}
-				break;
-			}
-			case '5': {
-				updateDelayFromTargetHz();
-				const float GAIN = 3.0f;
-
-				for (int repeat = 0; repeat < 5; repeat++) {
-					// + 방향 파형 재생 (예: wave_slowUpHardDrop)
-					playArrayWithGainCentered(WF_POS[5], waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
-					delay(100);
-					Serial.print(repeat);
-					Serial.println(" repeat");
-				}
-				break;
-			}
-			case '6': {
-				updateDelayFromTargetHz();
-				const float GAIN = 3.0f;
-
-				for (int repeat = 0; repeat < 5; repeat++) {
-					// + 방향 파형 재생 (예: wave_slowUpHardDrop)
-					playArrayWithGainCentered(WF_NEG[0], waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
-					delay(100);
-					Serial.print(repeat);
-					Serial.println(" repeat");
-				}
-				break;
-			}
-			case '7': {
-				updateDelayFromTargetHz();
-				const float GAIN = 3.0f;
-
-				for (int repeat = 0; repeat < 5; repeat++) {
-					// + 방향 파형 재생 (예: wave_slowUpHardDrop)
-					playArrayWithGainCentered(WF_NEG[1], waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
-					delay(100);
-					Serial.print(repeat);
-					Serial.println(" repeat");
-				}
-				break;
-			}
-			case '8': {
-				updateDelayFromTargetHz();
-				const float GAIN = 3.0f;
-
-				for (int repeat = 0; repeat < 5; repeat++) {
-					// + 방향 파형 재생 (예: wave_slowUpHardDrop)
-					playArrayWithGainCentered(WF_NEG[2], waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
-					delay(100);
-					Serial.print(repeat);
-					Serial.println(" repeat");
-				}
-				break;
-			}
-			case '9': {
-				updateDelayFromTargetHz();
-				const float GAIN = 3.0f;
-
-				for (int repeat = 0; repeat < 5; repeat++) {
-					// + 방향 파형 재생 (예: wave_slowUpHardDrop)
-					playArrayWithGainCentered(WF_NEG[3], waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
-					delay(100);
-					Serial.print(repeat);
-					Serial.println(" repeat");
-				}
-				break;
-			}/*/
-			case '10': {
-				updateDelayFromTargetHz();
-				const float GAIN = 3.0f;
-
-				for (int repeat = 0; repeat < 5; repeat++) {
-					// + 방향 파형 재생 (예: wave_slowUpHardDrop)
-					playArrayWithGainCentered(WF_NEG[4], waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
-					delay(100);
-					Serial.print(repeat);
-					Serial.println(" repeat");
-				}
-				break;
-			}
-			case '11': {
-				updateDelayFromTargetHz();
-				const float GAIN = 3.0f;
-
-				for (int repeat = 0; repeat < 5; repeat++) {
-					// + 방향 파형 재생 (예: wave_slowUpHardDrop)
-					playArrayWithGainCentered(WF_NEG[5], waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
-					delay(100);
-					Serial.print(repeat);
-					Serial.println(" repeat");
-				}
-				break;
-			}
-			*/
-
-					// 그 외: 도움말
-			default: {
-				Serial.println("Commands:");
-				Serial.println(" 0 : play wave_slowUpHardDrop (x5)");
-				Serial.println(" 1 : play high_high then polarity-reversed");
-				break;
-			}
+		case 0: case 1: case 2: case 3: case 4: case 5:
+		case 6: case 7: case 8: case 9: case 10: case 11: {
+			updateDelayFromTargetHz();
+			const float GAIN = 3.0f;
+			playArrayWithGainCentered(wav, waveformSize, GAIN, dacPin, delayPerSampleUs_rt);
+			break;
+		}
+		default: {
+			Serial.println(F("Commands 0..11 only"));
+			break;
+		}
 		}
 	}
 }

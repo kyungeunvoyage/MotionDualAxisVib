@@ -26,9 +26,6 @@ static inline void UI_END(char c) { Serial.print(F("[UI] END "));   Serial.print
 
 
 
-
-
-
 //================DA7280====================
 Haptic_Driver hapDrive;
 
@@ -143,6 +140,17 @@ void setup() {
 
     //envelope
     //makeADSR(0.10f, 0.20f, 0.0f);
+
+    //polarity reverse for Exploratory study
+    for (int i = 0; i < 256; i++)
+    {
+        slowUpHardDropPR[i] = -wave_slowUpHardDrop[i];
+        xpRiseLinFallPR[i] = -wave_expRiseLinFall[i];
+        impulseDampedTailPR[i] = -wave_impulseDampedTail[i];
+        asymHalfSinePR[i] = -wave_asymHalfSine[i];
+        amBurstAsymPR[i] = -wave_amBurstAsym[i];
+        quadPushLinReturnPR[i] = -wave_quadPushLinReturn[i];
+    }
 }
 //=================setup===========================
 
@@ -549,7 +557,7 @@ void loop()
             updateDelayFromTargetHz();
             const float GAIN = 3.0f;
             // rise:fall = 1:2
-            playHalfSineWithRatio(wave_slowUpHardDrop, waveformSize, GAIN, DAC_PIN_A22,
+            playHalfSineWithRatio(wave_impulseDampedTail, waveformSize, GAIN, DAC_PIN_A22,
                 delayPerSampleUs_rt, 1.0f, 2.0f, /*repeats=*/5);
         }
         else if (command == '2')
@@ -557,8 +565,8 @@ void loop()
             updateDelayFromTargetHz();
             const float GAIN = 3.0f;
             // rise:fall = 1:3
-            playHalfSineWithRatio(wave_expRiseLinFall, waveformSize, GAIN, DAC_PIN_A22,
-                delayPerSampleUs_rt, 1.0f, 3.0f, /*repeats=*/5);
+            playHalfSineWithRatio(impulseDampedTailPR, waveformSize, GAIN, DAC_PIN_A22,
+                delayPerSampleUs_rt, 1.0f, 2.0f, /*repeats=*/5);
         }
         else if (command == '3')
         {

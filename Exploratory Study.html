@@ -1,425 +1,578 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Exploratory Study Runner · VCA Directionality</title>
-  <style>
-    :root { --bg:#0b0f14; --fg:#e5eef7; --muted:#99a7b5; --accent:#7bd3ff; --card:#121822; --ok:#75e39c; --warn:#ffd36a; --err:#ff8b8b; }
-    body { margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; background:var(--bg); color:var(--fg); }
-    header { padding:16px 20px; border-bottom:1px solid #1f2a38; position:sticky; top:0; background:linear-gradient(180deg, rgba(11,15,20,.95), rgba(11,15,20,.85)); backdrop-filter: blur(8px); }
-    h1 { margin:0; font-size:20px; letter-spacing:.2px; }
-    main { padding:20px; display:grid; gap:16px; grid-template-columns: 420px 1fr; }
-    section { background:var(--card); border:1px solid #1b2633; border-radius:14px; padding:16px; }
-    section h2 { margin:0 0 10px; font-size:16px; color:var(--accent); }
-    .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
-    label { font-size:13px; color:var(--muted); }
-    input, select, button { background:#0d131c; color:#fff; border:1px solid #223042; border-radius:10px; padding:8px 10px; font-size:14px; }
-    button { background:#0e1621; cursor:pointer; transition:.15s ease; }
-    button.primary { background:#143047; border-color:#1e4b6d; }
-    button:hover { transform: translateY(-1px); }
-    .badge { font-size:12px; padding:3px 8px; border-radius:999px; border:1px solid #294059; color:#bfe7ff; }
-    .big { font-size:24px; font-weight:700; }
-    .center { text-align:center; }
-    .hidden { display:none !important; }
-    .sep { height:1px; background:#1b2633; margin:10px 0; }
-    .warn { color: var(--warn); }
-    .ok { color: var(--ok); }
-    .scale-btn { flex:1; min-width:30px; padding:10px; border-radius:8px; background:#0e1621; border:1px solid #223042; cursor:pointer; }
-    .scale-btn.active { background:var(--accent); color:#000; font-weight:bold; }
-    .respSel { border-color:#2f95da; box-shadow:0 0 0 2px rgba(47,149,218,.25) inset; }
-    .panel { padding:10px; border:1px dashed #273447; border-radius:12px; margin-bottom:12px; }
-    .hint { font-size:12px; color:var(--muted); }
-  </style>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Exploratory Study Runner · VCA Directionality</title>
+    <style>
+        :root {
+            --bg: #0b0f14;
+            --fg: #e5eef7;
+            --muted: #99a7b5;
+            --accent: #7bd3ff;
+            --card: #121822;
+            --ok: #75e39c;
+            --warn: #ffd36a;
+            --err: #ff8b8b;
+        }
+
+        body {
+            margin: 0;
+            font-family: Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+            background: var(--bg);
+            color: var(--fg);
+        }
+
+        header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #1f2a38;
+            position: sticky;
+            top: 0;
+            background: linear-gradient(180deg, rgba(11,15,20,.95), rgba(11,15,20,.85));
+            backdrop-filter: blur(8px);
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 20px;
+            letter-spacing: .2px;
+        }
+
+        main {
+            padding: 20px;
+            display: grid;
+            gap: 16px;
+            grid-template-columns: 420px 1fr;
+        }
+
+        section {
+            background: var(--card);
+            border: 1px solid #1b2633;
+            border-radius: 14px;
+            padding: 16px;
+        }
+
+            section h2 {
+                margin: 0 0 10px;
+                font-size: 16px;
+                color: var(--accent);
+            }
+
+        .row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        label {
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        input, select, button {
+            background: #0d131c;
+            color: #fff;
+            border: 1px solid #223042;
+            border-radius: 10px;
+            padding: 8px 10px;
+            font-size: 14px;
+        }
+
+        button {
+            background: #0e1621;
+            cursor: pointer;
+            transition: .15s ease;
+        }
+
+            button.primary {
+                background: #143047;
+                border-color: #1e4b6d;
+            }
+
+            button:hover {
+                transform: translateY(-1px);
+            }
+
+        .badge {
+            font-size: 12px;
+            padding: 3px 8px;
+            border-radius: 999px;
+            border: 1px solid #294059;
+            color: #bfe7ff;
+        }
+
+        .big {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .center {
+            text-align: center;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .sep {
+            height: 1px;
+            background: #1b2633;
+            margin: 10px 0;
+        }
+
+        .warn {
+            color: var(--warn);
+        }
+
+        .ok {
+            color: var(--ok);
+        }
+
+        .scale-btn {
+            flex: 1;
+            min-width: 30px;
+            padding: 10px;
+            border-radius: 8px;
+            background: #0e1621;
+            border: 1px solid #223042;
+            cursor: pointer;
+        }
+
+            .scale-btn.active {
+                background: var(--accent);
+                color: #000;
+                font-weight: bold;
+            }
+
+        .respSel {
+            border-color: #2f95da;
+            box-shadow: 0 0 0 2px rgba(47,149,218,.25) inset;
+        }
+
+        .panel {
+            padding: 10px;
+            border: 1px dashed #273447;
+            border-radius: 12px;
+            margin-bottom: 12px;
+        }
+
+        .hint {
+            font-size: 12px;
+            color: var(--muted);
+        }
+    </style>
 </head>
 <body>
-  <header>
-    <h1>Exploratory Study Runner · VCA Directionality <span class="badge" id="serialStatus">미연결</span></h1>
-  </header>
-  <main>
-    <section>
-      <h2>① 세션 설정</h2>
-      <div class="row">
-        <label>Participant ID&nbsp;<input id="pid" placeholder="P001" /></label>
-        <label>Block 순서&nbsp;
-          <select id="blockOrder">
-            <option value="UR">A: Ulnar → B: Radial</option>
-            <option value="RU">A: Radial → B: Ulnar</option>
-          </select>
-        </label>
-      </div>
-      <div class="row" style="margin-top:8px;">
-        <label>Ulnar 축(Y/Z)&nbsp;
-          <select id="axisU"><option>Y</option><option>Z</option></select>
-        </label>
-        <label>Radial 축(Y/Z)&nbsp;
-          <select id="axisR"><option>Y</option><option>Z</option></select>
-        </label>
-      </div>
-      <div class="sep"></div>
-      <div class="row">
-        <button id="btnConnect" class="primary">시리얼 연결</button>
-        <button id="btnStart">세션 시작</button>
-        <button id="btnDownload">CSV 저장</button>
-        <label style="display:flex;align-items:center;gap:6px;margin-left:auto;">
-          <input type="checkbox" id="demoMode"/> 데모 모드
-        </label>
-      </div>
-    </section>
+    <header>
+        <h1>Exploratory Study Runner · VCA Directionality <span class="badge" id="serialStatus">미연결</span></h1>
+    </header>
+    <main>
+        <section>
+            <h2>① 세션 설정</h2>
+            <div class="row">
+                <label>Participant ID&nbsp;<input id="pid" placeholder="P001" /></label>
+                <label>
+                    Block 순서&nbsp;
+                    <select id="blockOrder">
+                        <option value="UR">A: Ulnar → B: Radial</option>
+                        <option value="RU">A: Radial → B: Ulnar</option>
+                    </select>
+                </label>
+            </div>
+            <div class="row" style="margin-top:8px;">
+                <label>
+                    Ulnar 축(Y/Z)&nbsp;
+                    <select id="axisU"><option>Y</option><option>Z</option></select>
+                </label>
+                <label>
+                    Radial 축(Y/Z)&nbsp;
+                    <select id="axisR"><option>Y</option><option>Z</option></select>
+                </label>
+            </div>
+            <div class="sep"></div>
+            <div class="row">
+                <button id="btnConnect" class="primary">시리얼 연결</button>
+                <button id="btnStart">세션 시작</button>
+                <button id="btnDownload">CSV 저장</button>
+                <label style="display:flex;align-items:center;gap:6px;margin-left:auto;">
+                    <input type="checkbox" id="demoMode" /> 데모 모드
+                </label>
+            </div>
+        </section>
 
-    <section>
-      <h2>② 진행 패널</h2>
-      <div id="stateBox" class="center" style="padding:10px 8px;">
-        <div class="big" id="phase">대기</div>
-        <div class="hint" id="trialInfo"></div>
-      </div>
-      <div class="sep"></div>
+        <section>
+            <h2>② 진행 패널</h2>
+            <div id="stateBox" class="center" style="padding:10px 8px;">
+                <div class="big" id="phase">대기</div>
+                <div class="hint" id="trialInfo"></div>
+            </div>
+            <div class="sep"></div>
 
-      <!-- 자극 재생(버튼 누를 때마다 펄스 1회) -->
-      <div id="stimPanel" class="panel center hidden">
-        <div class="row" style="justify-content:center; gap:12px;">
-          <button id="btnPlay" class="primary">자극 재생</button>
-          <span id="playHint" class="hint"></span>
-        </div>
-      </div>
+            <!-- 자극 재생(버튼 누를 때마다 펄스 1회) -->
+            <div id="stimPanel" class="panel center hidden">
+                <div class="row" style="justify-content:center; gap:12px;">
+                    <button id="btnPlay" class="primary">자극 재생</button>
+                    <span id="playHint" class="hint"></span>
+                </div>
+            </div>
 
-      <div id="responsePanel" class="center hidden">
-        <div class="row center" style="justify-content:center; gap:14px; flex-wrap:wrap;">
-          <button id="btnUp" class="respBtn" style="min-width:120px;">위 (Z+)</button>
-          <button id="btnDown" class="respBtn" style="min-width:120px;">아래 (Z−)</button>
-          <button id="btnForward" class="respBtn" style="min-width:120px;">앞 (Y+)</button>
-          <button id="btnBackward" class="respBtn" style="min-width:120px;">뒤 (Y−)</button>
-        </div>
-        <div style="margin-top:16px;">
-          <div>확신도 선택 (1–7):</div>
-          <div class="row" style="justify-content:center; gap:6px; margin-top:6px;">
-            <button class="scale-btn" data-val="1">1</button>
-            <button class="scale-btn" data-val="2">2</button>
-            <button class="scale-btn" data-val="3">3</button>
-            <button class="scale-btn" data-val="4">4</button>
-            <button class="scale-btn" data-val="5">5</button>
-            <button class="scale-btn" data-val="6">6</button>
-            <button class="scale-btn" data-val="7">7</button>
-          </div>
-          <div class="row" style="justify-content:center; gap:10px; margin-top:12px;">
-            <button id="btnNext" class="primary" disabled>다음 ▶</button>
-          </div>
-        </div>
-      </div>
-    </section>
-  </main>
+            <div id="responsePanel" class="center hidden">
+                <div class="row center" style="justify-content:center; gap:14px; flex-wrap:wrap;">
+                    <button id="btnUp" class="respBtn" style="min-width:120px;">위로 가는 방향성 (Z+)</button>
+                    <button id="btnDown" class="respBtn" style="min-width:120px;">아래로 가는 방향성 (Z−)</button>
+                    <button id="btnForward" class="respBtn" style="min-width:120px;">앞으로 가는 방향성 (Y+)</button>
+                    <button id="btnBackward" class="respBtn" style="min-width:120px;">뒤로 가는 방향성 (Y−)</button>
+                </div>
+                <div style="margin-top:16px;">
+                    <div>확신도 선택 (1–7):</div>
+                    <div class="row" style="justify-content:center; gap:6px; margin-top:6px;">
+                        <button class="scale-btn" data-val="1">1</button>
+                        <button class="scale-btn" data-val="2">2</button>
+                        <button class="scale-btn" data-val="3">3</button>
+                        <button class="scale-btn" data-val="4">4</button>
+                        <button class="scale-btn" data-val="5">5</button>
+                        <button class="scale-btn" data-val="6">6</button>
+                        <button class="scale-btn" data-val="7">7</button>
+                    </div>
+                    <div class="row" style="justify-content:center; gap:10px; margin-top:12px;">
+                        <button id="btnNext" class="primary" disabled>다음 ▶</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
 
-  <script>
-      //=====================================JS===================================================
-    const $ = sel => document.querySelector(sel);
-    const $$ = sel => document.querySelectorAll(sel);
-    const sleep = ms => new Promise(r => setTimeout(r, ms));
+    <script>
+        // ====== helpers ======
+        const $ = sel => document.querySelector(sel);
+        const $$ = sel => document.querySelectorAll(sel);
+        const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-    let port, writer;
-    let running = false;
-    let demo = false;
+        // ====== serial state ======
+        let port, writer;
+        let running = false;
+        let demo = false;
 
-    const WAVEFORMS = [1,2,3,4,5,6];
-    const SIGNS = [+1,-1];
-    let trials = [];
-    let currentIndex = -1;
-    const rows = [];
-    const REPS_PER_COMBO = 1;
+        // ====== experiment state ======
+        let trials = [];
+        let currentIndex = -1;
+        const rows = [];
+        const REPS_PER_COMBO = 1;       // 현재 미사용(코드는 code 0..11 한 번씩)
 
-    let currentCond = '';
-    let currentConf = null;
-    let chosenRespLabel = null, chosenRespSign = null;
+        let currentCond = '';
+        let currentConf = null;
+        let chosenRespLabel = null, chosenRespSign = null;
 
-    // 재생/RT 관리 (버튼당 펄스 1회)
-    let isPlaying = false;
-    let playCount = 0;
-    let totalPulses = 0;
-    let lastStimEndTs = 0;
+        // playback / RT
+        let isPlaying = false;
+        let playCount = 0;
+        let totalPulses = 0;
+        let lastStimEndTs = 0;
 
-    // ===== Serial =====
-    async function connectSerial(){
-      try{
-        demo = $('#demoMode')?.checked === true;
-        if (demo) {
-          $('#serialStatus').textContent = '데모';
-          $('#serialStatus').style.color = 'var(--ok)';
-          alert('데모 모드: 시리얼 없이 진행합니다. 이제 세션 시작을 누르세요.');
-          return;
+        // sessions / codes
+        const SESSION_SIZE = 12;     // 한 세션당 12 trial (code 0..11 한 번씩)
+        const SESSIONS_TOTAL = 5;
+        const ALL_CODES = [...Array(12).keys()]; // 0..11
+
+        // ====== serial utils ======
+        async function sendByte(n) {
+            if (demo) { await sleep(10); return; }
+            if (!writer) return;
+            const buf = new Uint8Array([n & 0xFF]);
+            await writer.write(buf);
         }
-        port = await navigator.serial.requestPort();
-        await port.open({ baudRate: 115200 });
-        writer = port.writable.getWriter();
-        $('#serialStatus').textContent = '연결됨';
-        $('#serialStatus').style.color = 'var(--ok)';
-        alert('시리얼 연결 성공: 이제 세션 시작 버튼을 누르세요.');
-      }catch(e){
-        alert('Serial 연결 실패: COM 포트 선택/드라이버를 확인');
-      }
-    }
 
-    //===================command sending===========================
-    // 10과 11을 해결하기 위한.. byte 이슈 해결
-      // 코드 = (파형-1)*2 + (부호가 -1이면 1, +1이면 0) → 0..11
-      const code = (t.waveform - 1) * 2 + (t.sign > 0 ? 0 : 1);
-      const side = (t.stim_side === 'ulnar') ? 0 : 1; // 0=A22(ulnar), 1=A21(radial)
+        async function connectSerial() {
+            try {
+                demo = $('#demoMode')?.checked === true;
+                if (demo) {
+                    $('#serialStatus').textContent = '데모';
+                    $('#serialStatus').style.color = 'var(--ok)';
+                    alert('데모 모드: 시리얼 없이 진행합니다. 이제 세션 시작을 누르세요.');
+                    return;
+                }
+                if (!('serial' in navigator)) {
+                    alert('이 브라우저는 Web Serial을 지원하지 않습니다.\nChrome/Edge 최신 버전을 사용하세요.');
+                    return;
+                }
+                if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+                    alert('Web Serial은 HTTPS 또는 http://localhost 에서만 동작합니다.');
+                    return;
+                }
 
-      // 두 바이트 전송
-      await sendByte(code);
-      await sendByte(side);
+                const p = await navigator.serial.requestPort();
+                await p.open({ baudRate: 115200 });
+                port = p;
+                writer = port.writable.getWriter();
 
-      // 세션 개수와 코드 집합
-      const SESSIONS_TOTAL = 5;
-      const ALL_CODES = [...Array(12).keys()]; // [0..11]
+                $('#serialStatus').textContent = '연결됨';
+                $('#serialStatus').style.color = 'var(--ok)';
+                alert('시리얼 연결 성공: 이제 세션 시작 버튼을 누르세요.');
+            } catch (e) {
+                console.error(e);
+                alert('Serial 연결 실패: 포트 선택/권한/드라이버를 확인하세요.\n' + (e?.message || e));
+            }
+        }
 
-    // util
-    function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[a[i], a[j]] = [a[j], a[i]]; } return a; }
+        // ====== random ======
+        function shuffle(a) {
+            for (let i = a.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [a[i], a[j]] = [a[j], a[i]];
+            }
+            return a;
+        }
 
-    // 세션 1개(12 trial) 만들기: 현재 side/axis, block레이블로 trial 생성
-    function makeOneSession({ pid, blockLabel, side, axis }) {
-        const codes = shuffle(ALL_CODES.slice()); // 0..11 한 번씩, 무작위
-        const sessTrials = [];
-        for (const code of codes) {
-            const wf = (code >> 1) + 1;      // 1..6
-            const sign = (code & 1) ? -1 : +1; // 0=+,1=-  → 비트로 계산
-            sessTrials.push({
-                participant_id: pid,
-                block: blockLabel,          // 'A' or 'B'
-                stim_side: side,            // 'ulnar' or 'radial'
-                axis: axis,                 // 'Y' or 'Z'
-                waveform: wf,               // 1..6
-                sign: sign,                 // +1 / -1
+        // 세션 1개(12 trial) 만들기: sessionNo(1..SESSIONS_TOTAL) 포함
+        function makeOneSession({ pid, blockLabel, side, axis, sessionNo }) {
+            const codes = shuffle(ALL_CODES.slice()); // 0..11 한 번씩 무작위
+            const sessTrials = [];
+            for (let i = 0; i < codes.length; i++) {
+                const code = codes[i];
+                const wf = (code >> 1) + 1;          // 1..6
+                const sign = (code & 1) ? -1 : +1;   // 0=+,1=-
+                sessTrials.push({
+                    participant_id: pid,
+                    block: blockLabel,                 // 'A' / 'B'
+                    stim_side: side,                   // 'ulnar' / 'radial'
+                    axis: axis,                        // 'Y' / 'Z'
+                    waveform: wf,
+                    sign: sign,
+                    session_no: sessionNo,             // ★ 추가
+                    trial_in_session: i + 1            // ★ 1..12
+                });
+            }
+            return sessTrials;
+        }
+
+
+        function buildTrials() {
+            trials = [];
+            const pid = $('#pid').value || 'P000';
+            const orderUR = $('#blockOrder').value === 'UR';
+            const axisU = $('#axisU').value;
+            const axisR = $('#axisR').value;
+
+            const blocks = orderUR
+                ? [{ label: 'A', side: 'ulnar', axis: axisU },
+                { label: 'B', side: 'radial', axis: axisR }]
+                : [{ label: 'A', side: 'radial', axis: axisR },
+                { label: 'B', side: 'ulnar', axis: axisU }];
+
+            // 기본: 총 5세션 = 앞 블록 3세션, 뒤 블록 2세션
+            const sessionsPerBlock = [3, 2];
+
+            let sessionCounter = 0; // 1..SESSIONS_TOTAL
+            for (let bi = 0; bi < 2; bi++) {
+                const b = blocks[bi];
+                for (let s = 0; s < sessionsPerBlock[bi]; s++) {
+                    sessionCounter += 1;
+                    // code 0..11 한 번씩, 무작위
+                    const codes = shuffle([...Array(12).keys()]);
+                    for (const code of codes) {
+                        const wf = (code >> 1) + 1;          // 1..6
+                        const sign = (code & 1) ? -1 : +1;   // 0=+,1=-
+                        trials.push({
+                            participant_id: pid,
+                            block: b.label,               // 'A'/'B'
+                            stim_side: b.side,            // 'ulnar'/'radial'
+                            axis: b.axis,                 // 'Y'/'Z'
+                            waveform: wf,                 // 1..6
+                            sign: sign,                   // +1/-1
+                            session_no: sessionCounter,   // ★ 세션 번호
+                            code,                         // 재현성 위해 저장(0..11)
+                            side_byte: (b.side === 'ulnar') ? 0 : 1 // 0=A22, 1=A21
+                        });
+                    }
+                }
+            }
+            currentIndex = -1;
+        }
+
+
+
+        async function startSession() {
+            demo = $('#demoMode')?.checked === true;
+            if (!demo && !port) { alert('먼저 시리얼 연결을 해주세요'); return; }
+            buildTrials();
+            running = true;
+            nextTrial();
+        }
+
+        async function nextTrial() {
+            // 세션 경계 체크: 직전에 끝낸 trial이 세션의 마지막이었는지
+            if (currentIndex >= 0 && (currentIndex + 1) % SESSION_SIZE === 0) {
+                const justFinishedSession = trials[currentIndex].session_no;
+                const cont = confirm(`세션 ${justFinishedSession}이 완료되었습니다.\n계속 진행할까요?`);
+                if (!cont) {
+                    running = false;
+                    $('#phase').textContent = `세션 ${justFinishedSession}까지 완료 (일시중지)`;
+                    $('#responsePanel').classList.add('hidden');
+                    $('#stimPanel').classList.add('hidden');
+                    return; // 사용자가 중단 선택
+                }
+            }
+
+            // 다음 트라이얼로 진행
+            currentIndex++;
+            if (currentIndex >= trials.length) {
+                running = false;
+                $('#phase').textContent = '전체 세션 종료';
+                $('#responsePanel').classList.add('hidden');
+                $('#stimPanel').classList.add('hidden');
+                alert('전체 세션 종료');
+                return;
+            }
+
+            const t = trials[currentIndex];
+            $('#phase').textContent = '설정/재생 대기';
+            currentCond = `${t.block},${t.stim_side},${t.axis},WF${t.waveform},sign${t.sign > 0 ? '+' : '−'}`;
+
+            $('#stimPanel').classList.remove('hidden');
+            $('#responsePanel').classList.add('hidden');
+            $('#btnNext').disabled = true;
+
+            chosenRespLabel = null; chosenRespSign = null; currentConf = null;
+            $$('.respBtn').forEach(b => b.classList.remove('respSel'));
+            $$('.scale-btn').forEach(b => b.classList.remove('active'));
+
+            isPlaying = false;
+            playCount = 0;
+            totalPulses = 0;
+            lastStimEndTs = 0;
+            $('#playHint').textContent = '';
+        }
+
+
+        // ====== 재생(버튼 1클릭 = 정확히 1펄스) ======
+        async function playStimulus() {
+            if (isPlaying) return;
+            const t = trials[currentIndex];
+
+            isPlaying = true;
+            $('#btnPlay').disabled = true;
+            $('#phase').textContent = demo ? '자극 중… (데모)' : '자극 중…';
+
+            // (code, side) 두 바이트 전송
+            const code = (t.waveform - 1) * 2 + (t.sign > 0 ? 0 : 1); // 0..11
+            const sideByte = (t.stim_side === 'ulnar') ? 0 : 1;       // 0=A22, 1=A21
+            await sendByte(code);
+            await sendByte(sideByte);
+
+            // 완료 처리
+            playCount += 1;
+            totalPulses += 1;
+            lastStimEndTs = performance.now();
+            $('#playHint').textContent = `재생 ${playCount}회, 총 펄스 ${totalPulses}`;
+
+            // 응답 패널 오픈
+            $('#responsePanel').classList.remove('hidden');
+            $('#phase').textContent = '응답/추가 재생 가능';
+
+            isPlaying = false;
+            $('#btnPlay').disabled = false;
+        }
+
+        function selectConfidence(val) {
+            currentConf = val;
+            $$('.scale-btn').forEach(btn => {
+                if (parseInt(btn.dataset.val) === val) btn.classList.add('active');
+                else btn.classList.remove('active');
             });
+            updateNextEnabled();
         }
-        return sessTrials;
-      }
 
+        function chooseResponse(respLabel, respSign) {
+            chosenRespLabel = respLabel;
+            chosenRespSign = respSign;
+            $$('.respBtn').forEach(b => b.classList.remove('respSel'));
+            const map = { 'Up': '#btnUp', 'Down': '#btnDown', 'Forward': '#btnForward', 'Backward': '#btnBackward' };
+            const el = document.querySelector(map[respLabel]);
+            if (el) el.classList.add('respSel');
+            updateNextEnabled();
+        }
 
-    
+        function updateNextEnabled() {
+            $('#btnNext').disabled = !(chosenRespSign !== null && currentConf !== null);
+        }
 
-      // util
-      function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[a[i], a[j]] = [a[j], a[i]]; } return a; }
+        async function commitAndNext() {
+            const t = trials[currentIndex];
+            const rt = lastStimEndTs ? Math.round(performance.now() - lastStimEndTs) : null;
 
-      // 세션 1개(12 trial) 만들기: 현재 side/axis, block레이블로 trial 생성
-      function makeOneSession({ pid, blockLabel, side, axis }) {
-          const codes = shuffle(ALL_CODES.slice()); // 0..11 한 번씩, 무작위
-          const sessTrials = [];
-          for (const code of codes) {
-              const wf = (code >> 1) + 1;      // 1..6
-              const sign = (code & 1) ? -1 : +1; // 0=+,1=-  → 비트로 계산
-              sessTrials.push({
-                  participant_id: pid,
-                  block: blockLabel,          // 'A' or 'B'
-                  stim_side: side,            // 'ulnar' or 'radial'
-                  axis: axis,                 // 'Y' or 'Z'
-                  waveform: wf,               // 1..6
-                  sign: sign,                 // +1 / -1
-              });
-          }
-          return sessTrials;
-      }
+            const row = {
+                timestamp: new Date().toISOString(),
+                participant_id: t.participant_id,
+                session_no: t.session_no,            
+                block: t.block,
+                stim_side: t.stim_side,
+                axis: t.axis,
+                waveform: t.waveform,
+                sign: t.sign,
+                true_dir: t.sign,
+                response_label: chosenRespLabel,
+                response_dir: chosenRespSign,
+                correct: (chosenRespSign === t.sign) ? 1 : 0,
+                rt_ms: rt,
+                confidence: currentConf,
+                play_count: playCount,
+                total_pulses: totalPulses,
+                condition_info: currentCond,
+                code: t.code,                        // (선택) 0..11
+                side_byte: t.side_byte,              // (선택) 0/1
+                demo_mode: demo ? 1 : 0,
+                notes: ''
+            };
 
-      // ===== Trials =====
-      function buildTrials() {
-          trials = [];
-          const pid = $('#pid').value || 'P000';
-          const orderUR = $('#blockOrder').value === 'UR';
-          const axisU = $('#axisU').value;
-          const axisR = $('#axisR').value;
+            rows.push(row);
 
-          // 블록 순서 정의
-          const blocks = orderUR
-              ? [{ label: 'A', side: 'ulnar', axis: axisU }, { label: 'B', side: 'radial', axis: axisR }]
-              : [{ label: 'A', side: 'radial', axis: axisR }, { label: 'B', side: 'ulnar', axis: axisU }];
+            $('#responsePanel').classList.add('hidden');
+            $('#stimPanel').classList.add('hidden');
+            $('#phase').textContent = '휴지';
+            await sleep(250);
+            nextTrial();
+        }
 
-          // 세션 분배: 앞 블록 3, 뒤 블록 2  (총 5세션)
-          const sessionsPerBlock = [3, 2];
+        // ===== Events =====
+        $('#btnConnect').addEventListener('click', connectSerial);
+        $('#btnStart').addEventListener('click', startSession);
+        $('#btnDownload').addEventListener('click', () => {
+            const csv = toCSV(rows);
+            if (!csv) { alert('저장할 데이터가 없습니다'); return; }
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const a = document.createElement('a');
+            const pid = $('#pid').value || 'P000';
+            a.href = URL.createObjectURL(blob);
+            a.download = `${pid}_exploratory_raw.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        });
 
-          // ※ 만약 "블록마다 5세션(총 10세션)"을 원하면 ↓ 한 줄만 바꾸면 됨
-          // const sessionsPerBlock = [5, 5];
+        $('#btnPlay').addEventListener('click', playStimulus);
 
-          for (let bi = 0; bi < 2; bi++) {
-              const b = blocks[bi];
-              for (let s = 0; s < sessionsPerBlock[bi]; s++) {
-                  trials.push(...makeOneSession({
-                      pid, blockLabel: b.label, side: b.side, axis: b.axis
-                  }));
-              }
-          }
+        $('#btnUp').onclick = () => chooseResponse('Up', +1);
+        $('#btnDown').onclick = () => chooseResponse('Down', -1);
+        $('#btnForward').onclick = () => chooseResponse('Forward', +1);
+        $('#btnBackward').onclick = () => chooseResponse('Backward', -1);
+        $$('.scale-btn').forEach(btn => {
+            btn.addEventListener('click', () => selectConfidence(parseInt(btn.dataset.val)));
+        });
+        $('#btnNext').addEventListener('click', commitAndNext);
 
-          // 세션 내부는 이미 셔플되어 있고, 세션 간 순서는 블록 분배 순서대로 진행
-          // 원한다면 세션 순서까지 섞고 싶을 때는 trials를 세션 단위로 섞도록 별도 로직 추가 가능
-          currentIndex = -1;
-      }
-
-    async function startSession(){
-      demo = $('#demoMode')?.checked === true;
-      if (!demo && !port) { alert('먼저 시리얼 연결을 해주세요'); return; }
-      buildTrials();
-      running = true;
-      nextTrial();
-    }
-
-    async function nextTrial(){
-      currentIndex++;
-      if (currentIndex >= trials.length){
-        running = false;
-        $('#phase').textContent = '세션 종료';
-        $('#responsePanel').classList.add('hidden');
-        $('#stimPanel').classList.add('hidden');
-        alert('세션 종료');
-        return;
-      }
-
-      const t = trials[currentIndex];
-      $('#phase').textContent = '설정/재생 대기';
-      currentCond = `${t.block},${t.stim_side},${t.axis},WF${t.waveform},sign${t.sign>0?'+':'−'}`;
-      // $('#trialInfo').textContent = `Block ${t.block} · Side ${t.stim_side} · Axis ${t.axis} · WF${t.waveform} ${t.sign>0?'+':'−'}`;
-
-      // 패널 상태
-      $('#stimPanel').classList.remove('hidden');
-      $('#responsePanel').classList.add('hidden');
-      $('#btnNext').disabled = true;
-
-      // 선택 초기화
-      chosenRespLabel = null; chosenRespSign = null; currentConf = null;
-      document.querySelectorAll('.respBtn').forEach(b => b.classList.remove('respSel'));
-      document.querySelectorAll('.scale-btn').forEach(b => b.classList.remove('active'));
-
-      // 재생 카운터 초기화
-      isPlaying = false;
-      playCount = 0;
-      totalPulses = 0;
-      lastStimEndTs = 0;
-      $('#playHint').textContent = '';
-    }
-
-      // ====== 재생(버튼 1클릭 = 정확히 1펄스) ======
-      async function playStimulus() {
-          if (isPlaying) return;
-          const t = trials[currentIndex];
-
-          isPlaying = true;
-          $('#btnPlay').disabled = true;
-          $('#phase').textContent = demo ? '자극 중… (데모)' : '자극 중…';
-
-          // (code, side) 두 바이트 전송
-          const code = (t.waveform - 1) * 2 + (t.sign > 0 ? 0 : 1);        // 0..11
-          const sideByte = (t.stim_side === 'ulnar') ? 0 : 1;               // 0=A22(ulnar), 1=A21(radial)
-
-          await sendByte(code);
-          await sendByte(sideByte);
-
-          // 완료 처리
-          playCount += 1;
-          totalPulses += 1;
-          lastStimEndTs = performance.now();
-          $('#playHint').textContent = `재생 ${playCount}회, 총 펄스 ${totalPulses}`;
-
-          // 응답 패널 오픈
-          $('#responsePanel').classList.remove('hidden');
-          $('#phase').textContent = '응답/추가 재생 가능';
-
-          isPlaying = false;
-          $('#btnPlay').disabled = false;
-      }
-
-    
-
-    function selectConfidence(val){
-      currentConf = val;
-      $$('.scale-btn').forEach(btn=>{
-        if (parseInt(btn.dataset.val) === val) btn.classList.add('active'); else btn.classList.remove('active');
-      });
-      updateNextEnabled();
-    }
-
-    function chooseResponse(respLabel, respSign){
-      chosenRespLabel = respLabel;
-      chosenRespSign = respSign;
-      document.querySelectorAll('.respBtn').forEach(b => b.classList.remove('respSel'));
-      const map = { 'Up':'#btnUp', 'Down':'#btnDown', 'Forward':'#btnForward', 'Backward':'#btnBackward' };
-      const el = document.querySelector(map[respLabel]);
-      if (el) el.classList.add('respSel');
-      updateNextEnabled();
-    }
-
-    function updateNextEnabled(){
-      $('#btnNext').disabled = !(chosenRespSign !== null && currentConf !== null);
-    }
-
-    async function commitAndNext(){
-      const t = trials[currentIndex];
-      const rt = lastStimEndTs ? Math.round(performance.now() - lastStimEndTs) : null;
-
-      const row = {
-        timestamp: new Date().toISOString(),
-        participant_id: t.participant_id,
-        block: t.block,
-        stim_side: t.stim_side,
-        axis: t.axis,
-        waveform: t.waveform,
-        sign: t.sign,
-        true_dir: t.sign,
-        response_label: chosenRespLabel,
-        response_dir: chosenRespSign,
-        correct: (chosenRespSign === t.sign) ? 1 : 0,
-        rt_ms: rt,
-        confidence: currentConf,
-        play_count: playCount,
-        total_pulses: totalPulses,  // = play_count
-        condition_info: currentCond,
-        demo_mode: demo ? 1 : 0,
-        notes: ''
-      };
-      rows.push(row);
-
-      $('#responsePanel').classList.add('hidden');
-      $('#stimPanel').classList.add('hidden');
-      $('#phase').textContent = '휴지';
-      await sleep(250);
-      nextTrial();
-    }
-
-    // ===== Events =====
-    $('#btnConnect').addEventListener('click', connectSerial);
-    $('#btnStart').addEventListener('click', startSession);
-    $('#btnDownload').addEventListener('click', ()=>{
-      const csv = toCSV(rows);
-      if (!csv) { alert('저장할 데이터가 없습니다'); return; }
-      const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
-      const a = document.createElement('a');
-      const pid = $('#pid').value || 'P000';
-      a.href = URL.createObjectURL(blob);
-      a.download = `${pid}_exploratory_raw.csv`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    });
-
-    $('#btnPlay').addEventListener('click', playStimulus);
-
-    // 응답/확신도/다음
-    $('#btnUp').onclick       = () => chooseResponse('Up', +1);
-    $('#btnDown').onclick     = () => chooseResponse('Down', -1);
-    $('#btnForward').onclick  = () => chooseResponse('Forward', +1);
-    $('#btnBackward').onclick = () => chooseResponse('Backward', -1);
-    $$('.scale-btn').forEach(btn=>{
-      btn.addEventListener('click', ()=> selectConfidence(parseInt(btn.dataset.val)));
-    });
-    $('#btnNext').addEventListener('click', commitAndNext);
-
-    function toCSV(rows){
-      if (!rows.length) return '';
-      const cols = Object.keys(rows[0]);
-      const header = cols.join(',');
-      const esc = v => {
-        if (v==null) return '';
-        const s = String(v);
-        return /[",\n]/.test(s) ? '"'+s.replaceAll('"','""')+'"' : s;
-      };
-      const lines = rows.map(r => cols.map(c => esc(r[c])).join(','));
-      return header+'\n'+lines.join('\n');
-    }
-  </script>
+        function toCSV(rows) {
+            if (!rows.length) return '';
+            const cols = Object.keys(rows[0]);
+            const header = cols.join(',');
+            const esc = v => {
+                if (v == null) return '';
+                const s = String(v);
+                return /[",\n]/.test(s) ? '"' + s.replaceAll('"', '""') + '"' : s;
+            };
+            const lines = rows.map(r => cols.map(c => esc(r[c])).join(','));
+            return header + '\n' + lines.join('\n');
+        }
+    </script>
 </body>
 </html>

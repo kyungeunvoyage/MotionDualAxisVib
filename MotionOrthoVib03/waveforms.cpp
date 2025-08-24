@@ -97,6 +97,13 @@ int16_t biasWaveform[256];
 int16_t high_highTP[256];
 int16_t high_highPR[256];
 
+int16_t slowUpHardDropPR[256];
+int16_t xpRiseLinFallPR[256];
+int16_t impulseDampedTailPR[256];
+int16_t asymHalfSinePR[256];
+int16_t amBurstAsymPR[256];
+int16_t quadPushLinReturnPR[256];
+
 struct WaveRef { const int16_t* data; int len; };
 WaveRef getWave(const char* name) {
     if (!strcmp(name, "newWave_custom")) return { newWave_custom, 256 };
@@ -211,7 +218,7 @@ int16_t two_high[256] = {
   -1643, -1269, -603, 0
 };
 // waveforms.cpp addition
-inzt16_t high_high[256] = {
+int16_t high_high[256] = {
   0, 1259, 1362, 1658, 1979, 2441, 2930, 3367, 3765,
   4356, 4754, 5178, 5667, 5962, 6258, 6553, 6952, 7543,
   8018, 8532, 9123, 9753, 10498, 11282, 11873, 12464, 13055,
