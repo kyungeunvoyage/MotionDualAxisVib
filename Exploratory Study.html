@@ -110,6 +110,7 @@
   </main>
 
   <script>
+      //=====================================JS===================================================
     const $ = sel => document.querySelector(sel);
     const $$ = sel => document.querySelectorAll(sel);
     const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -156,48 +157,99 @@
       }
     }
 
+    //===================command sending===========================
     // 10과 11을 해결하기 위한.. byte 이슈 해결
-    async function sendByte(n){          // n: 0..255
-      if (!writer) return;
-      const buf = new Uint8Array([n & 0xFF]);
-      await writer.write(buf);
-    }
-      //const code = (t.waveform-1)*2 + (t.sign>0?0:1);
-      //await sendByte(code); // 0..11을 '한 바이트'로 전송
+      // 코드 = (파형-1)*2 + (부호가 -1이면 1, +1이면 0) → 0..11
+      const code = (t.waveform - 1) * 2 + (t.sign > 0 ? 0 : 1);
+      const side = (t.stim_side === 'ulnar') ? 0 : 1; // 0=A22(ulnar), 1=A21(radial)
 
+      // 두 바이트 전송
+      await sendByte(code);
+      await sendByte(side);
 
-    async function sendCommand(s){
-      if (demo) { await sleep(30); return; }
-      if (!writer) return;
-      const enc = new TextEncoder();
-      await writer.write(enc.encode(s));
-    }
+      // 세션 개수와 코드 집합
+      const SESSIONS_TOTAL = 5;
+      const ALL_CODES = [...Array(12).keys()]; // [0..11]
 
-    // ===== Trials =====
-    function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+    // util
+    function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[a[i], a[j]] = [a[j], a[i]]; } return a; }
 
-    function buildTrials(){
-      trials = [];
-      const pid = $('#pid').value || 'P000';
-      const orderUR = $('#blockOrder').value === 'UR';
-      const axisU = $('#axisU').value;
-      const axisR = $('#axisR').value;
-
-      const blocks = orderUR ? [{side:'ulnar',axis:axisU},{side:'radial',axis:axisR}]
-                             : [{side:'radial',axis:axisR},{side:'ulnar',axis:axisU}];
-
-      for (const b of blocks){
-        for (const wf of WAVEFORMS){
-          for (const sgn of SIGNS){
-            for (let r=0; r<REPS_PER_COMBO; r++){
-              trials.push({ participant_id: pid, block: b.side==='ulnar'?'A':'B', stim_side: b.side, axis: b.axis, waveform: wf, sign: sgn });
-            }
-          }
+    // 세션 1개(12 trial) 만들기: 현재 side/axis, block레이블로 trial 생성
+    function makeOneSession({ pid, blockLabel, side, axis }) {
+        const codes = shuffle(ALL_CODES.slice()); // 0..11 한 번씩, 무작위
+        const sessTrials = [];
+        for (const code of codes) {
+            const wf = (code >> 1) + 1;      // 1..6
+            const sign = (code & 1) ? -1 : +1; // 0=+,1=-  → 비트로 계산
+            sessTrials.push({
+                participant_id: pid,
+                block: blockLabel,          // 'A' or 'B'
+                stim_side: side,            // 'ulnar' or 'radial'
+                axis: axis,                 // 'Y' or 'Z'
+                waveform: wf,               // 1..6
+                sign: sign,                 // +1 / -1
+            });
         }
+        return sessTrials;
       }
-      shuffle(trials);
-      currentIndex = -1;
-    }
+
+
+    
+
+      // util
+      function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+      // 세션 1개(12 trial) 만들기: 현재 side/axis, block레이블로 trial 생성
+      function makeOneSession({ pid, blockLabel, side, axis }) {
+          const codes = shuffle(ALL_CODES.slice()); // 0..11 한 번씩, 무작위
+          const sessTrials = [];
+          for (const code of codes) {
+              const wf = (code >> 1) + 1;      // 1..6
+              const sign = (code & 1) ? -1 : +1; // 0=+,1=-  → 비트로 계산
+              sessTrials.push({
+                  participant_id: pid,
+                  block: blockLabel,          // 'A' or 'B'
+                  stim_side: side,            // 'ulnar' or 'radial'
+                  axis: axis,                 // 'Y' or 'Z'
+                  waveform: wf,               // 1..6
+                  sign: sign,                 // +1 / -1
+              });
+          }
+          return sessTrials;
+      }
+
+      // ===== Trials =====
+      function buildTrials() {
+          trials = [];
+          const pid = $('#pid').value || 'P000';
+          const orderUR = $('#blockOrder').value === 'UR';
+          const axisU = $('#axisU').value;
+          const axisR = $('#axisR').value;
+
+          // 블록 순서 정의
+          const blocks = orderUR
+              ? [{ label: 'A', side: 'ulnar', axis: axisU }, { label: 'B', side: 'radial', axis: axisR }]
+              : [{ label: 'A', side: 'radial', axis: axisR }, { label: 'B', side: 'ulnar', axis: axisU }];
+
+          // 세션 분배: 앞 블록 3, 뒤 블록 2  (총 5세션)
+          const sessionsPerBlock = [3, 2];
+
+          // ※ 만약 "블록마다 5세션(총 10세션)"을 원하면 ↓ 한 줄만 바꾸면 됨
+          // const sessionsPerBlock = [5, 5];
+
+          for (let bi = 0; bi < 2; bi++) {
+              const b = blocks[bi];
+              for (let s = 0; s < sessionsPerBlock[bi]; s++) {
+                  trials.push(...makeOneSession({
+                      pid, blockLabel: b.label, side: b.side, axis: b.axis
+                  }));
+              }
+          }
+
+          // 세션 내부는 이미 셔플되어 있고, 세션 간 순서는 블록 분배 순서대로 진행
+          // 원한다면 세션 순서까지 섞고 싶을 때는 trials를 세션 단위로 섞도록 별도 로직 추가 가능
+          currentIndex = -1;
+      }
 
     async function startSession(){
       demo = $('#demoMode')?.checked === true;
@@ -241,29 +293,37 @@
       $('#playHint').textContent = '';
     }
 
-    async function playStimulus(){
-      if (isPlaying) return;
-      const t = trials[currentIndex];
+      // ====== 재생(버튼 1클릭 = 정확히 1펄스) ======
+      async function playStimulus() {
+          if (isPlaying) return;
+          const t = trials[currentIndex];
 
-      isPlaying = true;
-      $('#btnPlay').disabled = true;
-      $('#phase').textContent = demo ? '자극 중… (데모)' : '자극 중…';
+          isPlaying = true;
+          $('#btnPlay').disabled = true;
+          $('#phase').textContent = demo ? '자극 중… (데모)' : '자극 중…';
 
-      const trig = t.sign > 0 ? '0' : '1'; // +방향/−방향
-      await sendCommand(trig);             // 버튼당 펄스 1회
-      // 완료
-      playCount += 1;
-      totalPulses += 1;
-      lastStimEndTs = performance.now();
-      $('#playHint').textContent = `재생 ${playCount}회, 총 펄스 ${totalPulses}`;
+          // (code, side) 두 바이트 전송
+          const code = (t.waveform - 1) * 2 + (t.sign > 0 ? 0 : 1);        // 0..11
+          const sideByte = (t.stim_side === 'ulnar') ? 0 : 1;               // 0=A22(ulnar), 1=A21(radial)
 
-      // 응답 패널 열기(첫 재생 후)
-      $('#responsePanel').classList.remove('hidden');
-      $('#phase').textContent = '응답/추가 재생 가능';
+          await sendByte(code);
+          await sendByte(sideByte);
 
-      isPlaying = false;
-      $('#btnPlay').disabled = false;
-    }
+          // 완료 처리
+          playCount += 1;
+          totalPulses += 1;
+          lastStimEndTs = performance.now();
+          $('#playHint').textContent = `재생 ${playCount}회, 총 펄스 ${totalPulses}`;
+
+          // 응답 패널 오픈
+          $('#responsePanel').classList.remove('hidden');
+          $('#phase').textContent = '응답/추가 재생 가능';
+
+          isPlaying = false;
+          $('#btnPlay').disabled = false;
+      }
+
+    
 
     function selectConfidence(val){
       currentConf = val;

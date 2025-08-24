@@ -23,7 +23,7 @@ const int DAC_PIN_A22 = A22; //Teensy 3.5 DAC1 == L in ulnar
 
 const int waveformSize = 256;
 int waveformIndex = 0;
-float targetHz = 40;
+float targetHz = 40.0f;
 float cycleDurationMs = 1000.0 / targetHz;
 float delayPerSampleUs = (cycleDurationMs * 1000.0) / waveformSize;
 float delayPerSampleUs_rt = (cycleDurationMs * 1000.0) / waveformSize;
@@ -72,14 +72,14 @@ inline int toDac_12bit_centered(int16_t v) {
 	return map(v, -32767, 32767, 0, 4095);
 }
 
+
 void playArrayWithGainCentered(const int16_t* arr, int n, float gain, int dacPin, float delayUs) {
-	// 평균값 산출
 	long sum = 0;
 	for (int i = 0; i < n; ++i) sum += arr[i];
 	float mean = (float)sum / (float)n;
 
 	for (int i = 0; i < n; ++i) {
-		float v = (arr[i] - mean) * gain;                // 중심화 + 게인
+		float v = (arr[i] - mean) * gain;
 		int16_t v16 = (int16_t)constrain((long)lround(v), -32767, 32767);
 		analogWrite(dacPin, toDac_12bit_centered(v16));
 		delayMicroseconds((int)delayUs);
@@ -89,10 +89,8 @@ void playArrayWithGainCentered(const int16_t* arr, int n, float gain, int dacPin
 
 //================arrange TargetHz Setting=========
 void updateDelayFromTargetHz() {
-	float cycleDurationMs = 1000.0 / targetHz;
-	delayPerSampleUs_rt = (cycleDurationMs * 1000.0) / waveformSize;
-	//Serial.print("Updated delayPerSampleUs: ");
-	//Serial.println(delayPerSampleUs);
+	float cycleMs = 1000.0f / targetHz;
+	delayPerSampleUs_rt = (cycleMs * 1000.0f) / waveformSize;
 }
 //==================================================
 
@@ -193,22 +191,24 @@ void playHalfSineWithRatioDualAltPolarity(const int16_t* w, int N, float gainA22
 	Serial.print(F("  delayRiseUs=")); Serial.print(delayRiseUs);
 	Serial.print(F("  delayFallUs=")); Serial.println(delayFallUs);
 }
-//====================================================================
-
+//===================================================================
 
 
 
 // the loop function runs over and over again until power down or reset
 void loop() {
 	//0바이트 이상이 아니라 2바이트 이상 도착했을 때만 처리
-	if (Serial.available() > 2) {
+	if (Serial.available() >= 2) {
 		int code = Serial.read() & 0xFF;  // 0..11
 		int side = Serial.read() & 0xFF;  // 0=ulnar(A22), 1=radial(A21)
 
-		int code = Serial.read(); // 0..255 (여기선 0..11)
-		int wf  = code / 2;   // 0..5
-		int neg = code % 2;   // 0=+, 1=-
+		if (code < 0 || code > 11) return;
+		if (side != 0 && side != 1) return;
+
+		int wf = code / 2;            // 0..5
+		int neg = code % 2;            // 0=+, 1=-
 		const int16_t* wav = neg ? WF_NEG[wf] : WF_POS[wf];
+		int dacPin = (side == 0) ? DAC_PIN_A22 : DAC_PIN_A21;
 
 		switch (code) {
 			// case '0' : 기존 단순 재생
@@ -225,7 +225,7 @@ void loop() {
 				break;
 			}
 
-					// case '1' : 원본 + 극성 반전(-) 파형 연속 재생
+			// case '1' : 원본 + 극성 반전(-) 파형 연속 재생
 			case '1': {
 				updateDelayFromTargetHz();
 				const float GAIN = 3.0f;
@@ -342,7 +342,7 @@ void loop() {
 					Serial.println(" repeat");
 				}
 				break;
-			}
+			}/*/
 			case '10': {
 				updateDelayFromTargetHz();
 				const float GAIN = 3.0f;
@@ -369,7 +369,7 @@ void loop() {
 				}
 				break;
 			}
-
+			*/
 
 					// 그 외: 도움말
 			default: {
