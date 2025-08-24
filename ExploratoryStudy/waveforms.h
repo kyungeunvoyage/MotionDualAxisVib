@@ -58,5 +58,9 @@ extern int16_t asymHalfSinePR[256];
 extern int16_t amBurstAsymPR[256];
 extern int16_t quadPushLinReturnPR[256];
 
+extern const int16_t* WF_POS[6];
+extern const int16_t* WF_NEG[6];
+
+
 
 #endif

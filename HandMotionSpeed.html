@@ -360,11 +360,6 @@
         $('#btnStart').addEventListener('click', startSession);
         $('#btnDownload').addEventListener('click', downloadCSV);
 
-        if (!('serial' in navigator)) {
-            $('#serialStatus').textContent = '미지원';
-            $('#serialStatus').style.color = 'var(--warn)';
-            alert('이 브라우저는 Web Serial API를 지원하지 않습니다. Chrome/Edge/Whale에서 열어주세요.');
-        }
     </script>
 </body>
 </html>

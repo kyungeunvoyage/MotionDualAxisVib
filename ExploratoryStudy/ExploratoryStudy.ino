@@ -33,7 +33,8 @@ int newWaveCase;
 //===============================================
 
 // the setup function runs once when you press reset or power the board
-void setup() {
+void setup()
+{
 	Wire.begin();
 	Serial.begin(115200);
 	while (!Serial);
@@ -62,6 +63,7 @@ void setup() {
 		amBurstAsymPR[i] = -wave_amBurstAsym[i];
 		quadPushLinReturnPR[i] = -wave_quadPushLinReturn[i];
 	}
+}
 
 
 //================gain setting=====================
