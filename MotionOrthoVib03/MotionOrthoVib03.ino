@@ -557,24 +557,39 @@ void loop()
             updateDelayFromTargetHz();
             const float GAIN = 3.0f;
             // rise:fall = 1:2
-            playHalfSineWithRatio(wave_impulseDampedTail, waveformSize, GAIN, DAC_PIN_A22,
-                delayPerSampleUs_rt, 1.0f, 2.0f, /*repeats=*/5);
+            for (int i = 0; i < 10; i++)
+            {
+                playArrayWithGainCentered(wave_impulseDampedTail, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+                delay(100);
+            }
+            //playHalfSineWithRatio(wave_impulseDampedTail, waveformSize, GAIN, DAC_PIN_A22,
+            //    delayPerSampleUs_rt, 1.0f, 2.0f, /*repeats=*/5);
         }
         else if (command == '2')
         {
             updateDelayFromTargetHz();
             const float GAIN = 3.0f;
             // rise:fall = 1:3
-            playHalfSineWithRatio(impulseDampedTailPR, waveformSize, GAIN, DAC_PIN_A22,
-                delayPerSampleUs_rt, 1.0f, 2.0f, /*repeats=*/5);
+            for (int i = 0; i < 10; i++)
+            {
+                playArrayWithGainCentered(impulseDampedTailPR, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+                delay(100);
+            }
+            //playHalfSineWithRatio(impulseDampedTailPR, waveformSize, GAIN, DAC_PIN_A22,
+            //    delayPerSampleUs_rt, 1.0f, 2.0f, /*repeats=*/5);
         }
         else if (command == '3')
         {
             updateDelayFromTargetHz();
             const float GAIN = 3.0f;
             // rise:fall = 2:1
-            playHalfSineWithRatio(wave_impulseDampedTail, waveformSize, GAIN, DAC_PIN_A21,
-                delayPerSampleUs_rt, 2.0f, 1.0f, /*repeats=*/5);
+            for (int i = 0; i < 10; i++)
+            {
+                playArrayWithGainCentered(wave_slowUpHardDrop, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+                delay(100);
+            }
+            //playHalfSineWithRatio(wave_impulseDampedTail, waveformSize, GAIN, DAC_PIN_A21,
+            //    delayPerSampleUs_rt, 2.0f, 1.0f, /*repeats=*/5);
         }
 
 
@@ -684,7 +699,7 @@ void loop()
             const float GAIN = 3.0f;
             for (int repeat = 0; repeat < 50; repeat++)
             {
-                playArrayWithGainCentered(wave_impulseDampedTail, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+                playArrayWithGainCentered(slowUpHardDropPR, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
                 delay(100);
                 Serial.println(repeat + "repeat");
             }

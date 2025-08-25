@@ -184,7 +184,8 @@ void playHalfSineWithRatioDualAltPolarity(const int16_t* w, int N, float gainA22
 
 // the loop function runs over and over again until power down or reset
 void loop() {
-	if (Serial.available() >= 2) {
+	if (Serial.available() >= 2) 
+	{
 		uint8_t code = Serial.read();   // 0..11
 		uint8_t side = Serial.read();   // 0 or 1
 		//0 : 앞, 1 : 뒤 
@@ -200,13 +201,21 @@ void loop() {
 		case 6: case 7: case 8: case 9: case 10: case 11: {
 			updateDelayFromTargetHz();
 			const float GAIN = 3.0f;
-			playArrayWithGainCentered(wav, waveformSize, GAIN, dacPin, delayPerSampleUs_rt);
+			for (int i = 0; i < 10; i++)
+			{
+				playArrayWithGainCentered(wav, waveformSize, GAIN, dacPin, delayPerSampleUs_rt);
+				//40hz니까 
+				delay(100);
+			}
 			break;
 		}
-		default: {
+		default: 
+		{
 			Serial.println(F("Commands 0..11 only"));
 			break;
 		}
 		}
+		
 	}
+	
 }
