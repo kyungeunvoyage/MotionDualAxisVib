@@ -222,7 +222,7 @@
                     <button id="btnUp" class="respBtn" style="min-width:120px;">위로 가는 방향성 (Z+)</button>
                     <button id="btnDown" class="respBtn" style="min-width:120px;">아래로 가는 방향성 (Z−)</button>
                     <button id="btnForward" class="respBtn" style="min-width:120px;">앞으로 가는 방향성 (Y+)</button>
-                    <button id="btnBackward" class="respBtn" style="min-width:120px;">뒤로 가는 방향성 (Y−)</button>
+                    <button id="btnBackward" class="respBtn" style="min-width:120px;"> 뒤로 가는 방향성 (Y−)</button>
                 </div>
                 <div style="margin-top:16px;">
                     <div>확신도 선택 (1–7):</div>
@@ -272,7 +272,7 @@
 
         // sessions / codes
         const SESSION_SIZE = 12;     // 한 세션당 12 trial (code 0..11 한 번씩)
-        const SESSIONS_TOTAL = 5;
+        const SESSIONS_TOTAL = 6;
         const ALL_CODES = [...Array(12).keys()]; // 0..11
 
         // ====== serial utils ======
@@ -293,7 +293,6 @@
                     return;
                 }
                 if (!('serial' in navigator)) {
-                    alert('이 브라우저는 Web Serial을 지원하지 않습니다.\nChrome/Edge 최신 버전을 사용하세요.');
                     return;
                 }
                 if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
@@ -360,8 +359,8 @@
                 : [{ label: 'A', side: 'radial', axis: axisR },
                 { label: 'B', side: 'ulnar', axis: axisU }];
 
-            // 기본: 총 5세션 = 앞 블록 3세션, 뒤 블록 2세션
-            const sessionsPerBlock = [3, 2];
+            // 기본: 총 6세션 = 앞 블록 3세션, 뒤 블록 3세션
+            const sessionsPerBlock = [3, 3];
 
             let sessionCounter = 0; // 1..SESSIONS_TOTAL
             for (let bi = 0; bi < 2; bi++) {
