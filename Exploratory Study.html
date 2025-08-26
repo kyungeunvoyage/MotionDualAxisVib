@@ -12,8 +12,6 @@
             --accent: #7bd3ff;
             --card: #121822;
             --ok: #75e39c;
-            --warn: #ffd36a;
-            --err: #ff8b8b;
         }
 
         body {
@@ -28,7 +26,7 @@
             border-bottom: 1px solid #1f2a38;
             position: sticky;
             top: 0;
-            background: linear-gradient(180deg, rgba(11,15,20,.95), rgba(11,15,20,.85));
+            background: linear-gradient(180deg,rgba(11,15,20,.95),rgba(11,15,20,.85));
             backdrop-filter: blur(8px);
         }
 
@@ -94,21 +92,9 @@
                 transform: translateY(-1px);
             }
 
-        .badge {
-            font-size: 12px;
-            padding: 3px 8px;
-            border-radius: 999px;
-            border: 1px solid #294059;
-            color: #bfe7ff;
-        }
-
         .big {
-            font-size: 24px;
-            font-weight: 700;
-        }
-
-        .center {
-            text-align: center;
+            font-size: 28px;
+            font-weight: 800;
         }
 
         .hidden {
@@ -121,12 +107,30 @@
             margin: 10px 0;
         }
 
-        .warn {
-            color: var(--warn);
+        .panel {
+            padding: 10px;
+            border: 1px dashed #273447;
+            border-radius: 12px;
+            margin-bottom: 12px;
         }
 
-        .ok {
-            color: var(--ok);
+        #stateLine {
+            display: flex;
+            justify-content: center;
+            align-items: baseline;
+            gap: 16px;
+            padding: 10px 8px;
+        }
+
+        #blockBadgeBig {
+            font-size: 18px;
+            font-weight: 800;
+            letter-spacing: .5px;
+            padding: 6px 12px;
+            border-radius: 999px;
+            border: 2px solid #2a5f85;
+            background: #0e1621;
+            color: #bfe7ff;
         }
 
         .scale-btn {
@@ -148,13 +152,6 @@
         .respSel {
             border-color: #2f95da;
             box-shadow: 0 0 0 2px rgba(47,149,218,.25) inset;
-        }
-
-        .panel {
-            padding: 10px;
-            border: 1px dashed #273447;
-            border-radius: 12px;
-            margin-bottom: 12px;
         }
 
         .hint {
@@ -181,14 +178,8 @@
                 </label>
             </div>
             <div class="row" style="margin-top:8px;">
-                <label>
-                    Ulnar 축(Y/Z)&nbsp;
-                    <select id="axisU"><option>Y</option><option>Z</option></select>
-                </label>
-                <label>
-                    Radial 축(Y/Z)&nbsp;
-                    <select id="axisR"><option>Y</option><option>Z</option></select>
-                </label>
+                <label>Ulnar 축(Y/Z)&nbsp;<select id="axisU"><option>Y</option><option>Z</option></select></label>
+                <label>Radial 축(Y/Z)&nbsp;<select id="axisR"><option>Y</option><option>Z</option></select></label>
             </div>
             <div class="sep"></div>
             <div class="row">
@@ -203,13 +194,12 @@
 
         <section>
             <h2>② 진행 패널</h2>
-            <div id="stateBox" class="center" style="padding:10px 8px;">
-                <div class="big" id="phase">대기</div>
-                <div class="hint" id="trialInfo"></div>
+            <div id="stateLine">
+                <div id="phase" class="big">대기</div>
+                <div id="blockBadgeBig">Block ?</div>
             </div>
             <div class="sep"></div>
 
-            <!-- 자극 재생(버튼 누를 때마다 펄스 1회) -->
             <div id="stimPanel" class="panel center hidden">
                 <div class="row" style="justify-content:center; gap:12px;">
                     <button id="btnPlay" class="primary">자극 재생</button>
@@ -222,10 +212,10 @@
                     <button id="btnUp" class="respBtn" style="min-width:120px;">위로 가는 방향성 (Z+)</button>
                     <button id="btnDown" class="respBtn" style="min-width:120px;">아래로 가는 방향성 (Z−)</button>
                     <button id="btnForward" class="respBtn" style="min-width:120px;">앞으로 가는 방향성 (Y+)</button>
-                    <button id="btnBackward" class="respBtn" style="min-width:120px;"> 뒤로 가는 방향성 (Y−)</button>
+                    <button id="btnBackward" class="respBtn" style="min-width:120px;">뒤로 가는 방향성 (Y−)</button>
                 </div>
                 <div style="margin-top:16px;">
-                    <div>확신도 선택 (1–7):</div>
+                    <div class="hint">확신도 선택 (선택 사항, 1–7):</div>
                     <div class="row" style="justify-content:center; gap:6px; margin-top:6px;">
                         <button class="scale-btn" data-val="1">1</button>
                         <button class="scale-btn" data-val="2">2</button>
@@ -244,23 +234,21 @@
     </main>
 
     <script>
-        // ====== helpers ======
+        // ===== helpers =====
         const $ = sel => document.querySelector(sel);
         const $$ = sel => document.querySelectorAll(sel);
         const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-        // ====== serial state ======
+        // ===== serial state =====
         let port, writer;
         let running = false;
         let demo = false;
 
-        // ====== experiment state ======
+        // ===== experiment state =====
         let trials = [];
         let currentIndex = -1;
-        const rows = [];
-        const REPS_PER_COMBO = 1;       // 현재 미사용(코드는 code 0..11 한 번씩)
-
-        let currentCond = '';
+        let blocksMeta = null;
+        let sessionsPerBlock = [5, 5];
         let currentConf = null;
         let chosenRespLabel = null, chosenRespSign = null;
 
@@ -270,12 +258,18 @@
         let totalPulses = 0;
         let lastStimEndTs = 0;
 
-        // sessions / codes
-        const SESSION_SIZE = 12;     // 한 세션당 12 trial (code 0..11 한 번씩)
-        const SESSIONS_TOTAL = 6;
-        const ALL_CODES = [...Array(12).keys()]; // 0..11
+        // ===== logging =====
+        function statusLine(t) {
+            if (!t) return '—';
+            const sIdxInBlock = (t.block === 'A') ? t.session_no : (t.session_no - sessionsPerBlock[0]);
+            const sTotInBlock = (t.block === 'A') ? sessionsPerBlock[0] : sessionsPerBlock[1];
+            return `[STATUS] Block=${t.block} | side=${t.stim_side} | axis=${t.axis} | session=${sIdxInBlock}/${sTotInBlock} | trial=${t.trial_in_session}/12`;
+        }
+        function logStatus(prefix, t) {
+            console.log(prefix, statusLine(t));
+        }
 
-        // ====== serial utils ======
+        // ===== serial utils =====
         async function sendByte(n) {
             if (demo) { await sleep(10); return; }
             if (!writer) return;
@@ -292,19 +286,14 @@
                     alert('데모 모드: 시리얼 없이 진행합니다. 이제 세션 시작을 누르세요.');
                     return;
                 }
-                if (!('serial' in navigator)) {
-                    return;
-                }
+                if (!('serial' in navigator)) { return; }
                 if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
-                    alert('Web Serial은 HTTPS 또는 http://localhost 에서만 동작합니다.');
-                    return;
+                    alert('Web Serial은 HTTPS 또는 http://localhost 에서만 동작합니다.'); return;
                 }
-
                 const p = await navigator.serial.requestPort();
                 await p.open({ baudRate: 115200 });
                 port = p;
                 writer = port.writable.getWriter();
-
                 $('#serialStatus').textContent = '연결됨';
                 $('#serialStatus').style.color = 'var(--ok)';
                 alert('시리얼 연결 성공: 이제 세션 시작 버튼을 누르세요.');
@@ -314,7 +303,7 @@
             }
         }
 
-        // ====== random ======
+        // ===== random =====
         function shuffle(a) {
             for (let i = a.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
@@ -323,29 +312,7 @@
             return a;
         }
 
-        // 세션 1개(12 trial) 만들기: sessionNo(1..SESSIONS_TOTAL) 포함
-        function makeOneSession({ pid, blockLabel, side, axis, sessionNo }) {
-            const codes = shuffle(ALL_CODES.slice()); // 0..11 한 번씩 무작위
-            const sessTrials = [];
-            for (let i = 0; i < codes.length; i++) {
-                const code = codes[i];
-                const wf = (code >> 1) + 1;          // 1..6
-                const sign = (code & 1) ? -1 : +1;   // 0=+,1=-
-                sessTrials.push({
-                    participant_id: pid,
-                    block: blockLabel,                 // 'A' / 'B'
-                    stim_side: side,                   // 'ulnar' / 'radial'
-                    axis: axis,                        // 'Y' / 'Z'
-                    waveform: wf,
-                    sign: sign,
-                    session_no: sessionNo,             // ★ 추가
-                    trial_in_session: i + 1            // ★ 1..12
-                });
-            }
-            return sessTrials;
-        }
-
-
+        // ===== build trials =====
         function buildTrials() {
             trials = [];
             const pid = $('#pid').value || 'P000';
@@ -359,37 +326,44 @@
                 : [{ label: 'A', side: 'radial', axis: axisR },
                 { label: 'B', side: 'ulnar', axis: axisU }];
 
-            // 기본: 총 6세션 = 앞 블록 3세션, 뒤 블록 3세션
-            const sessionsPerBlock = [3, 3];
+            blocksMeta = {
+                A: { side: blocks[0].side, axis: blocks[0].axis },
+                B: { side: blocks[1].side, axis: blocks[1].axis }
+            };
 
-            let sessionCounter = 0; // 1..SESSIONS_TOTAL
+            let sessionCounter = 0;
             for (let bi = 0; bi < 2; bi++) {
                 const b = blocks[bi];
                 for (let s = 0; s < sessionsPerBlock[bi]; s++) {
                     sessionCounter += 1;
-                    // code 0..11 한 번씩, 무작위
                     const codes = shuffle([...Array(12).keys()]);
-                    for (const code of codes) {
-                        const wf = (code >> 1) + 1;          // 1..6
-                        const sign = (code & 1) ? -1 : +1;   // 0=+,1=-
+                    codes.forEach((code, i) => {
+                        const wf = (code >> 1) + 1;        // 1..6
+                        const sign = (code & 1) ? -1 : +1;   // +1/-1
                         trials.push({
                             participant_id: pid,
-                            block: b.label,               // 'A'/'B'
-                            stim_side: b.side,            // 'ulnar'/'radial'
-                            axis: b.axis,                 // 'Y'/'Z'
-                            waveform: wf,                 // 1..6
-                            sign: sign,                   // +1/-1
-                            session_no: sessionCounter,   // ★ 세션 번호
-                            code,                         // 재현성 위해 저장(0..11)
-                            side_byte: (b.side === 'ulnar') ? 0 : 1 // 0=A22, 1=A21
+                            block: b.label,
+                            stim_side: b.side,
+                            axis: b.axis,
+                            waveform: wf,
+                            sign: sign,
+                            session_no: sessionCounter,
+                            trial_in_session: i + 1,           // 1..12
+                            code,
+                            side_byte: (b.side === 'ulnar') ? 0 : 1
                         });
-                    }
+                    });
                 }
             }
             currentIndex = -1;
+            updateBlockBadge('A');
+            console.log('[INIT] trials=', trials.length);
         }
 
-
+        function updateBlockBadge(blockLabel) {
+            const meta = blocksMeta?.[blockLabel];
+            $('#blockBadgeBig').textContent = meta ? `Block ${blockLabel}` : 'Block ?';
+        }
 
         async function startSession() {
             demo = $('#demoMode')?.checked === true;
@@ -400,25 +374,29 @@
         }
 
         async function nextTrial() {
-            // ✅ 세션 경계: 현재와 다음의 session_no 비교 (상수 사용 X)
+            // 세션 경계 처리 및 블록 전환 안내
             if (currentIndex >= 0) {
                 const cur = trials[currentIndex];
                 const nxt = trials[currentIndex + 1];
                 const isBoundary = !nxt || (nxt.session_no !== cur.session_no);
                 if (isBoundary) {
-                    const justFinishedSession = cur.session_no;
-                    const cont = confirm(`세션 ${justFinishedSession}이 완료되었습니다.\n계속 진행할까요?`);
+                    const isBlockSwitch = !!nxt && (nxt.block !== cur.block);
+                    let msg = `세션 ${cur.session_no} 완료`;
+                    if (isBlockSwitch) msg += ` | 블록 전환: ${cur.block} → ${nxt.block}`;
+                    console.log('[BOUNDARY]', msg);
+                    const cont = confirm(msg + '\n계속 진행할까요?');
                     if (!cont) {
                         running = false;
-                        $('#phase').textContent = `세션 ${justFinishedSession}까지 완료 (일시중지)`;
+                        $('#phase').textContent = `일시중지`;
                         $('#responsePanel').classList.add('hidden');
                         $('#stimPanel').classList.add('hidden');
                         return;
                     }
+                    if (isBlockSwitch) updateBlockBadge(nxt.block);
                 }
             }
 
-            // 다음 트라이얼로 진행
+            // 다음 트라이얼
             currentIndex++;
             if (currentIndex >= trials.length) {
                 running = false;
@@ -426,12 +404,13 @@
                 $('#responsePanel').classList.add('hidden');
                 $('#stimPanel').classList.add('hidden');
                 alert('전체 세션 종료');
+                console.log('[DONE] all sessions complete');
                 return;
             }
 
             const t = trials[currentIndex];
             $('#phase').textContent = '설정/재생 대기';
-            currentCond = `${t.block},${t.stim_side},${t.axis},WF${t.waveform},sign${t.sign > 0 ? '+' : '−'}`;
+            logStatus('[ENTER TRIAL]', t);
 
             $('#stimPanel').classList.remove('hidden');
             $('#responsePanel').classList.add('hidden');
@@ -448,9 +427,7 @@
             $('#playHint').textContent = '';
         }
 
-
-
-        // ====== 재생(버튼 1클릭 = 정확히 1펄스) ======
+        // ===== playback =====
         async function playStimulus() {
             if (isPlaying) return;
             const t = trials[currentIndex];
@@ -459,22 +436,18 @@
             $('#btnPlay').disabled = true;
             $('#phase').textContent = demo ? '자극 중… (데모)' : '자극 중…';
 
-            // (code, side) 두 바이트 전송
             const code = (t.waveform - 1) * 2 + (t.sign > 0 ? 0 : 1); // 0..11
             const sideByte = (t.stim_side === 'ulnar') ? 0 : 1;       // 0=A22, 1=A21
             await sendByte(code);
             await sendByte(sideByte);
 
-            // 완료 처리
             playCount += 1;
             totalPulses += 1;
             lastStimEndTs = performance.now();
-            $('#playHint').textContent = `재생 ${playCount}회, 총 펄스 ${totalPulses}`;
+            $('#playHint').textContent = `재생 ${playCount}회`;
 
-            // 응답 패널 오픈
             $('#responsePanel').classList.remove('hidden');
-            $('#phase').textContent = '응답/추가 재생 가능';
-
+            $('#phase').textContent = '응답 대기';
             isPlaying = false;
             $('#btnPlay').disabled = false;
         }
@@ -485,7 +458,8 @@
                 if (parseInt(btn.dataset.val) === val) btn.classList.add('active');
                 else btn.classList.remove('active');
             });
-            updateNextEnabled();
+            updateNextEnabled();                 // ★ 확신도 선택만으로도 Next 활성화
+            logStatus('[CONF]', trials[currentIndex]);
         }
 
         function chooseResponse(respLabel, respSign) {
@@ -496,76 +470,57 @@
             const el = document.querySelector(map[respLabel]);
             if (el) el.classList.add('respSel');
             updateNextEnabled();
+            logStatus('[RESP]', trials[currentIndex]);
         }
 
         function updateNextEnabled() {
-            $('#btnNext').disabled = !(chosenRespSign !== null && currentConf !== null);
+            // ✅ 응답 또는 확신도 중 하나라도 선택되면 다음 버튼 활성화
+            $('#btnNext').disabled = !((chosenRespSign !== null) || (currentConf !== null));
         }
 
         async function commitAndNext() {
             const t = trials[currentIndex];
             const rt = lastStimEndTs ? Math.round(performance.now() - lastStimEndTs) : null;
 
+            // ▼ 응답 없이도 진행을 허용 (분석용으로는 응답 필수 권장)
+            //   응답을 반드시 받으려면 아래 if 블록의 return을 주석 해제하세요.
+            // if (chosenRespSign === null) { alert('방향 응답을 선택해주세요'); return; }
+
             const row = {
                 timestamp: new Date().toISOString(),
                 participant_id: t.participant_id,
-                session_no: t.session_no,            
+                session_no: t.session_no,
                 block: t.block,
                 stim_side: t.stim_side,
                 axis: t.axis,
                 waveform: t.waveform,
                 sign: t.sign,
                 true_dir: t.sign,
-                response_label: chosenRespLabel,
-                response_dir: chosenRespSign,
-                correct: (chosenRespSign === t.sign) ? 1 : 0,
+                response_label: chosenRespLabel,                 // null 허용
+                response_dir: chosenRespSign,                    // null 허용
+                correct: (chosenRespSign === null) ? null : (chosenRespSign === t.sign ? 1 : 0),
                 rt_ms: rt,
-                confidence: currentConf,
+                confidence: currentConf,                         // null 허용
                 play_count: playCount,
                 total_pulses: totalPulses,
-                condition_info: currentCond,
-                code: t.code,                        // (선택) 0..11
-                side_byte: t.side_byte,              // (선택) 0/1
+                code: t.code,
+                side_byte: t.side_byte,
                 demo_mode: demo ? 1 : 0,
                 notes: ''
             };
 
             rows.push(row);
+            console.log('[COMMIT]', row, statusLine(t));
 
             $('#responsePanel').classList.add('hidden');
             $('#stimPanel').classList.add('hidden');
             $('#phase').textContent = '휴지';
-            await sleep(250);
+            await sleep(200);
             nextTrial();
         }
 
-        // ===== Events =====
-        $('#btnConnect').addEventListener('click', connectSerial);
-        $('#btnStart').addEventListener('click', startSession);
-        $('#btnDownload').addEventListener('click', () => {
-            const csv = toCSV(rows);
-            if (!csv) { alert('저장할 데이터가 없습니다'); return; }
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const a = document.createElement('a');
-            const pid = $('#pid').value || 'P000';
-            a.href = URL.createObjectURL(blob);
-            a.download = `${pid}_exploratory_raw.csv`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-        });
-
-        $('#btnPlay').addEventListener('click', playStimulus);
-
-        $('#btnUp').onclick = () => chooseResponse('Up', +1);
-        $('#btnDown').onclick = () => chooseResponse('Down', -1);
-        $('#btnForward').onclick = () => chooseResponse('Forward', +1);
-        $('#btnBackward').onclick = () => chooseResponse('Backward', -1);
-        $$('.scale-btn').forEach(btn => {
-            btn.addEventListener('click', () => selectConfidence(parseInt(btn.dataset.val)));
-        });
-        $('#btnNext').addEventListener('click', commitAndNext);
-
+        // ===== CSV =====
+        let rows = [];
         function toCSV(rows) {
             if (!rows.length) return '';
             const cols = Object.keys(rows[0]);
@@ -578,6 +533,37 @@
             const lines = rows.map(r => cols.map(c => esc(r[c])).join(','));
             return header + '\n' + lines.join('\n');
         }
+        function downloadBlob(text, filename, mime = 'text/plain;charset=utf-8;') {
+            const blob = new Blob([text], { type: mime });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        // ===== events =====
+        $('#btnConnect').addEventListener('click', connectSerial);
+        $('#btnStart').addEventListener('click', startSession);
+        $('#btnDownload').addEventListener('click', () => {
+            const csv = toCSV(rows);
+            if (!csv) { alert('저장할 데이터가 없습니다'); return; }
+            const pid = $('#pid').value || 'P000';
+            downloadBlob(csv, `${pid}_exploratory_raw.csv`, 'text/csv;charset=utf-8;');
+        });
+
+        $('#btnPlay').addEventListener('click', playStimulus);
+
+        $('#btnUp').onclick = () => chooseResponse('Up', +1);
+        $('#btnDown').onclick = () => chooseResponse('Down', -1);
+        $('#btnForward').onclick = () => chooseResponse('Forward', +1);
+        $('#btnBackward').onclick = () => chooseResponse('Backward', -1);
+
+        $$('.scale-btn').forEach(btn => {
+            btn.addEventListener('click', () => selectConfidence(parseInt(btn.dataset.val)));
+        });
+        $('#btnNext').addEventListener('click', commitAndNext);
     </script>
 </body>
 </html>
