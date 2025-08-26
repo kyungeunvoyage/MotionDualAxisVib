@@ -400,16 +400,21 @@
         }
 
         async function nextTrial() {
-            // 세션 경계 체크: 직전에 끝낸 trial이 세션의 마지막이었는지
-            if (currentIndex >= 0 && (currentIndex + 1) % SESSION_SIZE === 0) {
-                const justFinishedSession = trials[currentIndex].session_no;
-                const cont = confirm(`세션 ${justFinishedSession}이 완료되었습니다.\n계속 진행할까요?`);
-                if (!cont) {
-                    running = false;
-                    $('#phase').textContent = `세션 ${justFinishedSession}까지 완료 (일시중지)`;
-                    $('#responsePanel').classList.add('hidden');
-                    $('#stimPanel').classList.add('hidden');
-                    return; // 사용자가 중단 선택
+            // ✅ 세션 경계: 현재와 다음의 session_no 비교 (상수 사용 X)
+            if (currentIndex >= 0) {
+                const cur = trials[currentIndex];
+                const nxt = trials[currentIndex + 1];
+                const isBoundary = !nxt || (nxt.session_no !== cur.session_no);
+                if (isBoundary) {
+                    const justFinishedSession = cur.session_no;
+                    const cont = confirm(`세션 ${justFinishedSession}이 완료되었습니다.\n계속 진행할까요?`);
+                    if (!cont) {
+                        running = false;
+                        $('#phase').textContent = `세션 ${justFinishedSession}까지 완료 (일시중지)`;
+                        $('#responsePanel').classList.add('hidden');
+                        $('#stimPanel').classList.add('hidden');
+                        return;
+                    }
                 }
             }
 
@@ -442,6 +447,7 @@
             lastStimEndTs = 0;
             $('#playHint').textContent = '';
         }
+
 
 
         // ====== 재생(버튼 1클릭 = 정확히 1펄스) ======
