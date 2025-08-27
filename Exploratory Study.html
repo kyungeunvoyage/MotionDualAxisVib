@@ -292,7 +292,7 @@
 
         // ===== random =====
         function shuffle(a) {
-            for (let i = a.length - 1; i > 0; i++) {
+            for (let i = a.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [a[i], a[j]] = [a[j], a[i]];
             }
@@ -323,12 +323,12 @@
                     sessionCounter += 1;
                     const codes = shuffle([...Array(12).keys()]); // 0..11
                     codes.forEach((code, i) => {
-                        const wf = (code >> 1) + 1;     // 1..6
+                        const wf = (code >> 1) + 1;           // 1..6
                         const sign = (code & 1) ? -1 : +1;
                         trials.push({
                             participant_id: pid,
                             block: b.label,
-                            side: b.side,                 // 저장 키와 동일하게 맞춤
+                            stim_side: b.side,
                             axis: b.axis,
                             waveform: wf,
                             sign: sign,
@@ -351,9 +351,12 @@
         }
 
         function updateResponseChoicesForAxis(axis) {
+            // axis: 'Y' or 'Z'
             const showZ = (axis === 'Z');
+            // Z-buttons
             $('#btnUp').classList.toggle('hidden', !showZ);
             $('#btnDown').classList.toggle('hidden', !showZ);
+            // Y-buttons
             $('#btnForward').classList.toggle('hidden', showZ);
             $('#btnBackward').classList.toggle('hidden', showZ);
         }
@@ -366,6 +369,7 @@
         }
 
         async function nextTrial() {
+            // 경계/블록 전환 안내
             if (currentIndex >= 0) {
                 const cur = trials[currentIndex];
                 const nxt = trials[currentIndex + 1];
@@ -385,6 +389,7 @@
                 }
             }
 
+            // 다음 트라이얼로
             currentIndex++;
             if (currentIndex >= trials.length) {
                 $('#phase').textContent = '전체 세션 종료';
@@ -398,6 +403,7 @@
             const t = trials[currentIndex];
             $('#phase').textContent = '설정/재생 대기';
 
+            // 응답 UI 리셋 & axis에 맞는 선택지 표시
             chosenRespLabel = null; chosenRespSign = null; currentConf = null;
             $$('.respBtn').forEach(b => b.classList.remove('respSel'));
             $$('.scale-btn').forEach(b => b.classList.remove('active'));
@@ -421,7 +427,7 @@
             $('#phase').textContent = demo ? '자극 중… (데모)' : '자극 중…';
 
             const code = (t.waveform - 1) * 2 + (t.sign > 0 ? 0 : 1); // 0..11
-            const sideByte = (t.side === 'ulnar') ? 0 : 1;            // 0=A22, 1=A21
+            const sideByte = (t.stim_side === 'ulnar') ? 0 : 1;   // 0=A22, 1=A21
             await sendByte(code);
             await sendByte(sideByte);
 
@@ -456,41 +462,9 @@
         }
 
         function updateNextEnabled() {
+            // ✅ 둘 다 선택해야 활성화
             $('#btnNext').disabled = !(chosenRespSign !== null && currentConf !== null);
         }
-
-        // ===== CSV 스키마(헤더 고정) =====
-        const CSV_COLUMNS = [
-            'timestamp', 'participant_id', 'session_no', 'block',
-            'side', 'axis', 'waveform', 'sign', 'true_dir',
-            'response_label', 'response_dir', 'correct', 'rt_ms',
-            'confidence', 'play_count', 'total_pulses', 'code',
-            'side_byte', 'demo_mode', 'notes'
-        ];
-
-        function toCSV(rows) {
-            if (!rows.length) return '';
-            const cols = CSV_COLUMNS;
-            const header = cols.join(',');
-            const esc = v => {
-                if (v == null) return '';
-                const s = String(v);
-                return /[",\n]/.test(s) ? '"' + s.replaceAll('"', '""') + '"' : s;
-            };
-            const lines = rows.map(r => cols.map(c => esc(r[c])).join(','));
-            return header + '\n' + lines.join('\n');
-        }
-
-        function downloadBlob(text, filename, mime = 'text/csv;charset=utf-8;') {
-            const blob = new Blob([text], { type: mime });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = filename;
-            document.body.appendChild(a); a.click(); document.body.removeChild(a);
-        }
-
-        // ===== 데이터 누적 =====
-        let rows = [];
 
         async function commitAndNext() {
             const t = trials[currentIndex];
@@ -505,20 +479,20 @@
                 participant_id: t.participant_id,
                 session_no: t.session_no,
                 block: t.block,
-                side: t.side,                      // CSV는 side로 고정 저장
+                stim_side: t.stim_side,
                 axis: t.axis,
-                waveform: Number(t.waveform),
-                sign: Number(t.sign),
-                true_dir: Number(t.sign),
+                waveform: t.waveform,
+                sign: t.sign,
+                true_dir: t.sign,
                 response_label: chosenRespLabel,
-                response_dir: Number(chosenRespSign),
-                correct: (chosenRespSign === t.sign) ? 1 : 0,  // 0/1 보장
-                rt_ms: (rt == null ? '' : Math.max(0, Math.round(rt))),
-                confidence: Number(currentConf),
-                play_count: Number(playCount),
-                total_pulses: Number(totalPulses),
-                code: Number(t.code),
-                side_byte: (t.side === 'ulnar') ? 0 : 1,
+                response_dir: chosenRespSign,
+                correct: (chosenRespSign === t.sign) ? 1 : 0,
+                rt_ms: rt,
+                confidence: currentConf,
+                play_count: playCount,
+                total_pulses: totalPulses,
+                code: t.code,
+                side_byte: t.side_byte,
                 demo_mode: demo ? 1 : 0,
                 notes: ''
             };
@@ -532,6 +506,28 @@
             nextTrial();
         }
 
+        // ===== CSV =====
+        let rows = [];
+        function toCSV(rows) {
+            if (!rows.length) return '';
+            const cols = Object.keys(rows[0]);
+            const header = cols.join(',');
+            const esc = v => {
+                if (v == null) return '';
+                const s = String(v);
+                return /[",\n]/.test(s) ? '"' + s.replaceAll('"', '""') + '"' : s;
+            };
+            const lines = rows.map(r => cols.map(c => esc(r[c])).join(','));
+            return header + '\n' + lines.join('\n');
+        }
+        function downloadBlob(text, filename, mime = 'text/plain;charset=utf-8;') {
+            const blob = new Blob([text], { type: mime });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = filename;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        }
+
         // ===== events =====
         $('#btnConnect').addEventListener('click', connectSerial);
         $('#btnStart').addEventListener('click', startSession);
@@ -539,7 +535,7 @@
             const csv = toCSV(rows);
             if (!csv) { alert('저장할 데이터가 없습니다'); return; }
             const pid = $('#pid').value || 'P000';
-            downloadBlob(csv, `${pid}_exploratory_raw.csv`);
+            downloadBlob(csv, `${pid}_exploratory_raw.csv`, 'text/csv;charset=utf-8;');
         });
 
         $('#btnPlay').addEventListener('click', playStimulus);
