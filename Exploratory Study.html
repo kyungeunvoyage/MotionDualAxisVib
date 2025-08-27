@@ -18,7 +18,7 @@
             margin: 0;
             font-family: Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
             background: var(--bg);
-            color: var(--fg);
+            color: var(--fg)
         }
 
         header {
@@ -27,45 +27,40 @@
             position: sticky;
             top: 0;
             background: linear-gradient(180deg,rgba(11,15,20,.95),rgba(11,15,20,.85));
-            backdrop-filter: blur(8px);
+            backdrop-filter: blur(8px)
         }
 
         h1 {
             margin: 0;
             font-size: 20px;
-            letter-spacing: .2px;
+            letter-spacing: .2px
         }
 
         main {
             padding: 20px;
             display: grid;
             gap: 16px;
-            grid-template-columns: 420px 1fr;
+            grid-template-columns: 420px 1fr
         }
 
         section {
             background: var(--card);
             border: 1px solid #1b2633;
             border-radius: 14px;
-            padding: 16px;
+            padding: 16px
         }
 
             section h2 {
                 margin: 0 0 10px;
                 font-size: 16px;
-                color: var(--accent);
+                color: var(--accent)
             }
 
         .row {
             display: flex;
             gap: 10px;
             align-items: center;
-            flex-wrap: wrap;
-        }
-
-        label {
-            font-size: 13px;
-            color: var(--muted);
+            flex-wrap: wrap
         }
 
         input, select, button {
@@ -74,44 +69,44 @@
             border: 1px solid #223042;
             border-radius: 10px;
             padding: 8px 10px;
-            font-size: 14px;
+            font-size: 14px
         }
 
         button {
             background: #0e1621;
             cursor: pointer;
-            transition: .15s ease;
+            transition: .15s ease
         }
 
             button.primary {
                 background: #143047;
-                border-color: #1e4b6d;
+                border-color: #1e4b6d
             }
 
             button:hover {
-                transform: translateY(-1px);
+                transform: translateY(-1px)
             }
 
         .big {
             font-size: 28px;
-            font-weight: 800;
+            font-weight: 800
         }
 
         .hidden {
-            display: none !important;
+            display: none !important
         }
 
         .sep {
             height: 1px;
             background: #1b2633;
-            margin: 10px 0;
+            margin: 10px 0
         }
 
         .panel {
             padding: 10px;
             border: 1px dashed #273447;
             border-radius: 12px;
-            margin-bottom: 12px;
+            margin-bottom: 12px
         }
 
         #stateLine {
@@ -119,7 +114,7 @@
             justify-content: center;
             align-items: baseline;
             gap: 16px;
-            padding: 10px 8px;
+            padding: 10px 8px
         }
 
         #blockBadgeBig {
@@ -130,7 +125,7 @@
             border-radius: 999px;
             border: 2px solid #2a5f85;
             background: #0e1621;
-            color: #bfe7ff;
+            color: #bfe7ff
         }
 
         .scale-btn {
@@ -140,23 +135,23 @@
             border-radius: 8px;
             background: #0e1621;
             border: 1px solid #223042;
-            cursor: pointer;
+            cursor: pointer
         }
 
             .scale-btn.active {
                 background: var(--accent);
                 color: #000;
-                font-weight: bold;
+                font-weight: bold
             }
 
         .respSel {
             border-color: #2f95da;
-            box-shadow: 0 0 0 2px rgba(47,149,218,.25) inset;
+            box-shadow: 0 0 0 2px rgba(47,149,218,.25) inset
         }
 
         .hint {
             font-size: 12px;
-            color: var(--muted);
+            color: var(--muted)
         }
     </style>
 </head>
@@ -164,6 +159,7 @@
     <header>
         <h1>Exploratory Study Runner · VCA Directionality <span class="badge" id="serialStatus">미연결</span></h1>
     </header>
+
     <main>
         <section>
             <h2>① 세션 설정</h2>
@@ -209,13 +205,15 @@
 
             <div id="responsePanel" class="center hidden">
                 <div class="row center" style="justify-content:center; gap:14px; flex-wrap:wrap;">
+                    <!-- Z-axis choices -->
                     <button id="btnUp" class="respBtn" style="min-width:120px;">위로 가는 방향성 (Z+)</button>
                     <button id="btnDown" class="respBtn" style="min-width:120px;">아래로 가는 방향성 (Z−)</button>
+                    <!-- Y-axis choices -->
                     <button id="btnForward" class="respBtn" style="min-width:120px;">앞으로 가는 방향성 (Y+)</button>
                     <button id="btnBackward" class="respBtn" style="min-width:120px;">뒤로 가는 방향성 (Y−)</button>
                 </div>
                 <div style="margin-top:16px;">
-                    <div class="hint">확신도 선택 (선택 사항, 1–7):</div>
+                    <div class="hint">확신도 선택 (1–7):</div>
                     <div class="row" style="justify-content:center; gap:6px; margin-top:6px;">
                         <button class="scale-btn" data-val="1">1</button>
                         <button class="scale-btn" data-val="2">2</button>
@@ -235,13 +233,12 @@
 
     <script>
         // ===== helpers =====
-        const $ = sel => document.querySelector(sel);
-        const $$ = sel => document.querySelectorAll(sel);
+        const $ = s => document.querySelector(s);
+        const $$ = s => document.querySelectorAll(s);
         const sleep = ms => new Promise(r => setTimeout(r, ms));
 
         // ===== serial state =====
         let port, writer;
-        let running = false;
         let demo = false;
 
         // ===== experiment state =====
@@ -249,6 +246,7 @@
         let currentIndex = -1;
         let blocksMeta = null;
         let sessionsPerBlock = [5, 5];
+
         let currentConf = null;
         let chosenRespLabel = null, chosenRespSign = null;
 
@@ -258,22 +256,11 @@
         let totalPulses = 0;
         let lastStimEndTs = 0;
 
-        // ===== logging =====
-        function statusLine(t) {
-            if (!t) return '—';
-            const sIdxInBlock = (t.block === 'A') ? t.session_no : (t.session_no - sessionsPerBlock[0]);
-            const sTotInBlock = (t.block === 'A') ? sessionsPerBlock[0] : sessionsPerBlock[1];
-            return `[STATUS] Block=${t.block} | side=${t.stim_side} | axis=${t.axis} | session=${sIdxInBlock}/${sTotInBlock} | trial=${t.trial_in_session}/12`;
-        }
-        function logStatus(prefix, t) {
-            console.log(prefix, statusLine(t));
-        }
-
         // ===== serial utils =====
         async function sendByte(n) {
             if (demo) { await sleep(10); return; }
             if (!writer) return;
-            const buf = new Uint8Array([n & 0xFF]);
+            const buf = new Uint8Array([n & 0xff]);
             await writer.write(buf);
         }
 
@@ -286,7 +273,7 @@
                     alert('데모 모드: 시리얼 없이 진행합니다. 이제 세션 시작을 누르세요.');
                     return;
                 }
-                if (!('serial' in navigator)) { return; }
+                if (!('serial' in navigator)) return;
                 if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
                     alert('Web Serial은 HTTPS 또는 http://localhost 에서만 동작합니다.'); return;
                 }
@@ -299,7 +286,7 @@
                 alert('시리얼 연결 성공: 이제 세션 시작 버튼을 누르세요.');
             } catch (e) {
                 console.error(e);
-                alert('Serial 연결 실패: 포트 선택/권한/드라이버를 확인하세요.\n' + (e?.message || e));
+                alert('Serial 연결 실패: 포트/권한을 확인하세요.\n' + (e?.message || e));
             }
         }
 
@@ -321,10 +308,8 @@
             const axisR = $('#axisR').value;
 
             const blocks = orderUR
-                ? [{ label: 'A', side: 'ulnar', axis: axisU },
-                { label: 'B', side: 'radial', axis: axisR }]
-                : [{ label: 'A', side: 'radial', axis: axisR },
-                { label: 'B', side: 'ulnar', axis: axisU }];
+                ? [{ label: 'A', side: 'ulnar', axis: axisU }, { label: 'B', side: 'radial', axis: axisR }]
+                : [{ label: 'A', side: 'radial', axis: axisR }, { label: 'B', side: 'ulnar', axis: axisU }];
 
             blocksMeta = {
                 A: { side: blocks[0].side, axis: blocks[0].axis },
@@ -336,10 +321,10 @@
                 const b = blocks[bi];
                 for (let s = 0; s < sessionsPerBlock[bi]; s++) {
                     sessionCounter += 1;
-                    const codes = shuffle([...Array(12).keys()]);
+                    const codes = shuffle([...Array(12).keys()]); // 0..11
                     codes.forEach((code, i) => {
-                        const wf = (code >> 1) + 1;        // 1..6
-                        const sign = (code & 1) ? -1 : +1;   // +1/-1
+                        const wf = (code >> 1) + 1;           // 1..6
+                        const sign = (code & 1) ? -1 : +1;
                         trials.push({
                             participant_id: pid,
                             block: b.label,
@@ -348,7 +333,7 @@
                             waveform: wf,
                             sign: sign,
                             session_no: sessionCounter,
-                            trial_in_session: i + 1,           // 1..12
+                            trial_in_session: i + 1,
                             code,
                             side_byte: (b.side === 'ulnar') ? 0 : 1
                         });
@@ -357,7 +342,7 @@
             }
             currentIndex = -1;
             updateBlockBadge('A');
-            console.log('[INIT] trials=', trials.length);
+            console.log('[INIT] trials =', trials.length);
         }
 
         function updateBlockBadge(blockLabel) {
@@ -365,16 +350,26 @@
             $('#blockBadgeBig').textContent = meta ? `Block ${blockLabel}` : 'Block ?';
         }
 
+        function updateResponseChoicesForAxis(axis) {
+            // axis: 'Y' or 'Z'
+            const showZ = (axis === 'Z');
+            // Z-buttons
+            $('#btnUp').classList.toggle('hidden', !showZ);
+            $('#btnDown').classList.toggle('hidden', !showZ);
+            // Y-buttons
+            $('#btnForward').classList.toggle('hidden', showZ);
+            $('#btnBackward').classList.toggle('hidden', showZ);
+        }
+
         async function startSession() {
             demo = $('#demoMode')?.checked === true;
             if (!demo && !port) { alert('먼저 시리얼 연결을 해주세요'); return; }
             buildTrials();
-            running = true;
             nextTrial();
         }
 
         async function nextTrial() {
-            // 세션 경계 처리 및 블록 전환 안내
+            // 경계/블록 전환 안내
             if (currentIndex >= 0) {
                 const cur = trials[currentIndex];
                 const nxt = trials[currentIndex + 1];
@@ -383,10 +378,8 @@
                     const isBlockSwitch = !!nxt && (nxt.block !== cur.block);
                     let msg = `세션 ${cur.session_no} 완료`;
                     if (isBlockSwitch) msg += ` | 블록 전환: ${cur.block} → ${nxt.block}`;
-                    console.log('[BOUNDARY]', msg);
                     const cont = confirm(msg + '\n계속 진행할까요?');
                     if (!cont) {
-                        running = false;
                         $('#phase').textContent = `일시중지`;
                         $('#responsePanel').classList.add('hidden');
                         $('#stimPanel').classList.add('hidden');
@@ -396,10 +389,9 @@
                 }
             }
 
-            // 다음 트라이얼
+            // 다음 트라이얼로
             currentIndex++;
             if (currentIndex >= trials.length) {
-                running = false;
                 $('#phase').textContent = '전체 세션 종료';
                 $('#responsePanel').classList.add('hidden');
                 $('#stimPanel').classList.add('hidden');
@@ -410,20 +402,18 @@
 
             const t = trials[currentIndex];
             $('#phase').textContent = '설정/재생 대기';
-            logStatus('[ENTER TRIAL]', t);
 
-            $('#stimPanel').classList.remove('hidden');
-            $('#responsePanel').classList.add('hidden');
-            $('#btnNext').disabled = true;
-
+            // 응답 UI 리셋 & axis에 맞는 선택지 표시
             chosenRespLabel = null; chosenRespSign = null; currentConf = null;
             $$('.respBtn').forEach(b => b.classList.remove('respSel'));
             $$('.scale-btn').forEach(b => b.classList.remove('active'));
+            updateResponseChoicesForAxis(t.axis);
+            $('#btnNext').disabled = true;
 
-            isPlaying = false;
-            playCount = 0;
-            totalPulses = 0;
-            lastStimEndTs = 0;
+            $('#stimPanel').classList.remove('hidden');
+            $('#responsePanel').classList.add('hidden');
+
+            isPlaying = false; playCount = 0; totalPulses = 0; lastStimEndTs = 0;
             $('#playHint').textContent = '';
         }
 
@@ -437,7 +427,7 @@
             $('#phase').textContent = demo ? '자극 중… (데모)' : '자극 중…';
 
             const code = (t.waveform - 1) * 2 + (t.sign > 0 ? 0 : 1); // 0..11
-            const sideByte = (t.stim_side === 'ulnar') ? 0 : 1;       // 0=A22, 1=A21
+            const sideByte = (t.stim_side === 'ulnar') ? 0 : 1;   // 0=A22, 1=A21
             await sendByte(code);
             await sendByte(sideByte);
 
@@ -458,33 +448,31 @@
                 if (parseInt(btn.dataset.val) === val) btn.classList.add('active');
                 else btn.classList.remove('active');
             });
-            updateNextEnabled();                 // ★ 확신도 선택만으로도 Next 활성화
-            logStatus('[CONF]', trials[currentIndex]);
+            updateNextEnabled();
         }
 
         function chooseResponse(respLabel, respSign) {
             chosenRespLabel = respLabel;
             chosenRespSign = respSign;
             $$('.respBtn').forEach(b => b.classList.remove('respSel'));
-            const map = { 'Up': '#btnUp', 'Down': '#btnDown', 'Forward': '#btnForward', 'Backward': '#btnBackward' };
+            const map = { Up: '#btnUp', Down: '#btnDown', Forward: '#btnForward', Backward: '#btnBackward' };
             const el = document.querySelector(map[respLabel]);
             if (el) el.classList.add('respSel');
             updateNextEnabled();
-            logStatus('[RESP]', trials[currentIndex]);
         }
 
         function updateNextEnabled() {
-            // ✅ 응답 또는 확신도 중 하나라도 선택되면 다음 버튼 활성화
-            $('#btnNext').disabled = !((chosenRespSign !== null) || (currentConf !== null));
+            // ✅ 둘 다 선택해야 활성화
+            $('#btnNext').disabled = !(chosenRespSign !== null && currentConf !== null);
         }
 
         async function commitAndNext() {
             const t = trials[currentIndex];
             const rt = lastStimEndTs ? Math.round(performance.now() - lastStimEndTs) : null;
-
-            // ▼ 응답 없이도 진행을 허용 (분석용으로는 응답 필수 권장)
-            //   응답을 반드시 받으려면 아래 if 블록의 return을 주석 해제하세요.
-            // if (chosenRespSign === null) { alert('방향 응답을 선택해주세요'); return; }
+            if (chosenRespSign === null || currentConf === null) {
+                alert('방향성 응답과 확신도를 모두 선택해주세요.');
+                return;
+            }
 
             const row = {
                 timestamp: new Date().toISOString(),
@@ -496,11 +484,11 @@
                 waveform: t.waveform,
                 sign: t.sign,
                 true_dir: t.sign,
-                response_label: chosenRespLabel,                 // null 허용
-                response_dir: chosenRespSign,                    // null 허용
-                correct: (chosenRespSign === null) ? null : (chosenRespSign === t.sign ? 1 : 0),
+                response_label: chosenRespLabel,
+                response_dir: chosenRespSign,
+                correct: (chosenRespSign === t.sign) ? 1 : 0,
                 rt_ms: rt,
-                confidence: currentConf,                         // null 허용
+                confidence: currentConf,
                 play_count: playCount,
                 total_pulses: totalPulses,
                 code: t.code,
@@ -508,9 +496,8 @@
                 demo_mode: demo ? 1 : 0,
                 notes: ''
             };
-
             rows.push(row);
-            console.log('[COMMIT]', row, statusLine(t));
+            console.log('[COMMIT]', row);
 
             $('#responsePanel').classList.add('hidden');
             $('#stimPanel').classList.add('hidden');
@@ -538,9 +525,7 @@
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
             a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
         }
 
         // ===== events =====
