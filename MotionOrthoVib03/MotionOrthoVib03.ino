@@ -552,6 +552,8 @@ void loop()
             }
 
         }
+
+        //Practice session 
         else if (command == '1')
         {
             updateDelayFromTargetHz();
@@ -585,7 +587,7 @@ void loop()
             // rise:fall = 2:1
             for (int i = 0; i < 10; i++)
             {
-                playArrayWithGainCentered(wave_slowUpHardDrop, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+                playArrayWithGainCentered(wave_impulseDampedTail, waveformSize, GAIN, DAC_PIN_A21, delayPerSampleUs_rt);
                 delay(100);
             }
             //playHalfSineWithRatio(wave_impulseDampedTail, waveformSize, GAIN, DAC_PIN_A21,
@@ -595,28 +597,16 @@ void loop()
 
         else if (command == '4')
         {
-            UI_START('4');
-            // 목표 40 Hz 반영
-            updateDelayFromTargetHz();  // targetHz = 40일 때 delayPerSampleUs_rt 자동 갱신
-
-            const float GAIN_A22 = 3.0f;  
-            const float GAIN_A21 = 3.0f;   
-            const float rRise = 1.0f, rFall = 2.0f; // 1:2 비율
-            const bool  invertA21 = true; 
-            const int   PAIRS = 5;         // "정상→반전" 1쌍 × 5 = 총 10번 울림
-
-            // 파형은 기존과 동일하게 사용 (예: wave_asymHalfSine)
-            playHalfSineWithRatioDualAltPolarity(
-                two_high, waveformSize,
-                GAIN_A22, GAIN_A21,
-                DAC_PIN_A22, DAC_PIN_A21,
-                delayPerSampleUs_rt,
-                rRise, rFall,
-                invertA21,
-                PAIRS
-            );
-
-            UI_END('4');
+            updateDelayFromTargetHz();
+            const float GAIN = 3.0f;
+            // rise:fall = 2:1
+            for (int i = 0; i < 10; i++)
+            {
+                playArrayWithGainCentered(impulseDampedTailPR, waveformSize, GAIN, DAC_PIN_A21                                                                                                                                                                                                                                                                                                 , delayPerSampleUs_rt);
+                delay(100);
+            }
+            //playHalfSineWithRatio(wave_impulseDampedTail, waveformSize, GAIN, DAC_PIN_A21,
+            //    delayPerSampleUs_rt, 2.0f, 1.0f, /*repeats=*/5);
         }
 
 
