@@ -11,7 +11,7 @@
             --muted: #99a7b5;
             --accent: #7bd3ff;
             --card: #121822;
-            --ok: #75e39c;
+            --ok: #75e39c
         }
 
         body {
@@ -166,10 +166,10 @@
             <div class="row">
                 <label>Participant ID&nbsp;<input id="pid" placeholder="P001" /></label>
                 <label>
-                    Block 순서&nbsp;
+                    Block 축 순서&nbsp;
                     <select id="blockOrder">
-                        <option value="UR">A: Ulnar → B: Radial</option>
-                        <option value="RU">A: Radial → B: Ulnar</option>
+                        <option value="YZ">A: Y → B: Z</option>
+                        <option value="ZY">A: Z → B: Y</option>
                     </select>
                 </label>
             </div>
@@ -205,12 +205,11 @@
 
             <div id="responsePanel" class="center hidden">
                 <div class="row center" style="justify-content:center; gap:14px; flex-wrap:wrap;">
-                    <!-- Z-axis choices -->
-                    <button id="btnUp" class="respBtn" style="min-width:120px;">Upwards 위로 가는 방향성 (Z+)</button>
-                    <button id="btnDown" class="respBtn" style="min-width:120px;">Downwards 아래로 가는 방향성 (Z−)</button>
-                    <!-- Y-axis choices -->
-                    <button id="btnForward" class="respBtn" style="min-width:120px;">Forwards 앞으로 가는 방향성 (Y+)</button>
-                    <button id="btnBackward" class="respBtn" style="min-width:120px;">Backwards 뒤로 가는 방향성 (Y−)</button>
+                    <!-- 항상 4개 버튼 노출 -->
+                    <button id="btnUp" class="respBtn" style="min-width:120px;">Upwards (Z+)</button>
+                    <button id="btnDown" class="respBtn" style="min-width:120px;">Downwards (Z−)</button>
+                    <button id="btnForward" class="respBtn" style="min-width:120px;">Forwards (Y+)</button>
+                    <button id="btnBackward" class="respBtn" style="min-width:120px;">Backwards (Y−)</button>
                 </div>
                 <div style="margin-top:16px;">
                     <div class="hint">확신도 선택 (1–7):</div>
@@ -244,9 +243,7 @@
         // ===== experiment state =====
         let trials = [];
         let currentIndex = -1;
-        let blocksMeta = null;
-        let sessionsPerBlock = [5, 5];
-
+        let blocksMeta = null;            // 표시용
         let currentConf = null;
         let chosenRespLabel = null, chosenRespSign = null;
 
@@ -263,7 +260,6 @@
             const buf = new Uint8Array([n & 0xff]);
             await writer.write(buf);
         }
-
         async function connectSerial() {
             try {
                 demo = $('#demoMode')?.checked === true;
@@ -274,13 +270,12 @@
                     return;
                 }
                 if (!('serial' in navigator)) return;
-                if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+                if (location.protocol !== 'https:' && !['localhost', '127.0.0.1'].includes(location.hostname)) {
                     alert('Web Serial은 HTTPS 또는 http://localhost 에서만 동작합니다.'); return;
                 }
                 const p = await navigator.serial.requestPort();
                 await p.open({ baudRate: 115200 });
-                port = p;
-                writer = port.writable.getWriter();
+                port = p; writer = port.writable.getWriter();
                 $('#serialStatus').textContent = '연결됨';
                 $('#serialStatus').style.color = 'var(--ok)';
                 alert('시리얼 연결 성공: 이제 세션 시작 버튼을 누르세요.');
@@ -299,66 +294,66 @@
             return a;
         }
 
-        // ===== build trials =====
+        // ===== build trials (블록별 24개, side 교차) =====
         function buildTrials() {
             trials = [];
             const pid = $('#pid').value || 'P000';
             const orderUR = $('#blockOrder').value === 'UR';
-            const axisU = $('#axisU').value;
-            const axisR = $('#axisR').value;
+            const axisU = $('#axisU').value;  // ulnar axis
+            const axisR = $('#axisR').value;  // radial axis
 
-            const blocks = orderUR
-                ? [{ label: 'A', side: 'ulnar', axis: axisU }, { label: 'B', side: 'radial', axis: axisR }]
-                : [{ label: 'A', side: 'radial', axis: axisR }, { label: 'B', side: 'ulnar', axis: axisU }];
+            // 블록 라벨은 A/B 그대로. 표시는 blockBadge로만 사용.
+            const blocks = orderUR ? [{ label: 'A' }, { label: 'B' }] : [{ label: 'A' }, { label: 'B' }];
+            blocksMeta = { A: {}, B: {} };
 
-            blocksMeta = {
-                A: { side: blocks[0].side, axis: blocks[0].axis },
-                B: { side: blocks[1].side, axis: blocks[1].axis }
-            };
-
-            let sessionCounter = 0;
+            let sessionNo = 0;
             for (let bi = 0; bi < 2; bi++) {
-                const b = blocks[bi];
-                for (let s = 0; s < sessionsPerBlock[bi]; s++) {
-                    sessionCounter += 1;
-                    const codes = shuffle([...Array(12).keys()]); // 0..11
-                    codes.forEach((code, i) => {
-                        const wf = (code >> 1) + 1;           // 1..6
-                        const sign = (code & 1) ? -1 : +1;
+                const blockLabel = blocks[bi].label;
+                sessionNo += 1; // 블록마다 1세션(24트라이얼)
+
+                // code 0..11 한 번씩 무작위
+                const codes = shuffle([...Array(12).keys()]);
+
+                // 시작 side: A는 ulnar, B는 radial → 교차 시작점 균형
+                let nextSide = (blockLabel === 'A') ? 'ulnar' : 'radial';
+
+                let trialInSession = 0;
+                for (const code of codes) {
+                    const wf = (code >> 1) + 1;        // 1..6
+                    const sign = (code & 1) ? -1 : +1; // +1/-1
+
+                    // 각 code는 ulnar 1회 + radial 1회 → 총 24
+                    for (let rep = 0; rep < 2; rep++) {
+                        const side = nextSide;
+                        const axis = (side === 'ulnar') ? axisU : axisR;
+                        trialInSession += 1;
+
                         trials.push({
                             participant_id: pid,
-                            block: b.label,
-                            stim_side: b.side,
-                            axis: b.axis,
+                            block: blockLabel,
+                            side,                 // 'ulnar' / 'radial'
+                            axis,                 // 'Y' / 'Z'
                             waveform: wf,
                             sign: sign,
-                            session_no: sessionCounter,
-                            trial_in_session: i + 1,
+                            session_no: sessionNo,
+                            trial_in_session: trialInSession, // 1..24
                             code,
-                            side_byte: (b.side === 'ulnar') ? 0 : 1
+                            side_byte: (side === 'ulnar') ? 0 : 1
                         });
-                    });
+
+                        // 다음 트라이얼 side 토글
+                        nextSide = (nextSide === 'ulnar') ? 'radial' : 'ulnar';
+                    }
                 }
             }
+
             currentIndex = -1;
             updateBlockBadge('A');
-            console.log('[INIT] trials =', trials.length);
+            console.log('[INIT] trials =', trials.length); // 48 예상
         }
 
         function updateBlockBadge(blockLabel) {
-            const meta = blocksMeta?.[blockLabel];
-            $('#blockBadgeBig').textContent = meta ? `Block ${blockLabel}` : 'Block ?';
-        }
-
-        function updateResponseChoicesForAxis(axis) {
-            // axis: 'Y' or 'Z'
-            const showZ = (axis === 'Z');
-            // Z-buttons
-            $('#btnUp').classList.toggle('hidden', !showZ);
-            $('#btnDown').classList.toggle('hidden', !showZ);
-            // Y-buttons
-            $('#btnForward').classList.toggle('hidden', showZ);
-            $('#btnBackward').classList.toggle('hidden', showZ);
+            $('#blockBadgeBig').textContent = `Block ${blockLabel}`;
         }
 
         async function startSession() {
@@ -369,7 +364,7 @@
         }
 
         async function nextTrial() {
-            // 경계/블록 전환 안내
+            // 세션(=블록) 경계 처리 및 블록 배지 전환
             if (currentIndex >= 0) {
                 const cur = trials[currentIndex];
                 const nxt = trials[currentIndex + 1];
@@ -389,7 +384,6 @@
                 }
             }
 
-            // 다음 트라이얼로
             currentIndex++;
             if (currentIndex >= trials.length) {
                 $('#phase').textContent = '전체 세션 종료';
@@ -403,11 +397,10 @@
             const t = trials[currentIndex];
             $('#phase').textContent = '설정/재생 대기';
 
-            // 응답 UI 리셋 & axis에 맞는 선택지 표시
+            // 응답 UI 리셋
             chosenRespLabel = null; chosenRespSign = null; currentConf = null;
             $$('.respBtn').forEach(b => b.classList.remove('respSel'));
             $$('.scale-btn').forEach(b => b.classList.remove('active'));
-            updateResponseChoicesForAxis(t.axis);
             $('#btnNext').disabled = true;
 
             $('#stimPanel').classList.remove('hidden');
@@ -427,7 +420,7 @@
             $('#phase').textContent = demo ? '자극 중… (데모)' : '자극 중…';
 
             const code = (t.waveform - 1) * 2 + (t.sign > 0 ? 0 : 1); // 0..11
-            const sideByte = (t.stim_side === 'ulnar') ? 0 : 1;   // 0=A22, 1=A21
+            const sideByte = (t.side === 'ulnar') ? 0 : 1;            // 0=A22, 1=A21
             await sendByte(code);
             await sendByte(sideByte);
 
@@ -462,13 +455,42 @@
         }
 
         function updateNextEnabled() {
-            // ✅ 둘 다 선택해야 활성화
+            // 방향 + 확신도 모두 선택해야 다음 활성화
             $('#btnNext').disabled = !(chosenRespSign !== null && currentConf !== null);
         }
 
+        // ===== CSV 고정 스키마 =====
+        const CSV_COLUMNS = [
+            'timestamp', 'participant_id', 'session_no', 'block',
+            'side', 'axis', 'waveform', 'sign', 'true_dir',
+            'response_label', 'response_dir', 'correct', 'rt_ms',
+            'confidence', 'play_count', 'total_pulses', 'code',
+            'side_byte', 'demo_mode', 'notes'
+        ];
+        function toCSV(rows) {
+            if (!rows.length) return '';
+            const header = CSV_COLUMNS.join(',');
+            const esc = v => {
+                if (v == null) return '';
+                const s = String(v);
+                return /[",\n]/.test(s) ? '"' + s.replaceAll('"', '""') + '"' : s;
+            };
+            const lines = rows.map(r => CSV_COLUMNS.map(c => esc(r[c])).join(','));
+            return header + '\n' + lines.join('\n');
+        }
+        function downloadBlob(text, filename, mime = 'text/csv;charset=utf-8;') {
+            const blob = new Blob([text], { type: mime });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob); a.download = filename;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        }
+
+        // ===== 데이터 누적 =====
+        let rows = [];
         async function commitAndNext() {
             const t = trials[currentIndex];
-            const rt = lastStimEndTs ? Math.round(performance.now() - lastStimEndTs) : null;
+            const rt = lastStimEndTs ? Math.max(0, Math.round(performance.now() - lastStimEndTs)) : '';
+
             if (chosenRespSign === null || currentConf === null) {
                 alert('방향성 응답과 확신도를 모두 선택해주세요.');
                 return;
@@ -479,20 +501,20 @@
                 participant_id: t.participant_id,
                 session_no: t.session_no,
                 block: t.block,
-                stim_side: t.stim_side,
+                side: t.side,
                 axis: t.axis,
-                waveform: t.waveform,
-                sign: t.sign,
-                true_dir: t.sign,
+                waveform: Number(t.waveform),
+                sign: Number(t.sign),
+                true_dir: Number(t.sign),
                 response_label: chosenRespLabel,
-                response_dir: chosenRespSign,
+                response_dir: Number(chosenRespSign),
                 correct: (chosenRespSign === t.sign) ? 1 : 0,
                 rt_ms: rt,
-                confidence: currentConf,
-                play_count: playCount,
-                total_pulses: totalPulses,
-                code: t.code,
-                side_byte: t.side_byte,
+                confidence: Number(currentConf),
+                play_count: Number(playCount),
+                total_pulses: Number(totalPulses),
+                code: Number(t.code),
+                side_byte: (t.side === 'ulnar') ? 0 : 1,
                 demo_mode: demo ? 1 : 0,
                 notes: ''
             };
@@ -506,28 +528,6 @@
             nextTrial();
         }
 
-        // ===== CSV =====
-        let rows = [];
-        function toCSV(rows) {
-            if (!rows.length) return '';
-            const cols = Object.keys(rows[0]);
-            const header = cols.join(',');
-            const esc = v => {
-                if (v == null) return '';
-                const s = String(v);
-                return /[",\n]/.test(s) ? '"' + s.replaceAll('"', '""') + '"' : s;
-            };
-            const lines = rows.map(r => cols.map(c => esc(r[c])).join(','));
-            return header + '\n' + lines.join('\n');
-        }
-        function downloadBlob(text, filename, mime = 'text/plain;charset=utf-8;') {
-            const blob = new Blob([text], { type: mime });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = filename;
-            document.body.appendChild(a); a.click(); document.body.removeChild(a);
-        }
-
         // ===== events =====
         $('#btnConnect').addEventListener('click', connectSerial);
         $('#btnStart').addEventListener('click', startSession);
@@ -535,9 +535,8 @@
             const csv = toCSV(rows);
             if (!csv) { alert('저장할 데이터가 없습니다'); return; }
             const pid = $('#pid').value || 'P000';
-            downloadBlob(csv, `${pid}_exploratory_raw.csv`, 'text/csv;charset=utf-8;');
+            downloadBlob(csv, `${pid}_exploratory_raw.csv`);
         });
-
         $('#btnPlay').addEventListener('click', playStimulus);
 
         $('#btnUp').onclick = () => chooseResponse('Up', +1);

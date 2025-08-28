@@ -602,7 +602,7 @@ void loop()
             // rise:fall = 2:1
             for (int i = 0; i < 10; i++)
             {
-                playArrayWithGainCentered(impulseDampedTailPR, waveformSize, GAIN, DAC_PIN_A21                                                                                                                                                                                                                                                                                                 , delayPerSampleUs_rt);
+                playArrayWithGainCentered(impulseDampedTailPR, waveformSize, GAIN, DAC_PIN_A21, delayPerSampleUs_rt);
                 delay(100);
             }
             //playHalfSineWithRatio(wave_impulseDampedTail, waveformSize, GAIN, DAC_PIN_A21,
