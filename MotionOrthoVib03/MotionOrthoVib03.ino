@@ -148,8 +148,11 @@ void setup() {
         asymHalfSinePR[i] = -wave_asymHalfSine[i];
         amBurstAsymPR[i] = -wave_amBurstAsym[i];
         quadPushLinReturnPR[i] = -wave_quadPushLinReturn[i];
+        impulseDynamicPR[i] = -impulse_dynamic[i];
+        //Serial.print(impulseDynamicPR[i]);
     }
 
+    
     //Teensy DAC 12bit 이고, 해상도 지정을 해서 내부 스케일이 맞게끔 진행 
     //이거 쓰니까 확실히 다름
 
@@ -537,6 +540,7 @@ void loop()
         char command = Serial.read();
         if (command == '0')
         {
+            //b -> C 횡단 
             //YY
             // 
             //update hz
@@ -547,13 +551,13 @@ void loop()
             for (int repeat = 0; repeat < 10; repeat++)
             {
                 //Left flesh
-                playArrayWithGainCentered(high_high, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+                playArrayWithGainCentered(impulseDynamicPR, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
                 delay(500); //(phase)
 
                 //시간차 조정 어떻게 하냐? 
                 
                 //Right Flesh
-                playArrayWithGainCentered(high_highPR, waveformSize, GAIN, DAC_PIN_A21, delayPerSampleUs_rt);
+                playArrayWithGainCentered(impulse_dynamic, waveformSize, GAIN, DAC_PIN_A21, delayPerSampleUs_rt);
                 //하나의 pulse 이후 쉬기
                 delay(500);
             }
@@ -620,53 +624,56 @@ void loop()
 
         else if (command == '5')
         {
-            UI_START('5');
-            // 목표 40 Hz 반영
-            updateDelayFromTargetHz();  // targetHz = 40일 때 delayPerSampleUs_rt 자동 갱신
+            targetHz = 30;
+            updateDelayFromTargetHz();
+            const float GAIN = 5.0f;
 
-            const float GAIN_A22 = 3.0f;   // A22(정상 기준 게인)
-            const float GAIN_A21 = 3.0f;   // A21(정상 기준 게인)
-            const float rRise = 1.0f, rFall = 2.0f; // 1:2 비율
-            const bool  invertA21 = true;  
-            const int   PAIRS = 5;         // "정상→반전" 1쌍 × 5 = 총 10번 울림
+            //DC 제거 안하는 버전 
+            for (int repeat = 0; repeat < 5; repeat++)
+            {
+                for (int i = 0; i < waveformSize; i++)
+                {
+                    int val = impulse_dynamic[i];
 
-            
-            playHalfSineWithRatioDualAltPolarity(
-                wave_impulseDampedTail, waveformSize,
-                GAIN_A22, GAIN_A21,
-                DAC_PIN_A22, DAC_PIN_A21,
-                delayPerSampleUs_rt,
-                rRise, rFall,
-                invertA21,
-                PAIRS
-            );
+                    //이걸로 intensity를 결정하는 거임. 
+                    //int 16 
+                    int dacValue = map(val, -32767, 32767, 0, 4095);
+                    //Serial.println(dacValue);
 
-            UI_END('5');
+                    analogWrite(DAC_PIN_A22, dacValue);
+                    delayMicroseconds((int)delayPerSampleUs_rt);  //40hz
+                    //delay(100);
+
+                    //analogWrite(DAC_PIN_A21, dacValue);
+                    //delayMicroseconds((int)delayPerSampleUs_rt);  //40hz
+                    //delay(500);
+
+
+                }
+            }
         }
         else if (command == '6')
         {
-            UI_START('6');
-            // 목표 40 Hz 반영
-            updateDelayFromTargetHz();  // targetHz = 40일 때 delayPerSampleUs_rt 자동 갱신
+            targetHz = 40;
+            updateDelayFromTargetHz();
+            const float GAIN = 3.0f;
 
-            const float GAIN_A22 = 3.0f;   // A22(정상 기준 게인)
-            const float GAIN_A21 = 3.0f;   // A21(정상 기준 게인)
-            const float rRise = 1.0f, rFall = 2.0f; // 1:2 비율
-            const bool  invertA21 = true;  
-            const int   PAIRS = 5;         // "정상→반전" 1쌍 × 5 = 총 10번 울림
+            //DC 제거 안하는 버전 
+            for (int repeat = 0; repeat < 10; repeat++)
+            {
+                for (int i = 0; i < waveformSize; i++)
+                {
+                    int val = impulseDynamicPR[i];
 
-            // 
-            playHalfSineWithRatioDualAltPolarity(
-                dat, waveformSize,
-                GAIN_A22, GAIN_A21,
-                DAC_PIN_A22, DAC_PIN_A21,
-                delayPerSampleUs_rt,
-                rRise, rFall,
-                invertA21,
-                PAIRS
-            );
+                    //이걸로 intensity를 결정하는 거임. 
+                    //int 16 
+                    int dacValue = map(val, -32767, 32767, 0, 4095);
+                    //Serial.println(dacValue);
 
-            UI_END('6');
+                    analogWrite(DAC_PIN_A22, dacValue);
+                    delayMicroseconds((int)delayPerSampleUs_rt);  //40hz
+                }
+            }
 
         }
 
@@ -756,12 +763,10 @@ void loop()
                     //Serial.println(dacValue);
 
                     analogWrite(DAC_PIN_A22, dacValue);
-                    //analogWrite(DAC_PIN_A22, dacValue);
                     delayMicroseconds((int)delayPerSampleUs_rt);  //40hz
                     delay(500);
 
                     analogWrite(DAC_PIN_A21, dacValue);
-                    //analogWrite(DAC_PIN_A22, dacValue);
                     delayMicroseconds((int)delayPerSampleUs_rt);  //40hz
                     delay(500);
 
@@ -775,20 +780,34 @@ void loop()
 
         else if (command == 'B')
         {
-            //A를 누르게 되면, 10hz 로 변경해서 좀 느리게 할 수 있는지 확인 
-            targetHz = 10;
+            targetHz = 20;
             updateDelayFromTargetHz();
+            const float GAIN = 3.0f;
 
-            //for comb1 (yz) 
-            const float GAIN = 5.0f;
-            //Left flesh
-            playArrayWithGainCentered(impulse_dynamic, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
-            delay(500); //(phase)
+            for (int repeat = 0; repeat < 10; repeat++)
+            {
+                for (int i = 0; i < waveformSize; i++)
+                {
+                    int val = impulse_dynamic[i];
 
-            //Right Flesh
-            playArrayWithGainCentered(impulse_dynamic, waveformSize, GAIN, DAC_PIN_A21, delayPerSampleUs_rt);
-            //하나의 pulse 이후 쉬기
-            delay(500);
+                    //이걸로 intensity를 결정하는 거임. 
+                    //int 16 
+                    int dacValue = map(val, -32767, 32767, 0, 4095);
+                    //Serial.println(dacValue);
+
+                    //앞 
+                    analogWrite(DAC_PIN_A22, dacValue);
+                    delayMicroseconds((int)delayPerSampleUs_rt);  //40hz
+                    delay(500);
+
+                    //앞
+                    analogWrite(DAC_PIN_A21, dacValue);
+                    delayMicroseconds((int)delayPerSampleUs_rt);  //40hz
+                    delay(500);
+
+
+                }
+            }
         }
 
         else if (command == 'C')
