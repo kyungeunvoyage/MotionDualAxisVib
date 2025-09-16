@@ -94,8 +94,6 @@ void stopVibration(Haptic_Driver& driver) {
 void updateDelayFromTargetHz() {
     float cycleDurationMs = 1000.0 / targetHz;
     delayPerSampleUs_rt = (cycleDurationMs * 1000.0) / waveformSize;
-    //Serial.print("Updated delayPerSampleUs: ");
-    //Serial.println(delayPerSampleUs);
 }
 
 //====================generate signal==============
@@ -151,6 +149,11 @@ void setup() {
         amBurstAsymPR[i] = -wave_amBurstAsym[i];
         quadPushLinReturnPR[i] = -wave_quadPushLinReturn[i];
     }
+
+    //Teensy DAC 12bit 이고, 해상도 지정을 해서 내부 스케일이 맞게끔 진행 
+    //이거 쓰니까 확실히 다름
+
+    analogWriteResolution(12);
 }
 //=================setup===========================
 
@@ -160,19 +163,23 @@ inline int toDac_12bit_centered(int16_t v) {
     return map(v, -32767, 32767, 0, 4095);
 }
 
+
 void playArrayWithGainCentered(const int16_t* arr, int n, float gain, int dacPin, float delayUs) {
-    // 평균값 산출
+    // 평균값 산출 (== dc 오프셋) 
     long sum = 0;
     for (int i = 0; i < n; ++i) sum += arr[i];
     float mean = (float)sum / (float)n;
 
     for (int i = 0; i < n; ++i) {
-        float v = (arr[i] - mean) * gain;                // 중심화 + 게인
-        int16_t v16 = (int16_t)constrain((long)lround(v), -32767, 32767);
+        float v = (arr[i] - mean) * gain;                // dc 제거 -> 평균화 
+        int16_t v16 = (int16_t)constrain((long)lround(v), -32767, 32767);  //clipping 
+        //int dacValue = map(val, -32767, 32767, 0, 4095);
         analogWrite(dacPin, toDac_12bit_centered(v16));
-        delayMicroseconds((int)delayUs);
+        delayMicroseconds((int)delayUs); //샘플간 간격 유지~ 
     }
 }
+
+
 //================gain setting=====================
 
 //느린 복귀를 위해 raw 
@@ -561,7 +568,7 @@ void loop()
             // rise:fall = 1:2
             for (int i = 0; i < 10; i++)
             {
-                playArrayWithGainCentered(wave_impulseDampedTail, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+                playArrayWithGainCentered(wave_impulseDampedTail, waveformSize, GAIN, DAC_PIN_A21, delayPerSampleUs_rt);
                 delay(100);
             }
             //playHalfSineWithRatio(wave_impulseDampedTail, waveformSize, GAIN, DAC_PIN_A22,
@@ -574,7 +581,7 @@ void loop()
             // rise:fall = 1:3
             for (int i = 0; i < 10; i++)
             {
-                playArrayWithGainCentered(impulseDampedTailPR, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+                playArrayWithGainCentered(impulseDampedTailPR, waveformSize, GAIN, DAC_PIN_A21, delayPerSampleUs_rt);
                 delay(100);
             }
             //playHalfSineWithRatio(impulseDampedTailPR, waveformSize, GAIN, DAC_PIN_A22,
@@ -715,23 +722,73 @@ void loop()
 
         else if (command == 'A')
         {
-            //hz update
+            //A를 누르게 되면, 10hz 로 변경해서 좀 느리게 할 수 있는지 확인 
+            targetHz = 10;
             updateDelayFromTargetHz();
-            const float GAIN = 3.0f;
-            // rise:fall = 2:1
-            playHalfSineWithRatio(wave_asymHalfSine, waveformSize, GAIN, DAC_PIN_A22,
-                delayPerSampleUs_rt, 2.0f, 1.0f, /*repeats=*/5);
+            const float GAIN = 5.0f;
+
+            /*
+            for (int repeat = 0; repeat < 10; repeat++)
+            {
+                //for comb1 (yz) 
+                const float GAIN = 5.0f;
+                //Left flesh
+                playArrayWithGainCentered(impulse_dynamic, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+                delay(500); //(phase)
+
+                //Right Flesh
+                playArrayWithGainCentered(impulse_dynamic, waveformSize, GAIN, DAC_PIN_A21, delayPerSampleUs_rt);
+                //하나의 pulse 이후 쉬기
+                delay(500);
+            }
+            */
+
+            //DC 제거 안하는 버전 
+            for (int repeat = 0; repeat < 10; repeat++)
+            {
+                for (int i = 0; i < waveformSize; i++)
+                {
+                    int val = impulse_dynamic[i];
+
+                    //이걸로 intensity를 결정하는 거임. 
+                    //int 16 
+                    int dacValue = map(val, -32767, 32767, 0, 4095);
+                    //Serial.println(dacValue);
+
+                    analogWrite(DAC_PIN_A22, dacValue);
+                    //analogWrite(DAC_PIN_A22, dacValue);
+                    delayMicroseconds((int)delayPerSampleUs_rt);  //40hz
+                    delay(500);
+
+                    analogWrite(DAC_PIN_A21, dacValue);
+                    //analogWrite(DAC_PIN_A22, dacValue);
+                    delayMicroseconds((int)delayPerSampleUs_rt);  //40hz
+                    delay(500);
+
+
+                }
+            }
+            
+
         }
 
 
         else if (command == 'B')
         {
-            //hz update
+            //A를 누르게 되면, 10hz 로 변경해서 좀 느리게 할 수 있는지 확인 
+            targetHz = 10;
             updateDelayFromTargetHz();
-            const float GAIN = 3.0f;
-            // rise:fall = 2:1
-            playHalfSineWithRatio(wave_amBurstAsym, waveformSize, GAIN, DAC_PIN_A22,
-                delayPerSampleUs_rt, 2.0f, 1.0f, /*repeats=*/5);
+
+            //for comb1 (yz) 
+            const float GAIN = 5.0f;
+            //Left flesh
+            playArrayWithGainCentered(impulse_dynamic, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+            delay(500); //(phase)
+
+            //Right Flesh
+            playArrayWithGainCentered(impulse_dynamic, waveformSize, GAIN, DAC_PIN_A21, delayPerSampleUs_rt);
+            //하나의 pulse 이후 쉬기
+            delay(500);
         }
 
         else if (command == 'C')

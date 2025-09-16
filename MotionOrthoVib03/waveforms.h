@@ -59,5 +59,6 @@ extern int16_t asymHalfSinePR[256];
 extern int16_t amBurstAsymPR[256];
 extern int16_t quadPushLinReturnPR[256];
 
+extern int16_t impulse_dynamic[256];
 
 #endif
