@@ -91,6 +91,15 @@ bool mpu9250_beginAccel(uint8_t accel_fs, uint8_t dlpf, uint16_t odr_hz) {
     return true;
 }
 
+//z축 정렬 check 
+static inline float clampf(float x, float a, float b) {
+    if (x < a) x = a;
+    if (x > b) x = b;
+    return x;
+}
+// deg 변환(Arduino에 degrees()가 있지만, 호환 위해 직접 사용)
+static inline float rad2deg(float r) { return r * 57.2957795f; }
+
 /* ================== 가속도 읽기 (g 단위) ================== */
 bool mpu9250_readAccelG(float& ax_g, float& ay_g, float& az_g) {
     uint8_t buf[6];
@@ -122,12 +131,14 @@ float mpu9250_readAccelAxisG(char axis) {
 //struct FG { float f; float g; };
 FG kGainLUT[] = {
     // ← 캘리브레이션 끝나면 Serial 출력된 값들로 교체하세요.
-    {10.0f, 1.0f},
-    {20.0f, 1.0f},
-    {30.0f, 1.0f},
-    {40.0f, 1.0f},
-    {60.0f, 1.0f},
-    {80.0f, 1.0f},
+    {10.0f, 2.315490f},
+    {15.0f, 2.300659f},
+    {20.0f, 2.270110f},
+    {30.0f, 2.102659f},
+    {40.0f, 1.949178f},
+    {50.0f, 1.878106f},
+    {60.0f, 1.922439f},
+    {80.0f, 2.037328f},
 };
 int kGainLUT_N = sizeof(kGainLUT) / sizeof(kGainLUT[0]);
 
@@ -235,4 +246,121 @@ void runFreqCalibration_MPU9250(
     Serial.println(F("static int kGainLUT_N = sizeof(kGainLUT)/sizeof(kGainLUT[0]);"));
     Serial.println(F("// ↑ 이 블록을 이 파일의 kGainLUT에 복붙해 런타임 보정에 사용하세요."));
 }
-/***** ================== (끝) MPUsetting.ino ================== *****/
+
+
+// pitch/roll 계산(항공 좌표계 관용식)
+// pitch = 앞으로 숙임(+) / roll = 오른쪽으로 기움(+)
+static void computePitchRoll(float ax, float ay, float az, float& pitch_deg, float& roll_deg) {
+    // 가속도 기준 자세 추정: 흔히 쓰는 근사식
+    float pitch = atanf(-ax / sqrtf(ay * ay + az * az));
+    float roll = atanf(ay / (az == 0 ? 1e-6f : az));
+    pitch_deg = rad2deg(pitch);
+    roll_deg = rad2deg(roll);
+}
+
+// duration_ms 동안 sample_hz로 읽어서 평균값을 내고, Z축과 중력의 각도를 출력
+void mpu_checkZAlignment(uint16_t duration_ms, uint16_t sample_hz) {
+    if (sample_hz == 0) sample_hz = 500;
+    uint32_t period_us = 1000000UL / sample_hz;
+    uint32_t t0 = micros();
+    uint32_t tend = t0 + (uint32_t)duration_ms * 1000UL;
+
+    double sumx = 0.0, sumy = 0.0, sumz = 0.0;
+    uint32_t count = 0;
+    uint32_t next_t = t0;
+
+    while ((int32_t)(micros() - t0) < (int32_t)duration_ms * 1000) {
+        uint32_t now = micros();
+        if ((int32_t)(now - next_t) >= 0) {
+            float ax, ay, az;
+            if (mpu9250_readAccelG(ax, ay, az)) {
+                sumx += ax; sumy += ay; sumz += az;
+                count++;
+            }
+            next_t += period_us;
+        }
+    }
+
+    if (count == 0) {
+        Serial.println(F("[IMU] No samples read."));
+        return;
+    }
+
+    float ax = (float)(sumx / (double)count);
+    float ay = (float)(sumy / (double)count);
+    float az = (float)(sumz / (double)count);
+    float amag = sqrtf(ax * ax + ay * ay + az * az);
+
+    // Z축과 중력(평균 가속도) 사이 각도
+    // cos(theta) = az / |a|
+    float cosZ = (amag > 1e-6f) ? (az / amag) : 0.0f;
+    cosZ = clampf(cosZ, -1.0f, 1.0f);
+    float thetaZ_deg = rad2deg(acosf(cosZ));
+
+    float pitch_deg, roll_deg;
+    computePitchRoll(ax, ay, az, pitch_deg, roll_deg);
+
+    Serial.println(F("==== IMU Z-Alignment Check ===="));
+    Serial.print(F("Duration(ms): ")); Serial.print(duration_ms);
+    Serial.print(F(", SampleHz: "));   Serial.println(sample_hz);
+
+    Serial.print(F("Avg ax,ay,az (g): "));
+    Serial.print(ax, 4); Serial.print(F(", "));
+    Serial.print(ay, 4); Serial.print(F(", "));
+    Serial.println(az, 4);
+
+    Serial.print(F("|a| (g): ")); Serial.println(amag, 4);
+
+    Serial.print(F("Angle between +Z and gravity (deg): "));
+    Serial.println(thetaZ_deg, 2);
+
+    Serial.print(F("Pitch (deg): ")); Serial.print(pitch_deg, 2);
+    Serial.print(F(" , Roll (deg): ")); Serial.println(roll_deg, 2);
+
+    // 간단 판정: 10° 이하면 거의 평행, 10~25° 주의, 그 이상은 재정렬 권장
+    if (thetaZ_deg <= 10.0f) {
+        Serial.println(F("[OK] Z-axis is nearly parallel to gravity (<=10°)."));
+    }
+    else if (thetaZ_deg <= 25.0f) {
+        Serial.println(F("[WARN] Z-axis somewhat tilted (10~25°). Consider minor adjustment."));
+    }
+    else {
+        Serial.println(F("[NG] Z-axis is far from gravity direction (>25°). Reposition IMU."));
+    }
+
+    Serial.println(F("================================"));
+}
+
+// 간단 실시간 스트리밍: 주기적으로 ax,ay,az,|a|,thetaZ를 텍스트로 출력
+void mpu_streamOrientation(uint16_t duration_ms, uint16_t print_hz) {
+    if (print_hz == 0) print_hz = 25;
+    uint32_t period_us = 1000000UL / print_hz;
+    uint32_t t0 = micros();
+    uint32_t next_t = t0;
+
+    Serial.println(F("# t_ms, ax_g, ay_g, az_g, |a|_g, thetaZ_deg"));
+
+    while ((int32_t)(micros() - t0) < (int32_t)duration_ms * 1000) {
+        uint32_t now = micros();
+        if ((int32_t)(now - next_t) >= 0) {
+            float ax, ay, az;
+            if (mpu9250_readAccelG(ax, ay, az)) {
+                float amag = sqrtf(ax * ax + ay * ay + az * az);
+                float cosZ = (amag > 1e-6f) ? (az / amag) : 0.0f;
+                cosZ = clampf(cosZ, -1.0f, 1.0f);
+                float thetaZ_deg = rad2deg(acosf(cosZ));
+
+                uint32_t t_ms = (micros() - t0) / 1000UL;
+                Serial.print(t_ms); Serial.print(',');
+                Serial.print(ax, 4); Serial.print(',');
+                Serial.print(ay, 4); Serial.print(',');
+                Serial.print(az, 4); Serial.print(',');
+                Serial.print(amag, 4); Serial.print(',');
+                Serial.println(thetaZ_deg, 2);
+            }
+            next_t += period_us;
+        }
+    }
+    Serial.println(F("# stream end"));
+}
+

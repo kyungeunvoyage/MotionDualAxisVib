@@ -32,3 +32,9 @@ void runFreqCalibration_MPU9250(
     uint32_t imu_rate_hz = 1000, float warmup_s = 0.20f,
     bool useMagnitude = true, char axisForSingle = 'z'
 );
+
+// Z축-중력 평행도 체크(평균 기반)
+void mpu_checkZAlignment(uint16_t duration_ms = 3000, uint16_t sample_hz = 500);
+
+// 실시간 스트리밍(간이 모니터)
+void mpu_streamOrientation(uint16_t duration_ms = 3000, uint16_t print_hz = 25);

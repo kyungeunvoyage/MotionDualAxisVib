@@ -710,77 +710,36 @@ void loop()
 
         else if (command == '5')
         {
-            targetHz = 30;
-            updateDelayFromTargetHz();
-            const float GAIN = 5.0f;
+            //mpu 써서 calibration 
+            //mpu_checkZAlignment(/*duration_ms=*/3000, /*sample_hz=*/500);
 
-            //DC 제거 안하는 버전 
-            for (int repeat = 0; repeat < 5; repeat++)
-            {
-                for (int i = 0; i < waveformSize; i++)
-                {
-                    int val = impulse_dynamic[i];
+            //내가 궁금한거 10.0f일때랑, 40hz일때랑 intensity 같은지, 
 
-                    //이걸로 intensity를 결정하는 거임. 
-                    //int 16 
-                    int dacValue = map(val, -32767, 32767, 0, 4095);
-                    //Serial.println(dacValue);
-
-                    analogWrite(DAC_PIN_A22, dacValue);
-                    delayMicroseconds((int)delayPerSampleUs_rt);  //40hz
-                    //delay(100);
-
-                    //analogWrite(DAC_PIN_A21, dacValue);
-                    //delayMicroseconds((int)delayPerSampleUs_rt);  //40hz
-                    //delay(500);
+            float baseG = 7.0f;
+            float f = 40.0f;
+            float G = compensatedGain(baseG, f);
+            playWaveForSeconds2(dat, waveformSize, G, DAC_PIN_A22, f, 1.0f);
 
 
-                }
-            }
         }
         else if (command == '6')
         {
-            targetHz = 40;
-            updateDelayFromTargetHz();
-            const float GAIN = 3.0f;
+            //5초간 함성. 
+            //mpu_streamOrientation(/*duration_ms=*/5000, /*print_hz=*/25);
 
-            //DC 제거 안하는 버전 
-            for (int repeat = 0; repeat < 10; repeat++)
-            {
-                for (int i = 0; i < waveformSize; i++)
-                {
-                    int val = impulseDynamicPR[i];
-
-                    //이걸로 intensity를 결정하는 거임. 
-                    //int 16 
-                    int dacValue = map(val, -32767, 32767, 0, 4095);
-                    //Serial.println(dacValue);
-
-                    analogWrite(DAC_PIN_A22, dacValue);
-                    delayMicroseconds((int)delayPerSampleUs_rt);  //40hz
-                }
-            }
+            float baseG = 7.0f;
+            float f = 40.0f;
+            float G = compensatedGain(baseG, f);
+            playWaveForSeconds2(negDatTrial, waveformSize, G, DAC_PIN_A22, f, 1.0f);
 
         }
 
         else if (command == '7')
         {
-            const float GAIN_A22 = 3.0f;   // A22 (정상)
-            const float GAIN_A21 = 3.0f;   // A21 (반대 파형)
-            const float rRise = 1.0f, rFall = 2.0f; // 1:2 비율
-            const bool  invertA21 = true;  // A21 폴라리티 반전
-            const uint32_t OFFSET_A21_US = 20000; // A22가 50 ms 먼저 (A21은 50 ms 지연)
-
-            playHalfSineWithRatioDualOffset(
-                wave_impulseDampedTail, waveformSize,
-                GAIN_A22, GAIN_A21,
-                DAC_PIN_A22, DAC_PIN_A21,
-                delayPerSampleUs_rt,
-                rRise, rFall,
-                invertA21, OFFSET_A21_US,
-                /*repeats=*/5
-            );
-
+            float baseG = 7.0f;
+            float f = 80.0f;
+            float G = compensatedGain(baseG, f);
+            playWaveForSeconds2(dat, waveformSize, G, DAC_PIN_A22, f, 1.0f);
         }
 
         else if (command == '8')
@@ -794,9 +753,14 @@ void loop()
                 Serial.println(repeat + "repeat");
             }
         }
+        else if (command == '9')
+        {
+            // 각 baseG 값의 G
+        }
 
         else if (command == 'K') 
         {
+            //calibration code !!!!!!!!!!!!
             static const float freqs[] = { 10, 15, 20, 30, 40, 50, 60, 80 };
             runFreqCalibration_MPU9250(
                 dat, waveformSize, DAC_PIN_A22,
