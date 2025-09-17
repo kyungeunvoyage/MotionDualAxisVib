@@ -17,5 +17,6 @@
 // User Defined Errors to Ignore below... [vm.intellisense.ignore-error-codes]
 #include <arduino.h>
 #include "..\MotionOrthoVib03.ino"
+#include "..\MPUsetting.ino"
 #endif
 #endif
