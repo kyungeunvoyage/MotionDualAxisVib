@@ -38,3 +38,27 @@ void mpu_checkZAlignment(uint16_t duration_ms = 3000, uint16_t sample_hz = 500);
 
 // 실시간 스트리밍(간이 모니터)
 void mpu_streamOrientation(uint16_t duration_ms = 3000, uint16_t print_hz = 25);
+
+//실제 진동 세기 (가속도 RMS) 측정 
+void runBaseGainSweep_MPU9250(
+    const int16_t* wave, int N, int dacPin,
+    const float* baseGList, int M,
+    const float* freqList, int K,
+    float secPerCombo,
+    uint32_t imu_rate_hz,
+    float warmup_s,
+    bool useMagnitude,
+    char axisForSingle,
+    bool alsoTestCompensated
+);
+
+void runFixedFreqGainSweep_MPU9250(
+    const int16_t* wave, int N, int dacPin,
+    float freqHz,
+    const float* baseGains, int M,
+    float secPerGain,
+    uint32_t imu_rate_hz,
+    float warmup_s,
+    bool useMagnitude,
+    char axisForSingle
+);

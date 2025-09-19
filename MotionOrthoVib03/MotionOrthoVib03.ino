@@ -150,6 +150,7 @@ void setup() {
         amBurstAsymPR[i] = -wave_amBurstAsym[i];
         quadPushLinReturnPR[i] = -wave_quadPushLinReturn[i];
         impulseDynamicPR[i] = -impulse_dynamic[i];
+        impulse_releasePR[i] = -impulse_release[i];
         //Serial.print(impulseDynamicPR[i]);
     }
 
@@ -609,6 +610,173 @@ void playHalfSineWithRatioDualAltPolarity(const int16_t* w, int N, float gainA22
     Serial.print(F("  delayFallUs=")); Serial.println(delayFallUs);
 }
 
+// === (A) 한 사이클을 sec 동안 느리게 재생 ===
+// 256샘플짜리 파형 w를 'sec' 동안 단 1사이클만 재생 (DC제거 + GAIN + 정확 타이밍)
+void playWaveOneCycleForSeconds(const int16_t* w, int N,
+    float gain, int dacPin,
+    float sec)
+{
+    if (sec <= 0.0f || N <= 0) return;
+
+    // 평균값(D C) 제거
+    long sum = 0;
+    for (int i = 0; i < N; ++i) sum += w[i];
+    const float mean = (float)sum / (float)N;
+
+    // 전체 길이를 sec로 고정 → per-sample 간격
+    const double T_us = (double)sec * 1e6;       // 전체 주기(한 사이클) us
+    const double dt = T_us / (double)N;        // 샘플 간 간격 us (부동소수 누적)
+
+    const uint32_t t0 = micros();
+    double acc_us = 0.0;
+
+    for (int i = 0; i < N; ++i) {
+        float v = (w[i] - mean) * gain;
+        long  v16 = lroundf(v);
+        v16 = constrain(v16, -32767, 32767);
+        analogWrite(dacPin, toDac_12bit_centered((int16_t)v16));
+
+        acc_us += dt;
+        const uint32_t target = (uint32_t)llround(acc_us);
+        while ((uint32_t)(micros() - t0) < target) { /* busy-wait */ }
+    }
+}
+
+// === (A-라이트) 기존 함수를 그대로 활용하는 래퍼 ===
+// 내부적으로 hz=1/sec로 호출하여 cycles=1이 되도록 보장
+void playWaveOneCycleForSeconds_viaExisting(const int16_t* w, int N,
+    float gain, int dacPin,
+    float sec)
+{
+    if (sec <= 0.0f) return;
+    const float hz = 1.0f / sec;  // 한 사이클이 sec
+    // 혹시 반올림으로 0이 나오는 걸 막기 위해 내부에서 최소 1사이클 보장하도록 수정해도 좋음
+    playWaveForSeconds2(w, N, gain, dacPin, hz, sec);
+}
+
+// === (B) 부드러운 슬로우 재생(업샘플 + 선형보간) ===
+// upsample >= 1 (기본 1). upsample이 크면 더 부드러우나 CPU부담↑.
+// 전체 길이는 그대로 'sec'.
+void playWaveOneCycleForSeconds_Interpolated(const int16_t* w, int N,
+    float gain, int dacPin,
+    float sec, int upsample = 4)
+{
+    if (sec <= 0.0f || N <= 1) return;
+    if (upsample < 1) upsample = 1;
+
+    // DC 제거
+    long sum = 0;
+    for (int i = 0; i < N; ++i) sum += w[i];
+    const float mean = (float)sum / (float)N;
+
+    const int M = (N - 1) * upsample + 1;        // 보간 후 총 출력 스텝 수
+    const double T_us = (double)sec * 1e6;
+    const double dt = T_us / (double)M;
+
+    const uint32_t t0 = micros();
+    double acc_us = 0.0;
+
+    for (int step = 0; step < M; ++step) {
+        // 보간 인덱스 계산: 0..N-1 범위
+        const double pos = (double)step / (double)upsample; // 0..(N-1)
+        int i0 = (int)floor(pos);
+        int i1 = (i0 + 1 < N) ? (i0 + 1) : i0;
+        const float t = (float)(pos - (double)i0);          // 0..1
+
+        // 선형보간
+        const float s0 = (w[i0] - mean);
+        const float s1 = (w[i1] - mean);
+        const float s = s0 + (s1 - s0) * t;
+
+        long v16 = lroundf(s * gain);
+        v16 = constrain(v16, -32767, 32767);
+        analogWrite(dacPin, toDac_12bit_centered((int16_t)v16));
+
+        acc_us += dt;
+        const uint32_t target = (uint32_t)llround(acc_us);
+        while ((uint32_t)(micros() - t0) < target) { /* busy-wait */ }
+    }
+}
+
+/**
+ * 한 사이클만 재생 (hz만 지정)
+ * - wave w[0..N-1]를 정확히 1사이클 출력
+ * - DC 제거 + gain, micros()로 per-sample 타이밍 제어
+ */
+void playArrayWithGainCentered_1cycle(
+    const int16_t* w, int N,
+    float gain, int dacPin,
+    float hz,
+    uint32_t* clipped_out = nullptr
+) {
+    if (hz <= 0.0f || N <= 0) return;
+
+    const double T_us = 1000000.0 / (double)hz;
+    const double dt = T_us / (double)N;
+
+    long sum = 0; for (int i = 0; i < N; ++i) sum += w[i];
+    const float mean = (float)sum / (float)N;
+
+    uint32_t clipped = 0;
+    const uint32_t t0 = micros();
+    double acc_us = 0.0;
+
+    for (int i = 0; i < N; ++i) {
+        float v = (w[i] - mean) * gain;
+        long  v16 = lroundf(v);
+        if (v16 > 32767) { v16 = 32767; ++clipped; }
+        else if (v16 < -32767) { v16 = -32767; ++clipped; }
+
+        analogWrite(dacPin, toDac_12bit_centered((int16_t)v16));
+
+        acc_us += dt;
+        const uint32_t target = (uint32_t)llround(acc_us);
+        while ((uint32_t)(micros() - t0) < target) { /* spin */ }
+    }
+    if (clipped_out) *clipped_out = clipped;
+}
+
+/**
+ * N사이클 재생 (시간이 아닌 cycles로 지정)
+ * - 총 재생시간을 직접 넣지 않고, 원하는 사이클 수만큼 정확히 출력
+ */
+
+void playArrayWithGainCentered_cycles(
+    const int16_t* w, int N,
+    float gain, int dacPin,
+    float hz, uint32_t cycles,
+    uint32_t* clipped_out = nullptr
+) {
+    if (hz <= 0.0f || N <= 0 || cycles == 0) return;
+
+    const double T_us = 1000000.0 / (double)hz;
+    const double dt = T_us / (double)N;
+
+    long sum = 0; for (int i = 0; i < N; ++i) sum += w[i];
+    const float mean = (float)sum / (float)N;
+
+    uint32_t clipped = 0;
+    const uint32_t t0 = micros();
+    const uint32_t totalSamples = (uint32_t)N * cycles;
+    double acc_us = 0.0;
+
+    for (uint32_t k = 0; k < totalSamples; ++k) {
+        const int i = (int)(k % (uint32_t)N);
+
+        float v = (w[i] - mean) * gain;
+        long  v16 = lroundf(v);
+        if (v16 > 32767) { v16 = 32767; ++clipped; }
+        else if (v16 < -32767) { v16 = -32767; ++clipped; }
+
+        analogWrite(dacPin, toDac_12bit_centered((int16_t)v16));
+
+        acc_us += dt;
+        const uint32_t target = (uint32_t)llround(acc_us);
+        while ((uint32_t)(micros() - t0) < target) { /* spin */ }
+    }
+    if (clipped_out) *clipped_out = clipped;
+}
+
 
 // the loop function runs over and over again until power down or reset
 void loop() 
@@ -666,29 +834,53 @@ void loop()
         }
         else if (command == '2')
         {
-            updateDelayFromTargetHz();
-            const float GAIN = 3.0f;
+            //updateDelayFromTargetHz();
+            //const float GAIN = 3.0f;
             // rise:fall = 1:3
+            /*
             for (int i = 0; i < 10; i++)
             {
                 playArrayWithGainCentered(impulseDampedTailPR, waveformSize, GAIN, DAC_PIN_A21, delayPerSampleUs_rt);
                 delay(100);
             }
+            */
             //playHalfSineWithRatio(impulseDampedTailPR, waveformSize, GAIN, DAC_PIN_A22,
             //    delayPerSampleUs_rt, 1.0f, 2.0f, /*repeats=*/5);
+
+            float baseG_A22 = 3.0f;
+            float baseG_A21 = 5.0f; // ← A21만 한 단계 더 크게
+            float f = 40.0f;
+
+            float G22 = compensatedGain(baseG_A22, f);
+            float G21 = compensatedGain(baseG_A21, f);
+
+            playArrayWithGainCentered_1cycle(wave_impulseDampedTail, 256, 3.0f, DAC_PIN_A22, 40.0f);
+            delay(10);
+            playWaveForSeconds2(dat, waveformSize, G21, DAC_PIN_A21, f, 0.5f);
         }
         else if (command == '3')
         {
-            updateDelayFromTargetHz();
-            const float GAIN = 3.0f;
-            // rise:fall = 2:1
-            for (int i = 0; i < 10; i++)
-            {
-                playArrayWithGainCentered(wave_impulseDampedTail, waveformSize, GAIN, DAC_PIN_A21, delayPerSampleUs_rt);
-                delay(100);
-            }
-            //playHalfSineWithRatio(wave_impulseDampedTail, waveformSize, GAIN, DAC_PIN_A21,
-            //    delayPerSampleUs_rt, 2.0f, 1.0f, /*repeats=*/5);
+            // 예) dat 한 주기를 2.0초 동안 늘려서 A22로 재생
+            float sec = 0.5f;
+            float G = 6.0f;                 // VCA면 그냥 고정게인, LRA면 f=1/sec에 맞춰 보정 필요할 수 있음
+            //playWaveForSeconds2(dat, 256, G, DAC_PIN_A22, /*hz=*/1.0f / sec, /*sec=*/sec);
+
+            //playWaveOneCycleForSeconds_Interpolated(dat, 256, /*gain=*/5.0f, DAC_PIN_A22, /*sec=*/2.0f, /*upsample=*/4);
+
+            //hz = 40;
+            // a -> d
+            // repulsive force : 반대로 잡아 당김 / 진동의 방향성 -> / 움직임 right-to-left 일 때 
+            //playArrayWithGainCentered(impulse_releasePR, waveformSize, G, DAC_PIN_A22, delayPerSampleUs_rt);
+            playArrayWithGainCentered_1cycle(impulse_releasePR, waveformSize, G, DAC_PIN_A22, delayPerSampleUs_rt);
+            //delay(10); //delay 0.01s; -> ㅂㄹ
+            delay(50); //이게 중요한듯 
+            //playArrayWithGainCentered(impulse_release, waveformSize, G, DAC_PIN_A21, delayPerSampleUs_rt);
+            playArrayWithGainCentered_1cycle(impulse_release, waveformSize, G, DAC_PIN_A21, delayPerSampleUs_rt);
+            //playWaveForSeconds2(dat, 256, G, DAC_PIN_A22, 40.0f, sec);
+
+
+            // attractive force :
+
         }
 
 
@@ -742,20 +934,55 @@ void loop()
             playWaveForSeconds2(dat, waveformSize, G, DAC_PIN_A22, f, 1.0f);
         }
 
-        else if (command == '8')
-        {
-            updateDelayFromTargetHz();
-            const float GAIN = 3.0f;
-            for (int repeat = 0; repeat < 50; repeat++)
-            {
-                playArrayWithGainCentered(slowUpHardDropPR, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
-                delay(100);
-                Serial.println(repeat + "repeat");
-            }
+        else if (command == '8') {
+            // 주파수 고정(예: 40Hz)에서 baseGain = 3~8까지 1초씩 측정
+            static const float baseGList[] = { 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f };
+            const int M = sizeof(baseGList) / sizeof(baseGList[0]);
+
+            // 40 Hz 추이
+            runFixedFreqGainSweep_MPU9250(
+                dat, waveformSize, DAC_PIN_A22,
+                /*freqHz=*/40.0f,
+                baseGList, M,
+                /*secPerGain=*/1.0f,
+                /*imu_rate_hz=*/1000,
+                /*warmup_s=*/0.20f,
+                /*useMagnitude=*/true, /*axis=*/'z'
+            );
+
+            // 필요하면 10 Hz도 추가로
+            runFixedFreqGainSweep_MPU9250(
+                dat, waveformSize, DAC_PIN_A22,
+                /*freqHz=*/10.0f,
+                baseGList, M,
+                /*secPerGain=*/1.0f,
+                /*imu_rate_hz=*/1000,
+                /*warmup_s=*/0.20f,
+                /*useMagnitude=*/true, /*axis=*/'z'
+            );
         }
         else if (command == '9')
         {
-            // 각 baseG 값의 G
+            static const float baseGList[] = { 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f };
+            static const float freqList[] = { 10.0f, 20.0f, 30.0f, 40.0f, 60.0f, 80.0f };
+
+            Serial.println(F("\n==== BaseGain Sweep (RAW vs COMP) ===="));
+
+            // 필요하면 IMU 설정(ODR/DLPF)은 setup에서 이미 수행됨.
+            runBaseGainSweep_MPU9250(
+                /*wave=*/dat,             /*N=*/waveformSize,
+                /*dacPin=*/DAC_PIN_A22,
+                /*baseGList=*/baseGList,  /*M=*/(int)(sizeof(baseGList) / sizeof(baseGList[0])),
+                /*freqList=*/freqList,    /*K=*/(int)(sizeof(freqList) / sizeof(freqList[0])),
+                /*secPerCombo=*/1.0f,     // 각 조합 1초 측정
+                /*imu_rate_hz=*/1000,     // IMU 샘플링(실제 read 주기)
+                /*warmup_s=*/0.20f,       // 워밍업 구간(초): 측정에서 제외
+                /*useMagnitude=*/true,    // |a| RMS 기준. 축 하나만 보려면 false로 하고 axis='z' 등
+                /*axisForSingle=*/'z',
+                /*alsoTestCompensated=*/true // RAW와 LUT보정 둘 다 측정
+            );
+
+            Serial.println(F("==== End of BaseGain Sweep ====\n"));
         }
 
         else if (command == 'K') 

@@ -62,4 +62,6 @@ extern int16_t quadPushLinReturnPR[256];
 extern int16_t impulse_dynamic[256];
 extern int16_t impulseDynamicPR[256];
 
+extern int16_t impulse_release[256];
+extern int16_t impulse_releasePR[256];
 #endif

@@ -364,3 +364,223 @@ void mpu_streamOrientation(uint16_t duration_ms, uint16_t print_hz) {
     Serial.println(F("# stream end"));
 }
 
+// MPUsetting.ino
+
+void runBaseGainSweep_MPU9250(
+    const int16_t* wave, int N, int dacPin,
+    const float* baseGList, int M,
+    const float* freqList, int K,
+    float secPerCombo,
+    uint32_t imu_rate_hz,
+    float warmup_s,
+    bool useMagnitude,
+    char axisForSingle,
+    bool alsoTestCompensated
+) {
+    if (!wave || N <= 0 || M <= 0 || K <= 0) return;
+
+    // DC 제거용 평균 (전 구간 고정)
+    long sum = 0; for (int i = 0; i < N; ++i) sum += wave[i];
+    const float mean = (float)sum / (float)N;
+
+    // 헤더
+    Serial.println(F("#MODE,baseG,f_Hz,gainApplied,meas_RMS_g,clips_%"));
+    Serial.println(F("# MODE: RAW(보정없음), COMP(LUT보정사용)"));
+
+    for (int mi = 0; mi < M; ++mi) {
+        const float baseG = baseGList[mi];
+
+        for (int ki = 0; ki < K; ++ki) {
+            const float f = freqList[ki];
+            if (f <= 0.0f) continue;
+
+            // 공통 타이밍 파라미터
+            const double T_us = 1000000.0 / (double)f;   // 1사이클(파형) 시간
+            const double dt_dac = T_us / (double)N;        // 샘플 간 간격
+            const uint32_t dur_total_us = (uint32_t)llround(secPerCombo * 1000000.0);
+            const uint32_t dur_warmup_us = (uint32_t)llround(warmup_s * 1000000.0);
+            const uint32_t imu_period_us = (imu_rate_hz > 0) ? (1000000UL / imu_rate_hz) : 1000UL;
+
+            // ① RAW (보정 미적용)
+            {
+                const float gainApplied = baseG;
+
+                const uint32_t t0 = micros();
+                uint32_t next_dac = t0;
+                uint32_t next_imu = t0;
+                const uint32_t t_warm_end = t0 + dur_warmup_us;
+
+                int idx = 0;
+                double accSq = 0.0;
+                uint32_t accCount = 0;
+                uint32_t clipCount = 0;
+
+                while ((int32_t)(micros() - t0) < (int32_t)dur_total_us) {
+                    uint32_t now = micros();
+
+                    // DAC 출력
+                    if ((int32_t)(now - next_dac) >= 0) {
+                        float v = (wave[idx] - mean) * gainApplied;
+                        long  v16 = lroundf(v);
+                        if (v16 > 32767) { v16 = 32767; clipCount++; }
+                        if (v16 < -32767) { v16 = -32767; clipCount++; }
+                        analogWrite(dacPin, toDac_12bit_centered((int16_t)v16));
+                        idx = (idx + 1) % N;
+                        next_dac += (uint32_t)llround(dt_dac);
+                    }
+
+                    // IMU 샘플
+                    if ((int32_t)(now - next_imu) >= 0) {
+                        float a_g = useMagnitude ? mpu9250_readAccelMagG()
+                            : mpu9250_readAccelAxisG(axisForSingle);
+                        if ((int32_t)(now - t_warm_end) >= 0) { accSq += (double)a_g * (double)a_g; accCount++; }
+                        next_imu += imu_period_us;
+                    }
+                }
+
+                const float measRMS_g = (accCount > 0) ? (float)sqrt(accSq / (double)accCount) : 0.0f;
+                const float samples_meas = (float)((dur_total_us - dur_warmup_us) / (uint32_t)llround(dt_dac) + 1);
+                const float clipsPct = (samples_meas > 0) ? (100.0f * (float)clipCount / samples_meas) : 0.0f;
+
+                Serial.print(F("RAW,"));
+                Serial.print(baseG, 6);          Serial.print(',');
+                Serial.print(f, 3);              Serial.print(',');
+                Serial.print(gainApplied, 6);    Serial.print(',');
+                Serial.print(measRMS_g, 6);      Serial.print(',');
+                Serial.println(clipsPct, 3);
+            }
+
+            // ② COMP (주파수 보정 적용)
+            if (alsoTestCompensated) {
+                const float gainApplied = compensatedGain(baseG, f);
+
+                const uint32_t t0 = micros();
+                uint32_t next_dac = t0;
+                uint32_t next_imu = t0;
+                const uint32_t t_warm_end = t0 + dur_warmup_us;
+
+                int idx = 0;
+                double accSq = 0.0;
+                uint32_t accCount = 0;
+                uint32_t clipCount = 0;
+
+                while ((int32_t)(micros() - t0) < (int32_t)dur_total_us) {
+                    uint32_t now = micros();
+
+                    // DAC 출력
+                    if ((int32_t)(now - next_dac) >= 0) {
+                        float v = (wave[idx] - mean) * gainApplied;
+                        long  v16 = lroundf(v);
+                        if (v16 > 32767) { v16 = 32767; clipCount++; }
+                        if (v16 < -32767) { v16 = -32767; clipCount++; }
+                        analogWrite(dacPin, toDac_12bit_centered((int16_t)v16));
+                        idx = (idx + 1) % N;
+                        next_dac += (uint32_t)llround(dt_dac);
+                    }
+
+                    // IMU 샘플
+                    if ((int32_t)(now - next_imu) >= 0) {
+                        float a_g = useMagnitude ? mpu9250_readAccelMagG()
+                            : mpu9250_readAccelAxisG(axisForSingle);
+                        if ((int32_t)(now - t_warm_end) >= 0) { accSq += (double)a_g * (double)a_g; accCount++; }
+                        next_imu += imu_period_us;
+                    }
+                }
+
+                const float measRMS_g = (accCount > 0) ? (float)sqrt(accSq / (double)accCount) : 0.0f;
+                const float samples_meas = (float)((dur_total_us - dur_warmup_us) / (uint32_t)llround(dt_dac) + 1);
+                const float clipsPct = (samples_meas > 0) ? (100.0f * (float)clipCount / samples_meas) : 0.0f;
+
+                Serial.print(F("COMP,"));
+                Serial.print(baseG, 6);          Serial.print(',');
+                Serial.print(f, 3);              Serial.print(',');
+                Serial.print(gainApplied, 6);    Serial.print(',');
+                Serial.print(measRMS_g, 6);      Serial.print(',');
+                Serial.println(clipsPct, 3);
+            }
+        }
+    }
+
+    Serial.println(F("#DONE BaseGainSweep"));
+}
+
+void runFixedFreqGainSweep_MPU9250(
+    const int16_t* wave, int N, int dacPin,
+    float freqHz,
+    const float* baseGains, int M,
+    float secPerGain,
+    uint32_t imu_rate_hz,
+    float warmup_s,
+    bool useMagnitude,
+    char axisForSingle
+) {
+    if (!wave || N <= 0 || M <= 0 || freqHz <= 0.0f) return;
+
+    // DC 제거(평균) 미리 계산
+    long sum = 0; for (int i = 0; i < N; ++i) sum += wave[i];
+    const float mean = (float)sum / (float)N;
+
+    // 타이밍 파라미터
+    const double T_us = 1000000.0 / (double)freqHz;
+    const double dt_dac = T_us / (double)N;
+    const uint32_t imu_dt_us = (imu_rate_hz > 0) ? (1000000UL / imu_rate_hz) : 1000UL;
+
+    Serial.println();
+    Serial.println(F("### Fixed-Frequency Gain Sweep"));
+    Serial.print(F("# freqHz=")); Serial.println(freqHz, 3);
+    Serial.println(F("# baseGain, measRMS_g, clips_%"));
+
+    for (int gidx = 0; gidx < M; ++gidx) {
+        const float G = baseGains[gidx];
+        const uint32_t dur_total_us = (uint32_t)llround(secPerGain * 1000000.0);
+        const uint32_t dur_warmup_us = (uint32_t)llround(warmup_s * 1000000.0);
+
+        const uint32_t t0 = micros();
+        uint32_t next_dac = t0;
+        uint32_t next_imu = t0;
+        const uint32_t t_warm_end = t0 + dur_warmup_us;
+
+        int idx = 0;
+        double accSq = 0.0;
+        uint32_t accCount = 0;
+        uint32_t clipCount = 0;
+
+        while ((int32_t)(micros() - t0) < (int32_t)dur_total_us) {
+            uint32_t now = micros();
+
+            // DAC 출력
+            if ((int32_t)(now - next_dac) >= 0) {
+                float v = (wave[idx] - mean) * G;
+                long  v16 = lroundf(v);
+                if (v16 > 32767) { v16 = 32767; clipCount++; }
+                if (v16 < -32767) { v16 = -32767; clipCount++; }
+                analogWrite(dacPin, toDac_12bit_centered((int16_t)v16));
+                idx = (idx + 1) % N;
+                next_dac += (uint32_t)llround(dt_dac);
+            }
+
+            // IMU 측정
+            if ((int32_t)(now - next_imu) >= 0) {
+                float a_g = useMagnitude ? mpu9250_readAccelMagG() : mpu9250_readAccelAxisG(axisForSingle);
+                if ((int32_t)(now - t_warm_end) >= 0) { accSq += (double)a_g * (double)a_g; accCount++; }
+                next_imu += imu_dt_us;
+            }
+        }
+
+        const float measRMS_g = (accCount > 0) ? (float)sqrt(accSq / (double)accCount) : 0.0f;
+
+        // 대략적 클리핑률(%) — DAC 출력 스텝 기준의 근사
+        const float samples_meas = (float)((dur_total_us - dur_warmup_us) / (uint32_t)llround(dt_dac) + 1);
+        const float clipsPct = (samples_meas > 0) ? (100.0f * (float)clipCount / samples_meas) : 0.0f;
+
+        Serial.print(G, 3); Serial.print(',');
+        Serial.print(measRMS_g, 6); Serial.print(',');
+        Serial.println(clipsPct, 3);
+    }
+
+    Serial.println(F("# (Tip) 위 CSV를 복사해 엑셀/파이썬에서 baseGain-세기 곡선 그려보면 추세 확인 쉬움"));
+}
+
+
+
+
