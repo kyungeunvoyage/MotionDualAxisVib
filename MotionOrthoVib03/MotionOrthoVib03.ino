@@ -21,6 +21,10 @@
 //self-made h file
 #include "waveforms.h"
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 //============movement 연동=================
 // ---- UI event helpers (for HandMotionSpeed.html) ----
 static inline void UI_START(char c) { Serial.print(F("[UI] START ")); Serial.println(c); }
@@ -73,6 +77,7 @@ int16_t negDat[256];
 int16_t negDatTrial[256];
 
 int newWaveCase;
+static int16_t wPhase0[256], wPhase180[256];
 
 //===========Arrange DA7280=======================
 void startVibration(Haptic_Driver& driver, int duration) {
@@ -167,6 +172,10 @@ void setup() {
     else {
         Serial.println("[MPU9250] ready");
     }
+
+    // setup() 끝에 한 번 만들어두고…
+    makeCompositeF_2F_Phase(wPhase0, 256, 1.0f, 1.0f, 0.0f, true, true);   // 오른쪽 당김 쪽
+    makeCompositeF_2F_Phase(wPhase180, 256, 1.0f, 1.0f, -180.0f, true, true);  // 왼쪽 당김 쪽
 
 }
 //=================setup===========================
@@ -355,10 +364,7 @@ void playHalfSineWithRatio(const int16_t* w, int N, float gain, int dacPin,
 //==============DUO play==========================
 // rise와 fall에 서로 다른 per-sample 지연을 주면서
 // 두 DAC 핀으로 동시 출력 (A22 정상, A21은 invert 가능)
-void playAsymTimingDual(const int16_t* w, int N,
-    float gainA22, float gainA21,
-    int dacPinA22, int dacPinA21,
-    uint32_t delayRiseUs, uint32_t delayFallUs,
+void playAsymTimingDual(const int16_t* w, int N,float gainA22, float gainA21,int dacPinA22, int dacPinA21,uint32_t delayRiseUs, uint32_t delayFallUs,
     bool invertA21)
 {
     int p = findPeakIndex(w, N);
@@ -741,12 +747,8 @@ void playArrayWithGainCentered_1cycle(
  * - 총 재생시간을 직접 넣지 않고, 원하는 사이클 수만큼 정확히 출력
  */
 
-void playArrayWithGainCentered_cycles(
-    const int16_t* w, int N,
-    float gain, int dacPin,
-    float hz, uint32_t cycles,
-    uint32_t* clipped_out = nullptr
-) {
+void playArrayWithGainCentered_cycles(const int16_t* w, int N, float gain, int dacPin,float hz, uint32_t cycles,
+uint32_t* clipped_out = nullptr) {
     if (hz <= 0.0f || N <= 0 || cycles == 0) return;
 
     const double T_us = 1000000.0 / (double)hz;
@@ -776,6 +778,110 @@ void playArrayWithGainCentered_cycles(
     }
     if (clipped_out) *clipped_out = clipped;
 }
+
+//=====================================================asymmetric vibration generator=====================================================
+//목적:기본파 + 2차 고조파를 위상차로 합성한 256샘플 파형을 만들어본다. 이미 가지고 있는 함수를 써서 gain 을 맞춰서 플레이갈긴다. 
+
+// 유틸: 배열 평균 제거(DC 제거)
+static inline void removeDC_int16(int16_t* w, int N) {
+    long sum = 0;
+    for (int i = 0; i < N; ++i) sum += w[i];
+    const float mean = (float)sum / (float)N;
+    for (int i = 0; i < N; ++i) {
+        float v = (float)w[i] - mean;
+        long  v16 = lroundf(v);
+        v16 = constrain(v16, -32767, 32767);
+        w[i] = (int16_t)v16;
+    }
+}
+
+// 유틸: 피크 기준 정규화(최대 절대값을 32767로 맞춤)
+static inline void normalizePeak_int16(int16_t* w, int N) {
+    int16_t maxAbs = 1;
+    for (int i = 0; i < N; ++i) {
+        int16_t a = w[i] >= 0 ? w[i] : (int16_t)(-w[i]);
+        if (a > maxAbs) maxAbs = a;
+    }
+    if (maxAbs <= 0) return;
+    const float s = 32767.0f / (float)maxAbs;
+    for (int i = 0; i < N; ++i) {
+        long v = lroundf((float)w[i] * s);
+        v = constrain(v, -32767, 32767);
+        w[i] = (int16_t)v;
+    }
+}
+
+/*
+기본파 + 2차 고조파 합성 만들기 (한 주기 = N 샘플) 
+A1_rel, A2_rel : 상대 진폭 (무단위), 실제 강도는 재생 시, gain 으로 조절 
+phi_deg : 2차 성분의 위상 오프셋 (도 단위 : 0, -90, -180) 
+removeDC : 평균값 제거 
+normalizePeak : 피크 기준으로 쁠마 32767 맞춰 정규화 할지 말지 
+*/
+static void makeCompositeF_2F_Phase(
+    int16_t* out, int N,
+    float A1_rel, float A2_rel, float phi_deg,
+    bool removeDC = true,
+    bool normalizePeak = true
+) {
+    const float phi = phi_deg * (float)M_PI / 180.0f;
+    const float twoPi = 2.0f * (float)M_PI;
+
+    for (int i = 0; i < N; ++i) {
+        // 기본파 각도(0..2π)
+        const float th1 = twoPi * ((float)i / (float)N);
+        // 2차 고조파는 각도가 2배
+        const float th2 = 2.0f * th1 + phi;
+
+        // 합성 (상대 진폭)
+        const float s = A1_rel * sinf(th1) + A2_rel * sinf(th2);
+
+        // 16-bit 정수로 투영 (초기 스케일은 ±30000 정도로)
+        long v = lroundf(s * 30000.0f);
+        v = constrain(v, -32767, 32767);
+        out[i] = (int16_t)v;
+    }
+
+    if (removeDC)      removeDC_int16(out, N);
+    if (normalizePeak) normalizePeak_int16(out, N);
+}
+
+/**
+ * (선택) 합성 파형의 jerk 비대칭 지표를 대략적으로 계산
+ * - 아주 간단히: 인접 샘플 2차 차분을 "jerk 근사"로 보고
+ *   양의 피크와 음의 피크의 차이를 반환 (양수면 양/음 비대칭 존재)
+ */
+static float estimateJerkAsymmetry(const int16_t* w, int N) {
+    if (N < 3) return 0.0f;
+    float jp = 0.0f, jn = 0.0f; // positive/negative peak (절대값 최대치 추적)
+    for (int i = 1; i < N - 1; ++i) {
+        // 2차 차분 근사: w[i+1] - 2w[i] + w[i-1]
+        const float j = (float)w[i + 1] - 2.0f * (float)w[i] + (float)w[i - 1];
+        if (j > jp) jp = j;
+        if (-j > jn) jn = -j;
+    }
+    return (jp - jn); // >0이면 양쪽 비대칭 존재(대략)
+}
+
+/**
+ * (편의) 합성→즉시 재생
+ * - freqHz: 재생 주파수(파형 1주기의 반복 Hz). 논문에선 75/150Hz 합성 "형태" 자체를 만들고,
+ *           실제 출력은 40Hz, 10Hz 등 네 실험 주파수로 반복 재생 가능(느리게/빠르게).
+ * - sec: 재생 시간
+ * - gain: 네 체계의 "크기" 스케일 (DAC 출력 전에 곱해지는 값)
+ */
+static void playCompositeF_2F_Phase_now(
+    float A1_rel, float A2_rel, float phi_deg,
+    float gain, int dacPin,
+    float freqHz, float sec
+) {
+    static int16_t buf[256];
+    makeCompositeF_2F_Phase(buf, 256, A1_rel, A2_rel, phi_deg, /*removeDC=*/true, /*normalizePeak=*/true);
+    playWaveForSeconds2(buf, 256, gain, dacPin, freqHz, sec);
+}
+
+//=================================================================================================================
+
 
 
 // the loop function runs over and over again until power down or reset
@@ -935,6 +1041,7 @@ void loop()
             playWaveForSeconds2(dat, waveformSize, G, DAC_PIN_A22, f, 1.0f);
         }
 
+        //imu calibration 1
         else if (command == '8') {
             // 주파수 고정(예: 40Hz)에서 baseGain = 3~8까지 1초씩 측정
             static const float baseGList[] = { 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f };
@@ -962,6 +1069,7 @@ void loop()
                 /*useMagnitude=*/true, /*axis=*/'z'
             );
         }
+        //imu calibration 2
         else if (command == '9')
         {
             static const float baseGList[] = { 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f };
@@ -985,7 +1093,7 @@ void loop()
 
             Serial.println(F("==== End of BaseGain Sweep ====\n"));
         }
-
+        //imu calibration 3
         else if (command == 'K') 
         {
             //calibration code !!!!!!!!!!!!
@@ -1002,56 +1110,20 @@ void loop()
             );
         }
 
-
+        //합성파형 재생
         else if (command == 'F')
         {
-            float baseG = 3.0f;
-            float f = 10.0f;
-            float G = compensatedGain(baseG, f);
-            playWaveForSeconds2(dat, waveformSize, G, DAC_PIN_A22, f, 1.0f);
-
-
-            //1초 동안 플레이 된다. (사이클 수 = 
-            //playWaveForSeconds(dat, waveformSize, GAIN, DAC_PIN_A22, /*hz=*/targetHz, /*sec=*/1.0f);
-            //playWaveForSeconds2(dat, waveformSize, GAIN, DAC_PIN_A22, /*hz=*/targetHz, /*sec=*/1.0f);
-
-
+            playWaveForSeconds2(wPhase0, 256, 5.0f, DAC_PIN_A22, 40.0f, 1.0f);
         }
         else if (command == 'D') 
         {                 
-            targetHz = 40;
-            updateDelayFromTargetHz();
-            const float GAIN = 5.0f; 
-            //delayPerSampleUs_rt = 
-            Serial.println(delayPerSampleUs_rt);
-
-            playWaveForSeconds(dat, waveformSize, GAIN, DAC_PIN_A22, /*hz=*/targetHz, /*sec=*/1.0f);
-
-            for (int repeat = 0; repeat < 5; repeat++)
-            {
-                //playArrayWithGainCentered(dat, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
-                //delayPerSampleUs_rt == byte간의 간격인데, 
-                
-
-            }
-
+            playWaveForSeconds2(wPhase180, 256, 5.0f, DAC_PIN_A22, 40.0f, 1.0f);
         }
 
         else if (command == 'S')
         {
-            targetHz = 40;
-            updateDelayFromTargetHz();
-            const float GAIN = 5.0f;
-            //delayPerSampleUs_rt = 
-            Serial.println(delayPerSampleUs_rt);
-
-
-            for (int repeat = 0; repeat < 5; repeat++)
-            {
-                playArrayWithGainCentered(negDatTrial, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
-                //delayPerSampleUs_rt == byte간의 간격인데, 
-            }
-
+            playAsymTimingDual(wPhase0, 256, 5.0f, 5.0f, DAC_PIN_A22, DAC_PIN_A21,
+                /*delayRiseUs=*/200, /*delayFallUs=*/200, /*invertA21=*/true);
         }
 
         else if (command == 'A')
