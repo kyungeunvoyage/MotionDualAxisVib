@@ -64,4 +64,10 @@ extern int16_t impulseDynamicPR[256];
 
 extern int16_t impulse_release[256];
 extern int16_t impulse_releasePR[256];
+
+extern int16_t waveformA[256];
+extern int16_t waveformB[256];
+extern int16_t waveformC[256];
+extern int16_t waveformD[256];
+
 #endif

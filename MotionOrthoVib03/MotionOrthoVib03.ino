@@ -1113,6 +1113,7 @@ void loop()
         //합성파형 재생
         else if (command == 'F')
         {
+            //흠 뭐가 다른지 모르겟는데 ㅋㅋㅋ
             playWaveForSeconds2(wPhase0, 256, 5.0f, DAC_PIN_A22, 40.0f, 1.0f);
         }
         else if (command == 'D') 
