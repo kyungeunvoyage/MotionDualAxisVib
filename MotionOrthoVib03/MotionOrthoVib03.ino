@@ -174,8 +174,8 @@ void setup() {
     }
 
     // setup() 끝에 한 번 만들어두고…
-    makeCompositeF_2F_Phase(wPhase0, 256, 1.0f, 1.0f, 0.0f, true, true);   // 오른쪽 당김 쪽
-    makeCompositeF_2F_Phase(wPhase180, 256, 1.0f, 1.0f, -180.0f, true, true);  // 왼쪽 당김 쪽
+    //makeCompositeF_2F_Phase(wPhase0, 256, 1.0f, 1.0f, 0.0f, true, true);   // 오른쪽 당김 쪽
+    //makeCompositeF_2F_Phase(wPhase180, 256, 1.0f, 1.0f, -180.0f, true, true);  // 왼쪽 당김 쪽
 
 }
 //=================setup===========================
@@ -1116,10 +1116,6 @@ void loop()
             //흠 뭐가 다른지 모르겟는데 ㅋㅋㅋ
             playWaveForSeconds2(wPhase0, 256, 5.0f, DAC_PIN_A22, 40.0f, 1.0f);
         }
-        else if (command == 'D') 
-        {                 
-            playWaveForSeconds2(wPhase180, 256, 5.0f, DAC_PIN_A22, 40.0f, 1.0f);
-        }
 
         else if (command == 'S')
         {
@@ -1129,94 +1125,42 @@ void loop()
 
         else if (command == 'A')
         {
-            //A를 누르게 되면, 10hz 로 변경해서 좀 느리게 할 수 있는지 확인 
-            targetHz = 10;
-            updateDelayFromTargetHz();
+            updateDelayFromTargetHz();  
+            //targetHz = 40;
+            targetHz = 75;
             const float GAIN = 5.0f;
-
-            for (int repeat = 0; repeat < 10; repeat++)
-            {
-                //for comb1 (yz) 
-                //const float GAIN = 5.0f;
-                //Left flesh
-                playArrayWithGainCentered(impulse_dynamic, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
-                delay(500); //(phase)
-
-                //Right Flesh
-                playArrayWithGainCentered(impulse_dynamic, waveformSize, GAIN, DAC_PIN_A21, delayPerSampleUs_rt);
-                //하나의 pulse 이후 쉬기
-                delay(500);
-            }
-
+            playArrayWithGainCentered(waveformA, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+            //playWaveForSeconds2(waveformA, 256, 5.0f, DAC_PIN_A22, 40.0f, 1.0f);
         }
 
 
         else if (command == 'B')
         {
-            targetHz = 20;
             updateDelayFromTargetHz();
-            const float GAIN = 3.0f;
-
-            for (int repeat = 0; repeat < 10; repeat++)
-            {
-                for (int i = 0; i < waveformSize; i++)
-                {
-                    int val = impulse_dynamic[i];
-
-                    //이걸로 intensity를 결정하는 거임. 
-                    //int 16 
-                    int dacValue = map(val, -32767, 32767, 0, 4095);
-                    //Serial.println(dacValue);
-
-                    //앞 
-                    analogWrite(DAC_PIN_A22, dacValue);
-                    delayMicroseconds((int)delayPerSampleUs_rt);  //40hz
-                    delay(500);
-
-                    //앞
-                    analogWrite(DAC_PIN_A21, dacValue);
-                    delayMicroseconds((int)delayPerSampleUs_rt);  //40hz
-                    delay(500);
-
-
-                }
-            }
+            //targetHz = 40;
+            targetHz = 75;
+            const float GAIN = 5.0f;
+            playArrayWithGainCentered(waveformB, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+            //playWaveForSeconds2(waveformB, 256, 5.0f, DAC_PIN_A22, 40.0f, 1.0f);
         }
 
         else if (command == 'C')
         {
-            //hz update
             updateDelayFromTargetHz();
-            const float GAIN = 3.0f;
-            // rise:fall = 2:1
-            playHalfSineWithRatio(wave_quadPushLinReturn, waveformSize, GAIN, DAC_PIN_A22,
-                delayPerSampleUs_rt, 2.0f, 1.0f, /*repeats=*/5);
+            //targetHz = 40;
+            targetHz = 75;
+            const float GAIN = 5.0f;
+            playArrayWithGainCentered(waveformC, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+            //playWaveForSeconds2(waveformC, 256, 5.0f, DAC_PIN_A22, 40.0f, 1.0f);
         }
         else if (command == 'D')
         {
-            //initiate the targetHz
             updateDelayFromTargetHz();
-
-            //activate titan LF
-            for (int repeat = 0; repeat < 5; repeat++)
-            {
-                for (int i = 0; i < waveformSize; i++)
-                {
-                    int val = dat[i];
-
-                    //이걸로 intensity를 결정하는 거임. 
-                    //int val_scaled = constrain((int)(val * gain), -32767, 32767);
-                    int dacValue = map(val, -32767, 32767, 0, 4095);
-                    //Serial.println(dacValue);
-
-                    analogWrite(DAC_PIN_A21, dacValue);
-                    analogWrite(DAC_PIN_A22, dacValue);
-
-                    delayMicroseconds((int)delayPerSampleUs_rt);  //40hz
-
-                }
-            }
-            delay(150);
+            targetHz = 75;
+            //targetHz = 40;
+            const float GAIN = 5.0f;
+            playArrayWithGainCentered(waveformD, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+            //playWaveForSeconds2(waveformD, 256, 5.0f, DAC_PIN_A22, 40.0f, 1.0f);
         }
         else if (command == 'G')
         {
