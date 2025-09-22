@@ -157,6 +157,10 @@ void setup() {
         impulseDynamicPR[i] = -impulse_dynamic[i];
         impulse_releasePR[i] = -impulse_release[i];
         //Serial.print(impulseDynamicPR[i]);
+        waveformA_PR[i] = -waveformA[i];
+        waveformB_PR[i] = -waveformB[i];
+        waveformC_PR[i] = -waveformC[i];
+        waveformD_PR[i] = -waveformD[i];
     }
 
     
@@ -987,7 +991,6 @@ void loop()
 
             // attractive force :
 
-
         }
 
 
@@ -1122,18 +1125,36 @@ void loop()
             playAsymTimingDual(wPhase0, 256, 5.0f, 5.0f, DAC_PIN_A22, DAC_PIN_A21,
                 /*delayRiseUs=*/200, /*delayFallUs=*/200, /*invertA21=*/true);
         }
-
+        
+        // + La (a -> d) 
         else if (command == 'A')
         {
             updateDelayFromTargetHz();  
             //targetHz = 40;
             targetHz = 75;
             const float GAIN = 5.0f;
-            playArrayWithGainCentered(waveformA, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+            playArrayWithGainCentered(waveformB_PR, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+            delay(50);
+            playArrayWithGainCentered(waveformB, waveformSize, GAIN, DAC_PIN_A21, delayPerSampleUs_rt);
+            Serial.println("it's capital and + La");
             //playWaveForSeconds2(waveformA, 256, 5.0f, DAC_PIN_A22, 40.0f, 1.0f);
         }
 
+        // - La (d -> a) 
+        else if (command == 'a')
+        {
+            updateDelayFromTargetHz();
+            //targetHz = 40;
+            targetHz = 75;
+            const float GAIN = 5.0f;
+            playArrayWithGainCentered(waveformB, waveformSize, GAIN, DAC_PIN_A21, delayPerSampleUs_rt);
+            delay(50);
+            playArrayWithGainCentered(waveformB_PR, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+            Serial.println("it's small and - La");
+            //playWaveForSeconds2(waveformB, 256, 5.0f, DAC_PIN_A22, 40.0f, 1.0f);
+        }
 
+        // + Lb (b -> c)
         else if (command == 'B')
         {
             updateDelayFromTargetHz();
@@ -1141,18 +1162,24 @@ void loop()
             targetHz = 75;
             const float GAIN = 5.0f;
             playArrayWithGainCentered(waveformB, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
-            //playWaveForSeconds2(waveformB, 256, 5.0f, DAC_PIN_A22, 40.0f, 1.0f);
-        }
-
-        else if (command == 'C')
-        {
-            updateDelayFromTargetHz();
-            //targetHz = 40;
-            targetHz = 75;
-            const float GAIN = 5.0f;
-            playArrayWithGainCentered(waveformC, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+            delay(50);
+            playArrayWithGainCentered(waveformB_PR, waveformSize, GAIN, DAC_PIN_A21, delayPerSampleUs_rt);
             //playWaveForSeconds2(waveformC, 256, 5.0f, DAC_PIN_A22, 40.0f, 1.0f);
         }
+
+        //-Lb (c ->b) 
+        else if (command == 'b')
+        {
+        updateDelayFromTargetHz();
+        //targetHz = 40;
+        targetHz = 75;
+        const float GAIN = 5.0f;
+        playArrayWithGainCentered(waveformB_PR, waveformSize, GAIN, DAC_PIN_A21, delayPerSampleUs_rt);
+        delay(50);
+        playArrayWithGainCentered(waveformB, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+        //playWaveForSeconds2(waveformC, 256, 5.0f, DAC_PIN_A22, 40.0f, 1.0f);
+        }
+
         else if (command == 'D')
         {
             updateDelayFromTargetHz();
@@ -1160,86 +1187,11 @@ void loop()
             //targetHz = 40;
             const float GAIN = 5.0f;
             playArrayWithGainCentered(waveformD, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
-            //playWaveForSeconds2(waveformD, 256, 5.0f, DAC_PIN_A22, 40.0f, 1.0f);
+            delay(100);
+            playArrayWithGainCentered(waveformD, waveformSize, GAIN, DAC_PIN_A21, delayPerSampleUs_rt);
+                        //playWaveForSeconds2(waveformD, 256, 5.0f, DAC_PIN_A22, 40.0f, 1.0f);
         }
-        else if (command == 'G')
-        {
-            //initiate the targetHz
-            updateDelayFromTargetHz();
 
-            //activate titan LF
-            for (int repeat = 0; repeat < 5; repeat++)
-            {
-                for (int i = 0; i < waveformSize; i++)
-                {
-                    int val = dat[i];
-
-                    //이걸로 intensity를 결정하는 거임. 
-                    //int val_scaled = constrain((int)(val * gain), -32767, 32767);
-                    int dacValue = map(val, -32767, 32767, 0, 4095);
-                    //Serial.println(dacValue);
-
-                    analogWrite(DAC_PIN_A22, dacValue);
-                    //analogWrite(DAC_PIN_A22, dacValue);
-
-                    delayMicroseconds((int)delayPerSampleUs_rt);  //40hz
-
-                }
-            }
-            delay(150);
-        }
-        else if (command == 'H')
-        {
-            //initiate the targetHz
-            updateDelayFromTargetHz();
-
-            //activate titan LF
-            for (int repeat = 0; repeat < 5; repeat++)
-            {
-                for (int i = 0; i < waveformSize; i++)
-                {
-                    int val = biasWaveform[i];
-
-                    //이걸로 intensity를 결정하는 거임. 
-                    //int val_scaled = constrain((int)(val * gain), -32767, 32767);
-                    int dacValue = map(val, -32767, 32767, 0, 4095);
-                    //Serial.println(dacValue);
-
-                    analogWrite(DAC_PIN_A22, dacValue);
-                    //analogWrite(DAC_PIN_A22, dacValue);
-
-                    delayMicroseconds((int)delayPerSampleUs_rt);  //40hz
-
-                }
-            }
-            delay(150);
-        }
-        else if (command == 'I')
-        {
-            //initiate the targetHz
-            updateDelayFromTargetHz();
-
-            //activate titan LF
-            for (int repeat = 0; repeat < 5; repeat++)
-            {
-                for (int i = 0; i < waveformSize; i++)
-                {
-                    int val = asyTriangular[i];
-
-                    //이걸로 intensity를 결정하는 거임. 
-                    //int val_scaled = constrain((int)(val * gain), -32767, 32767);
-                    int dacValue = map(val, -32767, 32767, 0, 4095);
-                    //Serial.println(dacValue);
-
-                    analogWrite(DAC_PIN_A22, dacValue);
-                    //analogWrite(DAC_PIN_A22, dacValue);
-
-                    delayMicroseconds((int)delayPerSampleUs_rt);  //40hz
-
-                }
-            }
-            delay(150);
-        }
 
     }
 

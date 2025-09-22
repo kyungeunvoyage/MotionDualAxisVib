@@ -105,6 +105,10 @@ int16_t amBurstAsymPR[256];
 int16_t quadPushLinReturnPR[256];
 int16_t impulseDynamicPR[256];
 int16_t impulse_releasePR[256];
+int16_t waveformA_PR[256];
+int16_t waveformB_PR[256];
+int16_t waveformC_PR[256];
+int16_t waveformD_PR[256];
 
 struct WaveRef { const int16_t* data; int len; };
 WaveRef getWave(const char* name) {
