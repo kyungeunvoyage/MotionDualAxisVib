@@ -11,6 +11,8 @@
             --muted: #777777;
             --track-w: 560px; /* horizontal track length */
             --track-h: 14px; /* track thickness */
+            --ok: #16a34a;
+            --warn: #d97706;
         }
 
         html, body {
@@ -22,7 +24,7 @@
         }
 
         .wrap {
-            max-width: 760px;
+            max-width: 860px;
             margin: 24px auto;
             padding: 16px;
         }
@@ -31,7 +33,30 @@
             font-size: 22px;
             margin: 0 0 10px;
             letter-spacing: .2px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
+
+        .badge {
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 12px;
+            border: 1px solid #ddd;
+            background: #f2f2f2;
+        }
+
+            .badge.ok {
+                border-color: var(--ok);
+                color: #065f46;
+                background: #ecfdf5;
+            }
+
+            .badge.demo {
+                border-color: var(--warn);
+                color: #7c2d12;
+                background: #fffbeb;
+            }
 
         .desc {
             font-size: 14px;
@@ -85,10 +110,10 @@
         }
 
         .controls {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 12px 16px;
-            align-items: center;
+            display: grid;
+            grid-template-columns: repeat(3, minmax(220px, 1fr));
+            gap: 14px 16px;
+            align-items: start;
             padding: 14px 16px;
             border: 1px solid #e5e5e5;
             border-radius: 12px;
@@ -108,7 +133,7 @@
                 color: #444;
             }
 
-            .field input[type="number"], .controls select {
+            .field input[type="number"], .controls select, .field input[type="text"] {
                 width: 130px;
                 padding: 6px 8px;
                 border: 1px solid #ddd;
@@ -128,6 +153,7 @@
             display: flex;
             gap: 8px;
             flex-wrap: wrap;
+            align-items: center;
         }
 
         button {
@@ -165,31 +191,21 @@
             font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
         }
 
-        .badge {
-            padding: 2px 8px;
-            border-radius: 999px;
-            font-size: 12px;
-            border: 1px solid #ddd;
-            background: #f2f2f2;
-        }
-
-            .badge.ok {
-                border-color: #16a34a;
-                color: #065f46;
-                background: #ecfdf5;
-            }
-
-        .note {
-            font-size: 12px;
-            color: #777;
-            margin-top: 6px;
+        .row-inline {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
         }
     </style>
 </head>
 <body>
     <div class="wrap">
-        <h1>Movement Guide – Direction Only</h1>
-        <div class="desc"></div>
+        <h1>
+            Movement Guide – Direction Only
+            <span id="connBadge" class="badge">Serial: Disconnected</span>
+            <span id="modeBadge" class="badge">Mode: Normal</span>
+        </h1>
 
         <!-- Direction Track Only -->
         <div class="track-area">
@@ -234,17 +250,23 @@
                 <input id="mapFlip" type="checkbox" />
             </div>
 
-            <!-- Serial controls -->
+            <!-- Serial & Demo controls -->
             <div class="field">
                 <label for="cmd">Send command</label>
                 <input id="cmd" type="text" value="4" maxlength="1" />
             </div>
-            <div class="btns">
+            <div class="row-inline">
                 <button id="startBtn">Start</button>
                 <button id="stopBtn" class="secondary" disabled>Stop</button>
                 <button id="resetBtn" class="secondary">Reset</button>
                 <button id="connectBtn" class="secondary">Connect</button>
                 <button id="sendBtn" class="secondary">Send</button>
+            </div>
+            <div class="row-inline">
+                <label style="display:flex;align-items:center;gap:6px;">
+                    <input type="checkbox" id="demoMode" />
+                    Demo mode
+                </label>
             </div>
         </div>
 
@@ -254,13 +276,12 @@
             <div>Pair <span id="pairIdx" class="mono">0</span>/<span id="pairTotal" class="mono">5</span></div>
             <div>Cycle <span id="cycleMs" class="mono">25.00</span> ms</div>
             <div>Hold <span id="holdMsOut" class="mono">250</span> ms</div>
-            <div id="connBadge" class="badge">Serial: Disconnected</div>
         </div>
         <div class="note"></div>
     </div>
 
     <script>
-        // Elements
+        /* ===== Elements ===== */
         const track = document.getElementById('track');
         const dot = document.getElementById('dot');
         const arrow = document.getElementById('arrow');
@@ -288,22 +309,24 @@
         const cycleMsEl = document.getElementById('cycleMs');
         const holdMsOutEl = document.getElementById('holdMsOut');
         const connBadge = document.getElementById('connBadge');
+        const modeBadge = document.getElementById('modeBadge');
+        const demoModeEl = document.getElementById('demoMode');
 
-        // State
+        /* ===== State ===== */
         let running = false;
         let timers = [];
         let rafId = null;
 
-        // Serial state
+        /* Serial state (+ demo) */
         let serialPort = null;
         let textReader = null;
         let textWriter = null;
         let serialBuf = '';
+        let demo = false;
 
-        // Utilities
+        /* ===== Utilities ===== */
         function clearTimers() { timers.forEach(t => clearTimeout(t)); timers = []; }
         function cancelAnim() { if (rafId) { cancelAnimationFrame(rafId); rafId = null; } }
-
         function computeCycleMs(hz) { return 1000 / Math.max(0.0001, hz); }
 
         function computeHoldMs() {
@@ -337,11 +360,13 @@
             holdEl.disabled = isRunning || useScaleEl.checked;
             axisEl.disabled = isRunning;
             mapFlipEl.disabled = isRunning;
+            sendBtn.disabled = isRunning && !demo; // 데모는 언제든 전송 시퀀스 가능
         }
 
+        /* ===== Orientation & Animation ===== */
         function setOrientation(axis) {
-            if (axis === 'fb') { track.classList.add('vertical'); }
-            else { track.classList.remove('vertical'); }
+            if (axis === 'fb') track.classList.add('vertical');
+            else track.classList.remove('vertical');
 
             cancelAnim();
             requestAnimationFrame(() => {
@@ -367,7 +392,7 @@
 
             if (axis === 'fb') {
                 const minY = 0, maxY = rect.height - s;
-                const startY = (dir === 1) ? maxY : minY;  // +1: up
+                const startY = (dir === 1) ? maxY : minY;
                 const endY = (dir === 1) ? minY : maxY;
                 const x = (rect.width - s) / 2;
                 dot.style.left = x + 'px';
@@ -405,6 +430,7 @@
             polarityEl.textContent = '—';
         }
 
+        /* ===== Sequence (Normal/Inverted pair) ===== */
         function runSequence() {
             const hz = Math.max(0.0001, parseFloat(hzEl.value) || 40);
             const pairRepeats = Math.max(1, parseInt(pairsEl.value, 10) || 5);
@@ -426,10 +452,7 @@
 
             const runPair = () => {
                 if (!running) return;
-                if (currentPair >= pairRepeats) {
-                    safeStop();
-                    return;
-                }
+                if (currentPair >= pairRepeats) { safeStop(); return; }
                 pairIdxEl.textContent = String(currentPair + 1);
 
                 // (1) Normal
@@ -452,15 +475,26 @@
             runPair();
         }
 
-        // ---------- Web Serial ----------
+        /* ===== Web Serial + Demo ===== */
         async function connectSerial() {
             try {
+                demo = !!demoModeEl.checked;
+                updateModeBadge();
+
+                if (demo) {
+                    // 데모 모드 전환/해제 토글만 처리
+                    await disconnectSerial();
+                    connBadge.textContent = 'Serial: Demo';
+                    connBadge.classList.remove('ok');
+                    connBadge.classList.add('demo');
+                    return;
+                }
+
                 if (!('serial' in navigator)) {
                     alert('Web Serial not supported in this browser.');
                     return;
                 }
                 if (serialPort) {
-                    // toggle: disconnect
                     await disconnectSerial();
                     return;
                 }
@@ -482,6 +516,7 @@
                 connectBtn.textContent = 'Disconnect';
                 connBadge.textContent = 'Serial: Connected';
                 connBadge.classList.add('ok');
+                connBadge.classList.remove('demo');
 
                 serialBuf = '';
                 (async () => {
@@ -495,21 +530,17 @@
                             const line = serialBuf.slice(0, idx).trim();
                             serialBuf = serialBuf.slice(idx + 1);
 
-                            // Protocol: [UI] START X  /  [UI] END X
+                            // Device UI protocol (optional)
                             if (line.startsWith('[UI] START')) {
                                 if (!running) runSequence();
                             } else if (line.startsWith('[UI] END')) {
                                 if (running) safeStop();
                             }
-                            // if (line === '[UI] PEAK') { /* optional */ }
                         }
                     }
                 })().catch(console.error);
 
-                // Auto clean on physical disconnect (not all browsers fire this)
-                try {
-                    serialPort.addEventListener?.('disconnect', () => disconnectSerial());
-                } catch (_) { }
+                try { serialPort.addEventListener?.('disconnect', () => disconnectSerial()); } catch (_) { }
 
             } catch (e) {
                 console.error(e);
@@ -525,35 +556,58 @@
                 if (serialPort) { try { await serialPort.close(); } catch (_) { } serialPort = null; }
             } finally {
                 connectBtn.textContent = 'Connect';
-                connBadge.textContent = 'Serial: Disconnected';
+                connBadge.textContent = demo ? 'Serial: Demo' : 'Serial: Disconnected';
                 connBadge.classList.remove('ok');
+                if (demo) connBadge.classList.add('demo'); else connBadge.classList.remove('demo');
             }
         }
 
         async function sendCommand(c) {
-            if (!serialPort || !textWriter) {
-                alert('Connect first.');
+            const ch = (c || '').toString().slice(0, 1) || '4';
+
+            // 데모: 시리얼 없이 즉시 시퀀스 시작
+            if (demo) {
+                if (!running) runSequence();
                 return;
             }
-            const ch = (c || '').toString().slice(0, 1) || '4';
-            await textWriter.write(ch);      // Teensy reads a single byte
-            if (!running) runSequence();     // start UI immediately (device will also emit [UI] START)
+
+            if (!serialPort || !textWriter) {
+                alert('Connect first, or enable Demo mode.');
+                return;
+            }
+            // Teensy reads a single byte
+            await textWriter.write(ch);
+            if (!running) runSequence();
         }
 
-        // init
+        function updateModeBadge() {
+            if (demo) {
+                modeBadge.textContent = 'Mode: Demo';
+                modeBadge.classList.add('demo');
+            } else {
+                modeBadge.textContent = 'Mode: Normal';
+                modeBadge.classList.remove('demo');
+            }
+        }
+
+        /* ===== init ===== */
         updateReadouts();
         [hzEl, useScaleEl, scaleEl, holdEl, axisEl].forEach(el => el.addEventListener('input', updateReadouts));
         setOrientation('lr');
 
-        // buttons / shortcuts
         startBtn.addEventListener('click', () => { if (!running) runSequence(); });
         stopBtn.addEventListener('click', () => { if (running) safeStop(); });
-        resetBtn.addEventListener('click', () => {
-            safeStop(); pairIdxEl.textContent = '0'; updateReadouts(); setOrientation(axisEl.value);
-        });
+        resetBtn.addEventListener('click', () => { safeStop(); pairIdxEl.textContent = '0'; updateReadouts(); setOrientation(axisEl.value); });
 
         connectBtn.addEventListener('click', connectSerial);
         sendBtn.addEventListener('click', () => sendCommand(cmdEl.value));
+
+        demoModeEl.addEventListener('change', async () => {
+            demo = demoModeEl.checked;
+            updateModeBadge();
+            // 데모 켠 상태에서는 연결을 끊고 Demo 뱃지로 표시
+            if (demo) await disconnectSerial();
+        });
 
         window.addEventListener('keydown', (e) => {
             const k = e.key.toLowerCase();

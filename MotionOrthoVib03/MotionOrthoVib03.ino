@@ -1127,11 +1127,19 @@ void loop()
         }
         
         // + La (a -> d) 
+        //ampitude가 좀 세야할 것 같음
+
         else if (command == 'A')
         {
+            //targetHz = 75;
             updateDelayFromTargetHz();  
             //targetHz = 40;
-            targetHz = 75;
+            //40hz 일 때, 한 사이클 = 1/40s = 0.025s = 25s 
+            // 25 ms + 50ms + 25 ms = 125ms (0.125s) 
+            //전체 시퀀스 (125ms) 동안 80mm 이동한다고 했을 때~ 
+            //속도 = 80mm/ 0.125s = 640mm/s (0.64m/s)
+
+
             const float GAIN = 5.0f;
             playArrayWithGainCentered(waveformB_PR, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
             delay(50);
@@ -1143,9 +1151,10 @@ void loop()
         // - La (d -> a) 
         else if (command == 'a')
         {
+            //targetHz = 75;
             updateDelayFromTargetHz();
             //targetHz = 40;
-            targetHz = 75;
+            
             const float GAIN = 5.0f;
             playArrayWithGainCentered(waveformB, waveformSize, GAIN, DAC_PIN_A21, delayPerSampleUs_rt);
             delay(50);
