@@ -1,18 +1,23 @@
 ﻿<!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Movement Guide – Direction Only</title>
+    <title>Main User Experiment – One-Way Bar + Serial/Demo</title>
     <style>
         :root {
-            --bg: #ffffff;
-            --fg: #111111;
-            --muted: #777777;
-            --track-w: 560px; /* horizontal track length */
-            --track-h: 14px; /* track thickness */
-            --ok: #16a34a;
-            --warn: #d97706;
+            /* ===== Animation knobs ===== */
+            --move-duration: 100ms; /* 좌→우, 우→좌 이동 시간 */
+            --pause-duration: 3000ms; /* 되돌아가기 전에 대기 시간 */
+            --track-width: min(90vw, 1100px);
+            --track-height: 80px; /* 바 두께 */
+            /* ===== Theme ===== */
+            --bg: #0b0f14;
+            --fg: #e5eef7;
+            --muted: #99a7b5;
+            --accent: #7bd3ff;
+            --card: #121822;
+            --ok: #75e39c;
         }
 
         html, body {
@@ -20,601 +25,572 @@
             margin: 0;
             background: var(--bg);
             color: var(--fg);
-            font-family: system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
+            font-family: Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
         }
 
-        .wrap {
-            max-width: 860px;
-            margin: 24px auto;
-            padding: 16px;
+        header {
+            padding: 14px 18px;
+            border-bottom: 1px solid #1f2a38;
+            position: sticky;
+            top: 0;
+            background: linear-gradient(180deg,rgba(11,15,20,.95),rgba(11,15,20,.85));
+            backdrop-filter: blur(8px)
         }
 
         h1 {
-            font-size: 22px;
-            margin: 0 0 10px;
-            letter-spacing: .2px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
+            margin: 0;
+            font-size: 18px;
+            letter-spacing: .2px
         }
 
         .badge {
+            margin-left: 8px;
             padding: 2px 8px;
             border-radius: 999px;
-            font-size: 12px;
-            border: 1px solid #ddd;
-            background: #f2f2f2;
+            border: 1px solid #2a5f85;
+            background: #0e1621;
+            color: #bfe7ff;
+            font-size: 12px
         }
 
-            .badge.ok {
-                border-color: var(--ok);
-                color: #065f46;
-                background: #ecfdf5;
-            }
-
-            .badge.demo {
-                border-color: var(--warn);
-                color: #7c2d12;
-                background: #fffbeb;
-            }
-
-        .desc {
-            font-size: 14px;
-            color: var(--muted);
-            line-height: 1.6;
-            margin-bottom: 16px;
+        main {
+            padding: 18px;
+            display: grid;
+            gap: 16px;
+            grid-template-columns: 420px 1fr
         }
 
-        .track-area {
+        section {
+            background: var(--card);
+            border: 1px solid #1b2633;
+            border-radius: 14px;
+            padding: 14px
+        }
+
+            section h2 {
+                margin: 0 0 10px;
+                font-size: 15px;
+                color: var(--accent)
+            }
+
+        .row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap
+        }
+
+        input, button, select {
+            background: #0d131c;
+            color: #fff;
+            border: 1px solid #223042;
+            border-radius: 10px;
+            padding: 8px 10px;
+            font-size: 14px
+        }
+
+        button {
+            background: #0e1621;
+            cursor: pointer;
+            transition: .15s ease
+        }
+
+            button.primary {
+                background: #143047;
+                border-color: #1e4b6d
+            }
+
+            button:hover {
+                transform: translateY(-1px)
+            }
+
+        .hidden {
+            display: none !important
+        }
+
+        .sep {
+            height: 1px;
+            background: #1b2633;
+            margin: 10px 0
+        }
+
+        .title {
+            font-size: clamp(18px, 2vw, 20px);
+            opacity: .9;
+            letter-spacing: .2px;
+            margin-bottom: 10px
+        }
+
+        /* Direction panel */
+        .dirpanel {
+            margin: 10px 0 12px;
+            padding: 14px;
+            border-radius: 12px;
+            background: #0e1621;
+            border: 1px solid #223042;
+            display: grid;
+            gap: 10px
+        }
+
+        .dirrow {
             display: flex;
             align-items: center;
-            gap: 16px;
-            margin: 8px 0 18px;
+            justify-content: center;
+            gap: 14px;
+            font-size: 18px;
         }
 
-        .dir-label {
-            font-size: 14px;
+            .dirrow .arrow {
+                font-size: 22px;
+                opacity: .9
+            }
+
+            .dirrow .label {
+                font-weight: 600
+            }
+
+        .dirsub {
+            font-size: 12px;
             color: var(--muted);
-            width: 120px;
+            text-align: center
+        }
+
+        .title + .dirpanel {
+            margin-top: 8px
         }
 
         .track {
             position: relative;
-            width: var(--track-w);
-            height: var(--track-h);
-            background: #eee;
+            width: var(--track-width);
+            height: var(--track-height);
             border-radius: 999px;
-            box-shadow: inset 0 1px 2px rgba(0,0,0,.06);
+            background: linear-gradient(to right, rgba(255,255,255,.08), rgba(255,255,255,.02));
+            box-shadow: inset 0 0 0 2px rgba(255,255,255,.07);
+            overflow: hidden;
+            margin-top: 30px;
+            margin-bottom : 30px;
+        }
+        /* 카운트다운 오버레이 */
+        .countdown {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: clamp(32px, 6vw, 72px);
+            color: #fff;
+            text-shadow: 0 2px 8px rgba(0,0,0,.6);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity .12s ease;
         }
 
-            .track.vertical {
-                width: var(--track-h);
-                height: var(--track-w);
+            .countdown.show {
+                opacity: 1;
             }
 
-        .dot {
+        /* 원형 이동 바: 지름 = 트랙 높이 */
+        .bar {
             position: absolute;
-            width: 22px;
-            height: 22px;
-            border-radius: 50%;
-            background: #000;
-            box-shadow: 0 2px 10px rgba(0,0,0,.2);
-            left: 0;
             top: 0;
-        }
-
-        .arrow {
-            font-size: 18px;
-            width: 32px;
-            text-align: center;
+            left: 0;
+            width: var(--track-height);
+            height: var(--track-height);
+            border-radius: 50%;
+            background: linear-gradient(135deg, #79c0ff, #9ae6b4);
+            box-shadow: 0 0 0 2px rgba(0,0,0,.25), 0 8px 20px rgba(64,162,255,.25);
         }
 
         .controls {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(220px, 1fr));
-            gap: 14px 16px;
-            align-items: start;
-            padding: 14px 16px;
-            border: 1px solid #e5e5e5;
-            border-radius: 12px;
-            background: #fafafa;
-            margin: 18px 0 14px;
-        }
-
-        .field {
-            display: grid;
-            grid-template-columns: auto 140px;
-            gap: 8px;
-            align-items: center;
-        }
-
-            .field label {
-                font-size: 13px;
-                color: #444;
-            }
-
-            .field input[type="number"], .controls select, .field input[type="text"] {
-                width: 130px;
-                padding: 6px 8px;
-                border: 1px solid #ddd;
-                border-radius: 8px;
-                font-size: 14px;
-            }
-
-            .field input[type="number"] {
-                text-align: right;
-            }
-
-            .field input[type="checkbox"] {
-                transform: translateY(1px);
-            }
-
-        .btns {
             display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-
-        button {
-            appearance: none;
-            border: 1px solid #111;
-            background: #111;
-            color: #fff;
-            padding: 8px 14px;
-            border-radius: 10px;
-            font-size: 14px;
-            cursor: pointer;
-        }
-
-            button.secondary {
-                background: #fff;
-                color: #111;
-            }
-
-            button:disabled {
-                opacity: .45;
-                cursor: not-allowed;
-            }
-
-        .status {
-            font-size: 13px;
-            color: #333;
-            padding: 8px 0;
-            display: flex;
-            gap: 18px;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-
-        .mono {
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-        }
-
-        .row-inline {
-            display: flex;
-            align-items: center;
+            justify-content: flex-start;
             gap: 10px;
-            flex-wrap: wrap;
+            margin-top: 10px
+        }
+
+        .btn {
+            appearance: none;
+            border: 0;
+            border-radius: 999px;
+            padding: 10px 18px;
+            font-size: 16px;
+            cursor: pointer;
+            background: #2d6cdf;
+            color: white;
+            box-shadow: 0 6px 16px rgba(45,108,223,.35);
+            transition: transform .06s ease, opacity .2s ease;
+        }
+
+            .btn:active {
+                transform: translateY(1px)
+            }
+
+            .btn:disabled {
+                opacity: .6;
+                cursor: not-allowed
+            }
+
+        .kv {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px
+        }
+
+        .small {
+            font-size: 12px;
+            color: var(--muted)
+        }
+
+        .ok {
+            color: var(--ok)
         }
     </style>
 </head>
 <body>
-    <div class="wrap">
-        <h1>
-            Movement Guide – Direction Only
-            <span id="connBadge" class="badge">Serial: Disconnected</span>
-            <span id="modeBadge" class="badge">Mode: Normal</span>
-        </h1>
+    <header>
+        <h1>Main User Experiment · One-Way Bar <span class="badge" id="serialStatus">미연결</span></h1>
+    </header>
 
-        <!-- Direction Track Only -->
-        <div class="track-area">
-            <div class="dir-label">Move Direction</div>
-            <div class="track" id="track">
-                <div class="dot" id="dot"></div>
+    <main>
+        <!-- Left: Session & Serial Controls -->
+        <section>
+            <h2>① 세션 & 연결</h2>
+            <div class="row">
+                <label>Participant ID&nbsp;<input id="pid" placeholder="P01" /></label>
             </div>
-            <div class="arrow" id="arrow">→</div>
-        </div>
-
-        <!-- Controls -->
-        <div class="controls">
-            <div class="field">
-                <label for="hz">Frequency (Hz)</label>
-                <input id="hz" type="number" min="1" max="200" step="0.1" value="40" />
-            </div>
-            <div class="field">
-                <label for="pairs">Pair repeats</label>
-                <input id="pairs" type="number" min="1" max="20" step="1" value="5" />
-            </div>
-            <div class="field">
-                <label for="rest">Rest (ms) – between bursts</label>
-                <input id="rest" type="number" min="0" max="3000" step="10" value="500" />
-            </div>
-            <div class="field">
-                <label><input id="useScale" type="checkbox" checked> Hold = (1000/Hz)×Scale</label>
-                <input id="scale" type="number" min="1" max="100" step="1" value="10" />
-            </div>
-            <div class="field">
-                <label for="hold">Hold (ms) – manual</label>
-                <input id="hold" type="number" min="10" max="5000" step="10" value="250" />
-            </div>
-            <div class="field">
-                <label for="axis">Axis</label>
-                <select id="axis">
-                    <option value="lr" selected>Left ↔ Right</option>
-                    <option value="fb">Forward ↕ Backward</option>
-                </select>
-            </div>
-            <div class="field">
-                <label for="mapFlip">Direction mapping flip</label>
-                <input id="mapFlip" type="checkbox" />
-            </div>
-
-            <!-- Serial & Demo controls -->
-            <div class="field">
-                <label for="cmd">Send command</label>
-                <input id="cmd" type="text" value="4" maxlength="1" />
-            </div>
-            <div class="row-inline">
-                <button id="startBtn">Start</button>
-                <button id="stopBtn" class="secondary" disabled>Stop</button>
-                <button id="resetBtn" class="secondary">Reset</button>
-                <button id="connectBtn" class="secondary">Connect</button>
-                <button id="sendBtn" class="secondary">Send</button>
-            </div>
-            <div class="row-inline">
-                <label style="display:flex;align-items:center;gap:6px;">
-                    <input type="checkbox" id="demoMode" />
-                    Demo mode
+            <div class="sep"></div>
+            <div class="row">
+                <button id="btnConnect" class="primary">시리얼 연결</button>
+                <button id="btnStart">시작</button>
+                <label style="display:flex;align-items:center;gap:6px;margin-left:auto;">
+                    <input type="checkbox" id="demoMode" /> 데모 모드
                 </label>
             </div>
-        </div>
+            <div class="small" style="margin-top:6px">Web Serial: HTTPS 또는 http://localhost 에서만 동작</div>
+            <div class="sep"></div>
+            <h3 class="small" style="margin:0 0 6px">아두이노 전송 코드 설정</h3>
+            <div class="kv">
+                <label>LR 이동 code <input id="codeLR" type="number" min="0" max="255" value="0" /></label>
+                <label>LR side <select id="sideLR"><option value="0">ulnar(0)</option><option value="1">radial(1)</option></select></label>
+                <label>RL 이동 code <input id="codeRL" type="number" min="0" max="255" value="1" /></label>
+                <label>RL side <select id="sideRL"><option value="0">ulnar(0)</option><option value="1" selected>radial(1)</option></select></label>
+            </div>
+            <div class="sep"></div>
+            <button id="btnDownload">CSV 저장</button>
+        </section>
 
-        <!-- Status -->
-        <div class="status">
-            <div>Polarity: <span id="polarity" class="mono">—</span></div>
-            <div>Pair <span id="pairIdx" class="mono">0</span>/<span id="pairTotal" class="mono">5</span></div>
-            <div>Cycle <span id="cycleMs" class="mono">25.00</span> ms</div>
-            <div>Hold <span id="holdMsOut" class="mono">250</span> ms</div>
-        </div>
-        <div class="note"></div>
-    </div>
+        <!-- Right: Animation Panel -->
+        <section>
+            <h2>② 진행 패널</h2>
+            <div class="title"></div>
+            <!-- 방향 안내 패널 -->
+            <div class="dirpanel" id="dirPanel">
+                <div class="dirrow"><span class="label">좌 (Left)</span><span id="arrowLR" class="arrow">→→→→→→→→→→→→→→→→→→→</span><span class="label">우 (Right)</span></div>
+                <!--<div class="dirrow"><span class="label">위 (Upwards)</span><span id="arrowUD" class="arrow">↑</span><span class="label">아래 (Downwards)</span></div>-->
+                <!--<div class="dirrow"><span class="label">앞 (Forward)</span><span id="arrowFB" class="arrow">⇢</span><span class="label">뒤 (Backwards)</span></div>-->
+                <!--<div class="dirsub">이 화살표는 현재 이동 방향에 맞춰 자동으로 바뀝니다. (LR: →/↑/⇢, RL: ←/↓/⇠)</div>-->
+            </div>
+
+            <div class="track" id="track" aria-label="animation-track">
+                <div class="bar" id="bar" role="img" aria-label="moving bar"></div>
+                <div class="countdown" id="countdown" aria-live="polite" aria-atomic="true"></div>
+            </div>
+            <div class="controls">
+                <button id="startBtn" class="btn" type="button" aria-label="start animation">Start</button>
+                <span id="phaseText" class="small">대기</span>
+            </div>
+
+            <!--<div class="small">버튼을 누르면 실행됩니다. (파라미터는 <code>:root</code> 변수로 조정)</div> -->
+    <!-- 타이밍 제어 버튼: (1) UI만 (2) UI→A (3) A→UI -->
+            <div class="controls" id="timingControls">
+                <button id="btnUIOnly" class="btn" type="button" title="UI 애니메이션만 실행">① UI만</button>
+                <button id="btnUIThenA" class="btn" type="button" title="UI 실행 후 즉시 A 전송">② UI→A</button>
+                <button id="btnAThenUI" class="btn" type="button" title="A 전송 후 UI 실행">③ A→UI</button>
+            </div>
+        </section>
+    </main>
 
     <script>
-        /* ===== Elements ===== */
-        const track = document.getElementById('track');
-        const dot = document.getElementById('dot');
-        const arrow = document.getElementById('arrow');
+        (function () {
+            // ===== Utilities =====
+            const $ = s => document.querySelector(s);
+            const sleep = ms => new Promise(r => setTimeout(r, ms));
+            const toPx = (n) => Number.isFinite(n) ? n + 'px' : '0px';
+            const ensureNumber = (v, fb = 0) => { const n = Number(v); return Number.isFinite(n) ? n : fb; };
+            const parseTime = (raw) => { const s = String(raw).trim(); if (s.endsWith('ms')) return parseFloat(s); if (s.endsWith('s')) return parseFloat(s) * 1000; const n = parseFloat(s); return Number.isFinite(n) ? n : 3000; };
 
-        const hzEl = document.getElementById('hz');
-        const pairsEl = document.getElementById('pairs');
-        const restEl = document.getElementById('rest');
-        const useScaleEl = document.getElementById('useScale');
-        const scaleEl = document.getElementById('scale');
-        const holdEl = document.getElementById('hold');
-        const axisEl = document.getElementById('axis');
-        const mapFlipEl = document.getElementById('mapFlip');
+            // ===== Elements =====
+            const track = $('#track');
+            const bar = $('#bar');
+            const btnStartAnim = $('#startBtn');
+            const phaseText = $('#phaseText');
+            const btnConnect = $('#btnConnect');
+            const btnStartSession = $('#btnStart');
+            const btnDownload = $('#btnDownload');
+            const statusBadge = $('#serialStatus');
+            // 방향 화살표 요소
+            const arrowLR = document.getElementById('arrowLR');
+            const arrowUD = document.getElementById('arrowUD');
+            const arrowFB = document.getElementById('arrowFB');
 
-        const startBtn = document.getElementById('startBtn');
-        const stopBtn = document.getElementById('stopBtn');
-        const resetBtn = document.getElementById('resetBtn');
+            // ===== Serial State =====
+            let port = null, writer = null, demo = false;
 
-        const connectBtn = document.getElementById('connectBtn');
-        const sendBtn = document.getElementById('sendBtn');
-        const cmdEl = document.getElementById('cmd');
-
-        const polarityEl = document.getElementById('polarity');
-        const pairIdxEl = document.getElementById('pairIdx');
-        const pairTotalEl = document.getElementById('pairTotal');
-        const cycleMsEl = document.getElementById('cycleMs');
-        const holdMsOutEl = document.getElementById('holdMsOut');
-        const connBadge = document.getElementById('connBadge');
-        const modeBadge = document.getElementById('modeBadge');
-        const demoModeEl = document.getElementById('demoMode');
-
-        /* ===== State ===== */
-        let running = false;
-        let timers = [];
-        let rafId = null;
-
-        /* Serial state (+ demo) */
-        let serialPort = null;
-        let textReader = null;
-        let textWriter = null;
-        let serialBuf = '';
-        let demo = false;
-
-        /* ===== Utilities ===== */
-        function clearTimers() { timers.forEach(t => clearTimeout(t)); timers = []; }
-        function cancelAnim() { if (rafId) { cancelAnimationFrame(rafId); rafId = null; } }
-        function computeCycleMs(hz) { return 1000 / Math.max(0.0001, hz); }
-
-        function computeHoldMs() {
-            const hz = parseFloat(hzEl.value) || 40;
-            const cycle = computeCycleMs(hz);
-            let holdMs;
-            if (useScaleEl.checked) {
-                const scale = Math.max(1, parseFloat(scaleEl.value) || 10);
-                holdMs = cycle * scale;     // (1000/Hz) × Scale
-            } else {
-                holdMs = Math.max(10, parseFloat(holdEl.value) || 250);
+            function writerReady() {
+                return !!(writer && typeof writer.write === 'function');
             }
-            return { cycle, holdMs };
-        }
 
-        function updateReadouts() {
-            const { cycle, holdMs } = computeHoldMs();
-            cycleMsEl.textContent = cycle.toFixed(2);
-            holdMsOutEl.textContent = Math.round(holdMs);
-        }
-
-        function setUIState(isRunning) {
-            running = isRunning;
-            startBtn.disabled = isRunning;
-            stopBtn.disabled = !isRunning;
-            hzEl.disabled = isRunning;
-            pairsEl.disabled = isRunning;
-            restEl.disabled = isRunning;
-            useScaleEl.disabled = isRunning;
-            scaleEl.disabled = isRunning || !useScaleEl.checked;
-            holdEl.disabled = isRunning || useScaleEl.checked;
-            axisEl.disabled = isRunning;
-            mapFlipEl.disabled = isRunning;
-            sendBtn.disabled = isRunning && !demo; // 데모는 언제든 전송 시퀀스 가능
-        }
-
-        /* ===== Orientation & Animation ===== */
-        function setOrientation(axis) {
-            if (axis === 'fb') track.classList.add('vertical');
-            else track.classList.remove('vertical');
-
-            cancelAnim();
-            requestAnimationFrame(() => {
-                const rect = track.getBoundingClientRect();
-                const s = 22;
-                if (axis === 'fb') {
-                    dot.style.left = ((rect.width - s) / 2) + 'px';
-                    dot.style.top = (rect.height - s) + 'px';
-                    arrow.textContent = '↑';
-                } else {
-                    dot.style.left = '0px';
-                    dot.style.top = ((rect.height - s) / 2) + 'px';
-                    arrow.textContent = '→';
+            async function sendByte(n) {
+                // 데모 모드에서는 실제 전송하지 않음
+                if (demo) { await sleep(5); return; }
+                if (!writerReady()) {
+                    console.warn('[Serial] writer가 준비되지 않음. 바이트 전송 생략:', n);
+                    alert('시리얼이 연결되지 않았습니다. 먼저 "시리얼 연결"을 눌러주세요.');
+                    return;
                 }
-            });
-        }
-
-        function animateDot(durationMs, dir, axis) {
-            const rect = track.getBoundingClientRect();
-            const s = 22;
-            cancelAnim();
-            const t0 = performance.now();
-
-            if (axis === 'fb') {
-                const minY = 0, maxY = rect.height - s;
-                const startY = (dir === 1) ? maxY : minY;
-                const endY = (dir === 1) ? minY : maxY;
-                const x = (rect.width - s) / 2;
-                dot.style.left = x + 'px';
-                arrow.textContent = (dir === 1) ? '↑' : '↓';
-
-                const step = (now) => {
-                    const t = Math.min(1, (now - t0) / durationMs);
-                    const eased = 0.5 - 0.5 * Math.cos(Math.PI * t);
-                    dot.style.top = (startY + (endY - startY) * eased) + 'px';
-                    if (t < 1 && running) rafId = requestAnimationFrame(step);
-                };
-                rafId = requestAnimationFrame(step);
-            } else {
-                const minX = 0, maxX = rect.width - s;
-                const startX = (dir === 1) ? minX : maxX;
-                const endX = (dir === 1) ? maxX : minX;
-                const y = (rect.height - s) / 2;
-                dot.style.top = y + 'px';
-                arrow.textContent = (dir === 1) ? '→' : '←';
-
-                const step = (now) => {
-                    const t = Math.min(1, (now - t0) / durationMs);
-                    const eased = 0.5 - 0.5 * Math.cos(Math.PI * t);
-                    dot.style.left = (startX + (endX - startX) * eased) + 'px';
-                    if (t < 1 && running) rafId = requestAnimationFrame(step);
-                };
-                rafId = requestAnimationFrame(step);
+                const buf = new Uint8Array([n & 0xff]);
+                try {
+                    await writer.write(buf);
+                } catch (e) {
+                    console.error('[Serial] write 실패', e);
+                    alert('시리얼 전송에 실패했습니다: ' + (e?.message || e));
+                }
             }
-        }
 
-        function safeStop() {
-            setUIState(false);
-            clearTimers();
-            cancelAnim();
-            polarityEl.textContent = '—';
-        }
-
-        /* ===== Sequence (Normal/Inverted pair) ===== */
-        function runSequence() {
-            const hz = Math.max(0.0001, parseFloat(hzEl.value) || 40);
-            const pairRepeats = Math.max(1, parseInt(pairsEl.value, 10) || 5);
-            const restMs = Math.max(0, parseInt(restEl.value, 10) || 500);
-            const { holdMs } = computeHoldMs();
-            const axis = (axisEl.value === 'fb') ? 'fb' : 'lr';
-            const normalDir = mapFlipEl.checked ? -1 : 1;
-            const invertedDir = -normalDir;
-
-            pairTotalEl.textContent = String(pairRepeats);
-            pairIdxEl.textContent = '0';
-
-            setOrientation(axis);
-            setUIState(true);
-            clearTimers();
-            cancelAnim();
-
-            let currentPair = 0;
-
-            const runPair = () => {
-                if (!running) return;
-                if (currentPair >= pairRepeats) { safeStop(); return; }
-                pairIdxEl.textContent = String(currentPair + 1);
-
-                // (1) Normal
-                polarityEl.textContent = 'Normal';
-                animateDot(holdMs, normalDir, axis);
-                const t1 = setTimeout(() => {
-                    if (!running) return;
-                    // (2) Inverted
-                    polarityEl.textContent = 'Inverted';
-                    animateDot(holdMs, invertedDir, axis);
-                    const t2 = setTimeout(() => {
-                        currentPair += 1;
-                        runPair();
-                    }, holdMs + restMs);
-                    timers.push(t2);
-                }, holdMs + restMs);
-                timers.push(t1);
-            };
-
-            runPair();
-        }
-
-        /* ===== Web Serial + Demo ===== */
-        async function connectSerial() {
-            try {
-                demo = !!demoModeEl.checked;
-                updateModeBadge();
-
-                if (demo) {
-                    // 데모 모드 전환/해제 토글만 처리
-                    await disconnectSerial();
-                    connBadge.textContent = 'Serial: Demo';
-                    connBadge.classList.remove('ok');
-                    connBadge.classList.add('demo');
-                    return;
-                }
-
-                if (!('serial' in navigator)) {
-                    alert('Web Serial not supported in this browser.');
-                    return;
-                }
-                if (serialPort) {
-                    await disconnectSerial();
-                    return;
-                }
-
-                serialPort = await navigator.serial.requestPort();
-                await serialPort.open({ baudRate: 115200 });
-
-                // Reader
-                const decoder = new TextDecoderStream();
-                serialPort.readable.pipeTo(decoder.writable).catch(() => { });
-                const reader = decoder.readable.getReader();
-                textReader = reader;
-
-                // Writer
-                const encoder = new TextEncoderStream();
-                encoder.readable.pipeTo(serialPort.writable).catch(() => { });
-                textWriter = encoder.writable.getWriter();
-
-                connectBtn.textContent = 'Disconnect';
-                connBadge.textContent = 'Serial: Connected';
-                connBadge.classList.add('ok');
-                connBadge.classList.remove('demo');
-
-                serialBuf = '';
-                (async () => {
-                    while (serialPort && textReader) {
-                        const { value, done } = await textReader.read();
-                        if (done) break;
-                        if (!value) continue;
-                        serialBuf += value;
-                        let idx;
-                        while ((idx = serialBuf.indexOf('\n')) >= 0) {
-                            const line = serialBuf.slice(0, idx).trim();
-                            serialBuf = serialBuf.slice(idx + 1);
-
-                            // Device UI protocol (optional)
-                            if (line.startsWith('[UI] START')) {
-                                if (!running) runSequence();
-                            } else if (line.startsWith('[UI] END')) {
-                                if (running) safeStop();
-                            }
-                        }
+            async function connectSerial() {
+                try {
+                    demo = $('#demoMode')?.checked === true;
+                    if (demo) { statusBadge.textContent = '데모'; statusBadge.classList.add('ok'); alert('데모 모드: 시리얼 없이 진행합니다.'); return; }
+                    if (!('serial' in navigator)) { alert('이 브라우저는 Web Serial을 지원하지 않습니다. (크롬/엣지 권장)'); return; }
+                    if (location.protocol !== 'https:' && !['localhost', '127.0.0.1'].includes(location.hostname)) {
+                        alert('Web Serial은 HTTPS 또는 http://localhost 에서만 동작합니다.'); return;
                     }
-                })().catch(console.error);
+                    const p = await navigator.serial.requestPort();
+                    await p.open({ baudRate: 115200 });
+                    if (!p.writable) { throw new Error('이 포트는 writable 스트림을 제공하지 않습니다.'); }
+                    port = p; writer = port.writable.getWriter();
+                    statusBadge.textContent = '연결됨'; statusBadge.classList.add('ok');
+                    alert('시리얼 연결 성공: 이제 시작을 누르세요.');
 
-                try { serialPort.addEventListener?.('disconnect', () => disconnectSerial()); } catch (_) { }
-
-            } catch (e) {
-                console.error(e);
-                alert('Serial connection failed.');
-                await disconnectSerial();
-            }
-        }
-
-        async function disconnectSerial() {
-            try {
-                if (textReader) { try { await textReader.cancel(); } catch (_) { } textReader = null; }
-                if (textWriter) { try { await textWriter.close(); } catch (_) { } textWriter = null; }
-                if (serialPort) { try { await serialPort.close(); } catch (_) { } serialPort = null; }
-            } finally {
-                connectBtn.textContent = 'Connect';
-                connBadge.textContent = demo ? 'Serial: Demo' : 'Serial: Disconnected';
-                connBadge.classList.remove('ok');
-                if (demo) connBadge.classList.add('demo'); else connBadge.classList.remove('demo');
-            }
-        }
-
-        async function sendCommand(c) {
-            const ch = (c || '').toString().slice(0, 1) || '4';
-
-            // 데모: 시리얼 없이 즉시 시퀀스 시작
-            if (demo) {
-                if (!running) runSequence();
-                return;
+                    // 탭/페이지 종료 시 정리
+                    window.addEventListener('beforeunload', async () => {
+                        try { if (writer) { writer.releaseLock?.(); } await port?.close?.(); } catch (_) { }
+                    }, { once: true });
+                } catch (e) {
+                    console.error(e);
+                    alert('Serial 연결 실패: 포트/권한을 확인하세요.\n' + (e?.message || e));
+                }
             }
 
-            if (!serialPort || !textWriter) {
-                alert('Connect first, or enable Demo mode.');
-                return;
+            // ===== Layout helpers =====
+            function measureWidths() {
+                const t = ensureNumber(track?.clientWidth) || ensureNumber(track?.offsetWidth) || ensureNumber(track?.getBoundingClientRect?.().width);
+                const b = ensureNumber(bar?.clientWidth) || ensureNumber(bar?.offsetWidth) || ensureNumber(bar?.getBoundingClientRect?.().width);
+                return { trackW: t, barW: b };
             }
-            // Teensy reads a single byte
-            await textWriter.write(ch);
-            if (!running) runSequence();
-        }
-
-        function updateModeBadge() {
-            if (demo) {
-                modeBadge.textContent = 'Mode: Demo';
-                modeBadge.classList.add('demo');
-            } else {
-                modeBadge.textContent = 'Mode: Normal';
-                modeBadge.classList.remove('demo');
+            function computeTargets() {
+                const { trackW, barW } = measureWidths();
+                const endLeft = Math.max(0, ensureNumber(trackW - barW));
+                return { start: 0, end: endLeft, ok: Number.isFinite(endLeft) && endLeft >= 0 };
             }
-        }
+            // ===== Countdown (3,2,1) overlay =====
+            async function showCountdown(sec = 3) {
+                const el = document.getElementById('countdown');
+                if (!el) { await sleep(sec * 1000); return; } // 방어적 처리
+                el.classList.add('show');
+                for (let n = sec; n >= 1; n--) {
+                    el.textContent = String(n);
+                    await sleep(1000);
+                }
+                el.classList.remove('show');
+                el.textContent = '';
+                await sleep(100); // 살짝 페이드 아웃 버퍼
+            }
 
-        /* ===== init ===== */
-        updateReadouts();
-        [hzEl, useScaleEl, scaleEl, holdEl, axisEl].forEach(el => el.addEventListener('input', updateReadouts));
-        setOrientation('lr');
 
-        startBtn.addEventListener('click', () => { if (!running) runSequence(); });
-        stopBtn.addEventListener('click', () => { if (running) safeStop(); });
-        resetBtn.addEventListener('click', () => { safeStop(); pairIdxEl.textContent = '0'; updateReadouts(); setOrientation(axisEl.value); });
+            // 방향 화살표를 축별로 다르게 표시 (LR: →/↑/⇢, RL: ←/↓/⇠)
+            function setArrows(dir) { // dir: 'LR' or 'RL'
+                const map = dir === 'LR'
+                    ? { LR: '→→→→→→→→→→→→→→→→→→', UD: '↑', FB: '⇢' }
+                    : { LR: '←←←←←←←←←←←←←←←←←←', UD: '↓', FB: '⇠' };
+                if (arrowLR) arrowLR.textContent = map.LR;
+                if (arrowUD) arrowUD.textContent = map.UD;
+                if (arrowFB) arrowFB.textContent = map.FB;
+            }
 
-        connectBtn.addEventListener('click', connectSerial);
-        sendBtn.addEventListener('click', () => sendCommand(cmdEl.value));
+            // ===== Experiment State & Log =====
+            let running = false; // animation running
+            let rows = [];
+            let lastStimEnd = 0;
 
-        demoModeEl.addEventListener('change', async () => {
-            demo = demoModeEl.checked;
-            updateModeBadge();
-            // 데모 켠 상태에서는 연결을 끊고 Demo 뱃지로 표시
-            if (demo) await disconnectSerial();
-        });
+            function logEvent(kind, ext = {}) {
+                const pid = ($('#pid').value || 'P00').toUpperCase();
+                const rec = Object.assign({
+                    timestamp: new Date().toISOString(),
+                    participant_id: pid,
+                    kind, // 'LR_start' | 'RL_start' | 'end'
+                    code: null,
+                    side_byte: null,
+                    demo_mode: demo ? 1 : 0
+                }, ext);
+                rows.push(rec);
+                console.log('[LOG]', rec);
+            }
 
-        window.addEventListener('keydown', (e) => {
-            const k = e.key.toLowerCase();
-            if (k === 's' || e.key === '4') { if (!running) runSequence(); }
-            else if (k === 'x') { if (running) safeStop(); }
-            else if (k === 'r') { safeStop(); pairIdxEl.textContent = '0'; updateReadouts(); setOrientation(axisEl.value); }
-        });
+            // ===== One-shot sequence: LR(100ms) → wait 3s → RL(100ms) =====
+            async function runSequenceOnce() {
+                if (running) return;
+                running = true;
+                btnStartAnim.disabled = true;
+                btnStartAnim.textContent = 'Running…';
+
+                if (!demo && !writerReady()) {
+                    alert('시리얼이 연결되지 않았습니다. 먼저 "시리얼 연결"을 눌러주세요.');
+                    running = false; btnStartAnim.disabled = false; btnStartAnim.textContent = 'Start';
+                    return;
+                }
+
+                const { start, end, ok } = computeTargets();
+                if (!ok) {
+                    alert('레이아웃 측정 실패');
+                    running = false; btnStartAnim.disabled = false; btnStartAnim.textContent = 'Start';
+                    return;
+                }
+
+                // 위치 리셋
+                bar.style.transition = 'none';
+                bar.style.left = toPx(start);
+                await new Promise(requestAnimationFrame);
+
+                // === (Countdown) L→R ===
+                phaseText.textContent = '곧 좌→우 이동';
+                setArrows('LR');
+                await showCountdown(3);
+
+                // === L→R start ===
+                phaseText.textContent = '좌→우 이동 중…';
+                const codeLR = ensureNumber($('#codeLR').value, 0);
+                const sideLR = ensureNumber($('#sideLR').value, 0);
+                await sendByte(codeLR); await sendByte(sideLR);
+                logEvent('LR_start', { code: codeLR, side_byte: sideLR });
+
+                bar.style.transition = 'left var(--move-duration) linear';
+                bar.style.left = toPx(end);
+
+                await new Promise(resolve => {
+                    bar.addEventListener('transitionend', e => (e.propertyName === 'left') && resolve(), { once: true });
+                });
+                lastStimEnd = performance.now();
+
+                // === (Countdown) R→L ===
+                phaseText.textContent = '곧 우→좌 이동';
+                setArrows('RL');
+                await showCountdown(3); // 기존 3초 대기 대신 카운트다운
+
+                // === R→L start ===
+                phaseText.textContent = '우→좌 이동 중…';
+                const codeRL = ensureNumber($('#codeRL').value, 1);
+                const sideRL = ensureNumber($('#sideRL').value, 1);
+                await sendByte(codeRL); await sendByte(sideRL);
+                logEvent('RL_start', { code: codeRL, side_byte: sideRL });
+                bar.style.left = toPx(start);
+
+                await new Promise(resolve => {
+                    bar.addEventListener('transitionend', e => (e.propertyName === 'left') && resolve(), { once: true });
+                });
+
+                phaseText.textContent = '완료';
+                logEvent('end', { rt_ms: lastStimEnd ? Math.max(0, Math.round(performance.now() - lastStimEnd)) : '' });
+                running = false; btnStartAnim.disabled = false; btnStartAnim.textContent = 'Start';
+            }
+
+
+            // ===== Animation-only sequence (no serial) =====
+            async function playAnimationOnly() {
+                if (running) return; running = true; disableTimingBtns(true);
+                const { start, end, ok } = computeTargets();
+                if (!ok) { alert('레이아웃 측정 실패'); running = false; disableTimingBtns(false); return; }
+                bar.style.transition = 'none'; bar.style.left = toPx(start);
+                await new Promise(requestAnimationFrame);
+                phaseText.textContent = '좌→우 이동 중…'; setArrows('LR');
+                bar.style.transition = 'left var(--move-duration) linear'; bar.style.left = toPx(end);
+                await new Promise(r => bar.addEventListener('transitionend', e => e.propertyName === 'left' && r(), { once: true }));
+                phaseText.textContent = '대기 (3초)';
+                await sleep(parseTime(getComputedStyle(document.documentElement).getPropertyValue('--pause-duration')));
+                phaseText.textContent = '우→좌 이동 중…'; setArrows('RL'); bar.style.left = toPx(start);
+                await new Promise(r => bar.addEventListener('transitionend', e => e.propertyName === 'left' && r(), { once: true }));
+                phaseText.textContent = '완료'; running = false; disableTimingBtns(false);
+            }
+
+            // ===== Send command 'A' to Arduino =====
+            async function sendCommandA() {
+                if (!demo && !writerReady()) { alert('시리얼이 연결되지 않았습니다.'); throw new Error('serial not ready'); }
+                const ch = 'A'.charCodeAt(0);
+                await sendByte(ch);
+                logEvent('cmdA_sent', { code: ch });
+            }
+
+            // ===== Orchestrators for timing modes =====
+            function disableTimingBtns(dis) {
+                const a = document.getElementById('btnUIOnly');
+                const b = document.getElementById('btnUIThenA');
+                const c = document.getElementById('btnAThenUI');
+                if (a) a.disabled = dis; if (b) b.disabled = dis; if (c) c.disabled = dis;
+            }
+            async function run_UI_only() { await playAnimationOnly(); }
+            async function run_UI_then_A() { if (running) return; running = true; disableTimingBtns(true); try { await playAnimationOnly(); await sendCommandA(); } finally { running = false; disableTimingBtns(false); } }
+            async function run_A_then_UI() { if (running) return; running = true; disableTimingBtns(true); try { await sendCommandA(); await playAnimationOnly(); } finally { running = false; disableTimingBtns(false); } }
+
+            // ===== CSV tools =====
+            function toCSV(rows) {
+                if (!rows.length) return '';
+                const cols = ['timestamp', 'participant_id', 'kind', 'code', 'side_byte', 'demo_mode', 'rt_ms'];
+                const esc = v => { if (v == null) return ''; const s = String(v); return /[",\n]/.test(s) ? '"' + s.replaceAll('"', '""') + '"' : s; };
+                const header = cols.join(',');
+                const body = rows.map(r => cols.map(c => esc(r[c])).join(',')).join('\n');
+                return header + '\n' + body;
+            }
+            function downloadBlob(text, filename, mime = 'text/csv;charset=utf-8;') {
+                const blob = new Blob([text], { type: mime });
+                const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            }
+
+            // ===== Events =====
+            btnConnect.addEventListener('click', connectSerial);
+            btnStartSession.addEventListener('click', () => { demo = $('#demoMode')?.checked === true; alert(demo ? '데모 모드로 세션 시작' : '세션 시작'); });
+            btnDownload.addEventListener('click', () => { const csv = toCSV(rows); if (!csv) { alert('저장할 데이터가 없습니다'); return; } const pid = ($('#pid').value || 'P00').toUpperCase(); downloadBlob(csv, `${pid}_onewaybar_serial.csv`); });
+            btnStartAnim.addEventListener('click', runSequenceOnce);
+            // timing-mode buttons
+            const btnUIOnly = document.getElementById('btnUIOnly');
+            const btnUIThenA = document.getElementById('btnUIThenA');
+            const btnAThenUI = document.getElementById('btnAThenUI');
+            if (btnUIOnly) btnUIOnly.addEventListener('click', run_UI_only);
+            if (btnUIThenA) btnUIThenA.addEventListener('click', run_UI_then_A);
+            if (btnAThenUI) btnAThenUI.addEventListener('click', run_A_then_UI);
+
+            // resize clamp
+            let resizeTimer = null; window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { const { start, end } = computeTargets(); const cur = ensureNumber(parseFloat(getComputedStyle(bar).left), 0); bar.style.left = toPx(Math.max(start, Math.min(cur, end))); }, 100); });
+
+            // ===== Dev quick tests =====
+            (function devTests() {
+                try {
+                    console.assert(parseTime('3000ms') === 3000, 'parse ms');
+                    console.assert(parseTime('3s') === 3000, 'parse s');
+                    console.assert(toPx(10) === '10px', 'toPx');
+                    const { trackW, barW } = measureWidths();
+                    console.assert(Number.isFinite(trackW), 'trackW');
+                    console.assert(Number.isFinite(barW), 'barW');
+                    // CSV tests
+                    const sampleRows = [{ timestamp: '2025-09-23T00:00:00.000Z', participant_id: 'P01', kind: 'LR_start', code: 0, side_byte: 0, demo_mode: 0, rt_ms: 123 }, { timestamp: '2025-09-23T00:00:01.000Z', participant_id: 'P01', kind: 'end', code: '\"X\"', side_byte: 1, demo_mode: 1, rt_ms: 0 }];
+                    const csv = toCSV(sampleRows);
+                    console.assert(csv.includes('\n') && csv.split('\n').length === 3, 'CSV newline join');
+                    console.assert(csv.includes('\"\"X\"\"'), 'CSV escaping of quotes');
+                    // writer readiness should be false before connect
+                    console.assert(!writerReady(), 'writer should not be ready before connect');
+                } catch (e) { console.warn('[tests]', e); }
+            })();
+        })();
     </script>
 </body>
 </html>
