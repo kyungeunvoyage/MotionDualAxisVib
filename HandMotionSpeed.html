@@ -168,7 +168,7 @@
             box-shadow: inset 0 0 0 2px rgba(255,255,255,.07);
             overflow: hidden;
             margin-top: 30px;
-            margin-bottom : 30px;
+            margin-bottom: 30px;
         }
         /* 카운트다운 오버레이 */
         .countdown {
@@ -245,11 +245,57 @@
         .ok {
             color: var(--ok)
         }
+
+        .toolbar {
+            margin-top: 4px;
+            margin-bottom: 10px;
+            justify-content: flex-start;
+            gap: 12px;
+        }
+
+        .btn.mode {
+            transition: transform .06s ease, opacity .2s ease, box-shadow .2s ease, background-color .2s ease;
+        }
+
+            .btn.mode.active {
+                background: #4a7be7;
+                box-shadow: 0 0 0 2px rgba(123, 211, 255, .35), 0 8px 16px rgba(45,108,223,.35);
+            }
+
+        .btn.start.running {
+            background: #1e4b6d;
+            box-shadow: 0 0 0 2px rgba(123, 211, 255, .25), 0 8px 16px rgba(30,75,109,.35);
+            opacity: .95;
+        }
+
+        .btn.start:disabled {
+            opacity: .7;
+        }
+
+        /* 클릭(누르고 있는 동안) 피드백 */
+        .btn.is-pressed {
+            background: #00165e; /* 살짝 더 진한 톤 */
+            box-shadow: 0 0 0 2px rgba(123,211,255,.35), 0 6px 14px rgba(45,108,223,.35);
+            transform: translateY(1px);
+        }
+
+        .btn.latched {
+            background: #1f3c8a;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,.08), 0 0 0 2px rgba(50,120,200,.35), 0 10px 18px rgba(30,70,140,.35);
+        }
+
+        /* 모드 버튼 ‘선택됨’만 강조 */
+        .btn.mode.active {
+            background: #002575;
+            box-shadow: 0 0 0 2px rgba(123, 211, 255, .35), 0 8px 16px rgba(45,108,223,.35);
+        }
+
+
     </style>
 </head>
 <body>
     <header>
-        <h1>Main User Experiment · One-Way Bar <span class="badge" id="serialStatus">미연결</span></h1>
+        <h1>Main User Experiment<span class="badge" id="serialStatus">미연결</span></h1>
     </header>
 
     <main>
@@ -283,13 +329,17 @@
         <!-- Right: Animation Panel -->
         <section>
             <h2>② 진행 패널</h2>
+            <!-- 상단 타이밍 컨트롤 바 -->
+            <div class="controls toolbar" id="timingControls">
+                <button id="btnUIThenA" class="btn mode" type="button" title="좌→우 100ms가 끝나면 A 전송">① Before Motion</button>
+                <button id="btnUIOnly" class="btn mode" type="button" title="UI 애니메이션만 실행">② During Motion</button>
+                <button id="btnAThenUI" class="btn mode" type="button" title="A 전송 후 UI 실행">③ After Motion</button>
+            </div>
+
             <div class="title"></div>
-            <!-- 방향 안내 패널 -->
+            <!-- 방향 안내 패널 (LR만 사용) -->
             <div class="dirpanel" id="dirPanel">
-                <div class="dirrow"><span class="label">좌 (Left)</span><span id="arrowLR" class="arrow">→→→→→→→→→→→→→→→→→→→</span><span class="label">우 (Right)</span></div>
-                <!--<div class="dirrow"><span class="label">위 (Upwards)</span><span id="arrowUD" class="arrow">↑</span><span class="label">아래 (Downwards)</span></div>-->
-                <!--<div class="dirrow"><span class="label">앞 (Forward)</span><span id="arrowFB" class="arrow">⇢</span><span class="label">뒤 (Backwards)</span></div>-->
-                <!--<div class="dirsub">이 화살표는 현재 이동 방향에 맞춰 자동으로 바뀝니다. (LR: →/↑/⇢, RL: ←/↓/⇠)</div>-->
+                <div class="dirrow"><span class="label">좌 (Left)</span><span id="arrowLR" class="arrow">→→→→→→→→→→→→→→→→→→</span><span class="label">우 (Right)</span></div>
             </div>
 
             <div class="track" id="track" aria-label="animation-track">
@@ -297,20 +347,12 @@
                 <div class="countdown" id="countdown" aria-live="polite" aria-atomic="true"></div>
             </div>
             <div class="controls">
-                <button id="startBtn" class="btn" type="button" aria-label="start animation">Start</button>
+                <button id="startBtn" class="btn start" type="button" aria-label="start animation">Start</button>
                 <span id="phaseText" class="small">대기</span>
-            </div>
-
-            <!--<div class="small">버튼을 누르면 실행됩니다. (파라미터는 <code>:root</code> 변수로 조정)</div> -->
-    <!-- 타이밍 제어 버튼: (1) UI만 (2) UI→A (3) A→UI -->
-            <div class="controls" id="timingControls">
-                <button id="btnUIOnly" class="btn" type="button" title="UI 애니메이션만 실행">① UI만</button>
-                <button id="btnUIThenA" class="btn" type="button" title="UI 실행 후 즉시 A 전송">② UI→A</button>
-                <button id="btnAThenUI" class="btn" type="button" title="A 전송 후 UI 실행">③ A→UI</button>
             </div>
         </section>
     </main>
-
+ 
     <script>
         (function () {
             // ===== Utilities =====
@@ -331,8 +373,6 @@
             const statusBadge = $('#serialStatus');
             // 방향 화살표 요소
             const arrowLR = document.getElementById('arrowLR');
-            const arrowUD = document.getElementById('arrowUD');
-            const arrowFB = document.getElementById('arrowFB');
 
             // ===== Serial State =====
             let port = null, writer = null, demo = false;
@@ -353,8 +393,8 @@
                 try {
                     await writer.write(buf);
                 } catch (e) {
-                    console.error('[Serial] write 실패', e);
-                    alert('시리얼 전송에 실패했습니다: ' + (e?.message || e));
+                    console.error(e);
+                    alert('Serial 연결 실패: 포트/권한을 확인하세요.\n' + (e?.message || e));
                 }
             }
 
@@ -379,9 +419,30 @@
                     }, { once: true });
                 } catch (e) {
                     console.error(e);
-                    alert('Serial 연결 실패: 포트/권한을 확인하세요.\n' + (e?.message || e));
-                }
+                    alert('Serial 연결 실패: 포트/권한을 확인하세요.' + (e?.message || e));
+                    }
             }
+
+            let selectedMode = null; // 'uiOnly' | 'uiThenA' | 'aThenUi'
+            const btnUIOnly = document.getElementById('btnUIOnly');
+            const btnUIThenA = document.getElementById('btnUIThenA');
+            const btnAThenUI = document.getElementById('btnAThenUI');
+
+            // setMode 함수 교체
+            function setMode(mode) {
+                selectedMode = mode;
+                [btnUIOnly, btnUIThenA, btnAThenUI].forEach(b => b && b.classList.remove('active'));
+                if (mode === 'uiOnly' && btnUIOnly) btnUIOnly.classList.add('active');
+                if (mode === 'uiThenA' && btnUIThenA) btnUIThenA.classList.add('active');
+                if (mode === 'aThenUi' && btnAThenUI) btnAThenUI.classList.add('active');
+            }
+
+            if (btnUIOnly) btnUIOnly.addEventListener('click', () => setMode('uiOnly'));
+            if (btnUIThenA) btnUIThenA.addEventListener('click', () => setMode('uiThenA'));
+            if (btnAThenUI) btnAThenUI.addEventListener('click', () => setMode('aThenUi'));
+
+
+
 
             // ===== Layout helpers =====
             function measureWidths() {
@@ -394,10 +455,11 @@
                 const endLeft = Math.max(0, ensureNumber(trackW - barW));
                 return { start: 0, end: endLeft, ok: Number.isFinite(endLeft) && endLeft >= 0 };
             }
+
             // ===== Countdown (3,2,1) overlay =====
             async function showCountdown(sec = 3) {
                 const el = document.getElementById('countdown');
-                if (!el) { await sleep(sec * 1000); return; } // 방어적 처리
+                if (!el) { await sleep(sec * 1000); return; }
                 el.classList.add('show');
                 for (let n = sec; n >= 1; n--) {
                     el.textContent = String(n);
@@ -405,18 +467,12 @@
                 }
                 el.classList.remove('show');
                 el.textContent = '';
-                await sleep(100); // 살짝 페이드 아웃 버퍼
+                await sleep(100);
             }
 
-
-            // 방향 화살표를 축별로 다르게 표시 (LR: →/↑/⇢, RL: ←/↓/⇠)
+            // 방향 화살표를 LR 방향에 맞춰 길게 표시
             function setArrows(dir) { // dir: 'LR' or 'RL'
-                const map = dir === 'LR'
-                    ? { LR: '→→→→→→→→→→→→→→→→→→', UD: '↑', FB: '⇢' }
-                    : { LR: '←←←←←←←←←←←←←←←←←←', UD: '↓', FB: '⇠' };
-                if (arrowLR) arrowLR.textContent = map.LR;
-                if (arrowUD) arrowUD.textContent = map.UD;
-                if (arrowFB) arrowFB.textContent = map.FB;
+                arrowLR.textContent = dir === 'LR' ? '→→→→→→→→→→→→→→→→→→' : '←←←←←←←←←←←←←←←←←←';
             }
 
             // ===== Experiment State & Log =====
@@ -429,7 +485,7 @@
                 const rec = Object.assign({
                     timestamp: new Date().toISOString(),
                     participant_id: pid,
-                    kind, // 'LR_start' | 'RL_start' | 'end'
+                    kind, // 'LR_start' | 'RL_start' | 'end' | 'cmdA_sent'
                     code: null,
                     side_byte: null,
                     demo_mode: demo ? 1 : 0
@@ -438,7 +494,7 @@
                 console.log('[LOG]', rec);
             }
 
-            // ===== One-shot sequence: LR(100ms) → wait 3s → RL(100ms) =====
+            // ===== One-shot sequence: LR(100ms) → countdown 3s → RL(100ms) =====
             async function runSequenceOnce() {
                 if (running) return;
                 running = true;
@@ -448,7 +504,7 @@
                 if (!demo && !writerReady()) {
                     alert('시리얼이 연결되지 않았습니다. 먼저 "시리얼 연결"을 눌러주세요.');
                     running = false; btnStartAnim.disabled = false; btnStartAnim.textContent = 'Start';
-                    return;
+                    //return;
                 }
 
                 const { start, end, ok } = computeTargets();
@@ -476,17 +532,18 @@
                 logEvent('LR_start', { code: codeLR, side_byte: sideLR });
 
                 bar.style.transition = 'left var(--move-duration) linear';
+                void bar.offsetWidth;
                 bar.style.left = toPx(end);
 
-                await new Promise(resolve => {
-                    bar.addEventListener('transitionend', e => (e.propertyName === 'left') && resolve(), { once: true });
-                });
-                lastStimEnd = performance.now();
+                await new Promise(res => bar.addEventListener('transitionend', async e => {
+                    if (e.propertyName === 'left') { try { await sendCommandA(); } finally { res(); } }
+                }, { once: true }));
+
 
                 // === (Countdown) R→L ===
                 phaseText.textContent = '곧 우→좌 이동';
                 setArrows('RL');
-                await showCountdown(3); // 기존 3초 대기 대신 카운트다운
+                await showCountdown(3);
 
                 // === R→L start ===
                 phaseText.textContent = '우→좌 이동 중…';
@@ -494,6 +551,7 @@
                 const sideRL = ensureNumber($('#sideRL').value, 1);
                 await sendByte(codeRL); await sendByte(sideRL);
                 logEvent('RL_start', { code: codeRL, side_byte: sideRL });
+                void bar.offsetWidth;
                 bar.style.left = toPx(start);
 
                 await new Promise(resolve => {
@@ -505,26 +563,26 @@
                 running = false; btnStartAnim.disabled = false; btnStartAnim.textContent = 'Start';
             }
 
-
-            // ===== Animation-only sequence (no serial) =====
-            async function playAnimationOnly() {
-                if (running) return; running = true; disableTimingBtns(true);
-                const { start, end, ok } = computeTargets();
-                if (!ok) { alert('레이아웃 측정 실패'); running = false; disableTimingBtns(false); return; }
-                bar.style.transition = 'none'; bar.style.left = toPx(start);
-                await new Promise(requestAnimationFrame);
-                phaseText.textContent = '좌→우 이동 중…'; setArrows('LR');
-                bar.style.transition = 'left var(--move-duration) linear'; bar.style.left = toPx(end);
-                await new Promise(r => bar.addEventListener('transitionend', e => e.propertyName === 'left' && r(), { once: true }));
-                phaseText.textContent = '대기 (3초)';
-                await sleep(parseTime(getComputedStyle(document.documentElement).getPropertyValue('--pause-duration')));
-                phaseText.textContent = '우→좌 이동 중…'; setArrows('RL'); bar.style.left = toPx(start);
-                await new Promise(r => bar.addEventListener('transitionend', e => e.propertyName === 'left' && r(), { once: true }));
-                phaseText.textContent = '완료'; running = false; disableTimingBtns(false);
+            function getMoveMs() {
+                return parseTime(getComputedStyle(document.documentElement)
+                    .getPropertyValue('--move-duration'));
             }
 
+            // 'left' 트랜지션 완료를 기다리되, 폴백 타임아웃(dur+50ms)도 같이 건다
+            function waitForLeftTransition(el) {
+                const dur = getMoveMs();
+                return Promise.race([
+                    new Promise(res => el.addEventListener('transitionend', e => {
+                        if (e.propertyName === 'left') res();
+                    }, { once: true })),
+                    sleep(dur + 50) // 만약 transitionend가 안 오거나 너무 빨리/이상하게 오면 시간으로 보장
+                ]);
+            }
+
+
             // ===== Send command 'A' to Arduino =====
-            async function sendCommandA() {
+            async function sendCommandA(delayMs = 0) {
+                if (delayMs > 0) await sleep(delayMs);   // ← 여기만 추가
                 if (!demo && !writerReady()) { alert('시리얼이 연결되지 않았습니다.'); throw new Error('serial not ready'); }
                 const ch = 'A'.charCodeAt(0);
                 await sendByte(ch);
@@ -538,9 +596,116 @@
                 const c = document.getElementById('btnAThenUI');
                 if (a) a.disabled = dis; if (b) b.disabled = dis; if (c) c.disabled = dis;
             }
-            async function run_UI_only() { await playAnimationOnly(); }
-            async function run_UI_then_A() { if (running) return; running = true; disableTimingBtns(true); try { await playAnimationOnly(); await sendCommandA(); } finally { running = false; disableTimingBtns(false); } }
-            async function run_A_then_UI() { if (running) return; running = true; disableTimingBtns(true); try { await sendCommandA(); await playAnimationOnly(); } finally { running = false; disableTimingBtns(false); } }
+
+            // (1) UI 애니메이션만 실행
+            async function run_UI_only() {
+                if (running) return; running = true; disableTimingBtns(true);
+                try {
+                    const { start, end, ok } = computeTargets(); if (!ok) { alert('레이아웃 측정 실패'); return; }
+                    bar.style.transition = 'none'; bar.style.left = toPx(start);
+                    await new Promise(requestAnimationFrame);
+
+                    // ⬇️ 추가: L→R 전 카운트다운
+                    await showCountdown(3);
+
+                    await sendCommandA(0);
+                    phaseText.textContent = '좌→우 이동 중…'; setArrows('LR');
+                    bar.style.transition = 'left var(--move-duration) linear'; bar.style.left = toPx(end);
+                    await new Promise(r => bar.addEventListener('transitionend', e => e.propertyName === 'left' && r(), { once: true }));
+
+                    // ⬇️ 변경: 대기(3초) + sleep → 카운트다운으로 교체
+                    // phaseText.textContent = '대기 (3초)';
+                    // await sleep(parseTime(getComputedStyle(document.documentElement).getPropertyValue('--pause-duration')));
+                    await showCountdown(3);
+
+                    phaseText.textContent = '우→좌 이동 중…'; setArrows('RL'); bar.style.left = toPx(start);
+                    await new Promise(r => bar.addEventListener('transitionend', e => e.propertyName === 'left' && r(), { once: true }));
+
+                    await sendCommandA(0);
+                    phaseText.textContent = '완료';
+                } finally { running = false; disableTimingBtns(false); }
+            }
+
+
+            // (2) UI→A : 좌→우 100ms 이동이 "끝난 직후"에만 A 전송
+            // (2) UI→A : 좌→우 100ms 끝난 직후 A 전송
+            async function run_UI_then_A() {
+                if (running) return; running = true; disableTimingBtns(true);
+                try {
+                    const { start, end, ok } = computeTargets();
+                    if (!ok) { alert('레이아웃 측정 실패'); return; }
+
+                    // reset
+                    bar.style.transition = 'none';
+                    bar.style.left = toPx(start);
+                    await new Promise(requestAnimationFrame);
+
+                    // ⬇️ 추가: L→R 전 카운트다운
+                    await showCountdown(3);
+
+                    // L→R
+                    phaseText.textContent = '좌→우 이동 중…'; setArrows('LR');
+                    bar.style.transition = 'left var(--move-duration) linear';
+                    await new Promise(requestAnimationFrame);
+                    bar.style.left = toPx(end);
+
+                    // 도착 직후 A 전송
+                    await waitForLeftTransition(bar);
+                    await sendCommandA(500);
+
+                    // ⬇️ 변경: 대기(3초) + sleep → 카운트다운으로 교체
+                    // phaseText.textContent = '대기 (3초)';
+                    // await sleep(parseTime(getComputedStyle(document.documentElement).getPropertyValue('--pause-duration')));
+                    await showCountdown(3);
+
+                    // R→L
+                    phaseText.textContent = '우→좌 이동 중…'; setArrows('RL');
+                    bar.style.left = toPx(start);
+                    await waitForLeftTransition(bar); 
+
+                    //진동 전달
+                    await sendCommandA(100);
+
+                    phaseText.textContent = '완료';
+                } finally {
+                    running = false; disableTimingBtns(false);
+                }
+            }
+
+            const delay = (ms = 500) => new Promise(res => setTimeout(res, ms));
+
+            // (3) A→UI : 먼저 A 전송, 그 다음 UI 전체 실행
+            // (3) A→UI : 먼저 A 전송, 그 다음 UI 전체 실행
+            async function run_A_then_UI() {
+                if (running) return; running = true; disableTimingBtns(true);
+                try {
+                    
+
+                    const { start, end, ok } = computeTargets(); if (!ok) { alert('레이아웃 측정 실패'); return; }
+                    bar.style.transition = 'none'; bar.style.left = toPx(start);
+                    await new Promise(requestAnimationFrame);
+
+                    // ⬇️ 추가: L→R 전 카운트다운
+                    await showCountdown(3);
+
+                    await sendCommandA(0);
+                    await delay();
+
+                    phaseText.textContent = '좌→우 이동 중…'; setArrows('LR');
+                    bar.style.transition = 'left var(--move-duration) linear'; bar.style.left = toPx(end);
+                    await new Promise(r => bar.addEventListener('transitionend', e => e.propertyName === 'left' && r(), { once: true }));
+
+                    // ⬇️ 변경: 대기(3초) + sleep → 카운트다운으로 교체
+                    // phaseText.textContent = '대기 (3초)';
+                    // await sleep(parseTime(getComputedStyle(document.documentElement).getPropertyValue('--pause-duration')));
+                    await showCountdown(3);
+
+                    phaseText.textContent = '우→좌 이동 중…'; setArrows('RL'); bar.style.left = toPx(start);
+                    await new Promise(r => bar.addEventListener('transitionend', e => e.propertyName === 'left' && r(), { once: true }));
+                    phaseText.textContent = '완료';
+                } finally { running = false; disableTimingBtns(false); }
+            }
+
 
             // ===== CSV tools =====
             function toCSV(rows) {
@@ -551,23 +716,62 @@
                 const body = rows.map(r => cols.map(c => esc(r[c])).join(',')).join('\n');
                 return header + '\n' + body;
             }
+
             function downloadBlob(text, filename, mime = 'text/csv;charset=utf-8;') {
                 const blob = new Blob([text], { type: mime });
                 const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; document.body.appendChild(a); a.click(); document.body.removeChild(a);
             }
 
+            // 눌림 시각 피드백 바인딩
+            function bindPressVisual(btn) {
+                const add = () => btn.classList.add('is-pressed');
+                const rem = () => btn.classList.remove('is-pressed');
+
+                // 마우스
+                btn.addEventListener('mousedown', add);
+                btn.addEventListener('mouseup', rem);
+                btn.addEventListener('mouseleave', rem);
+
+                // 터치
+                btn.addEventListener('touchstart', add, { passive: true });
+                btn.addEventListener('touchend', rem);
+                btn.addEventListener('touchcancel', rem);
+
+                // 키보드(스페이스/엔터)
+                btn.addEventListener('keydown', e => {
+                    if (e.key === ' ' || e.key === 'Enter') add();
+                });
+                btn.addEventListener('keyup', rem);
+            }
+
+            // 모든 버튼에 적용
+            document.querySelectorAll('.btn').forEach(b => {
+                b.addEventListener('click', () => b.classList.add('pressed'));
+            });
+
+
             // ===== Events =====
             btnConnect.addEventListener('click', connectSerial);
             btnStartSession.addEventListener('click', () => { demo = $('#demoMode')?.checked === true; alert(demo ? '데모 모드로 세션 시작' : '세션 시작'); });
             btnDownload.addEventListener('click', () => { const csv = toCSV(rows); if (!csv) { alert('저장할 데이터가 없습니다'); return; } const pid = ($('#pid').value || 'P00').toUpperCase(); downloadBlob(csv, `${pid}_onewaybar_serial.csv`); });
-            btnStartAnim.addEventListener('click', runSequenceOnce);
-            // timing-mode buttons
-            const btnUIOnly = document.getElementById('btnUIOnly');
-            const btnUIThenA = document.getElementById('btnUIThenA');
-            const btnAThenUI = document.getElementById('btnAThenUI');
-            if (btnUIOnly) btnUIOnly.addEventListener('click', run_UI_only);
-            if (btnUIThenA) btnUIThenA.addEventListener('click', run_UI_then_A);
-            if (btnAThenUI) btnAThenUI.addEventListener('click', run_A_then_UI);
+            // Start 클릭 핸들러 안에서, 실행 직전에 'latched' 추가 (기존 코드에 한 줄만 추가)
+            btnStartAnim.addEventListener('click', async () => {
+                if (running) return;
+                if (!selectedMode) { alert('먼저 모드를 선택하세요 (Pre/During/Post).'); return; }
+
+                btnStartAnim.classList.add('latched');   // ← 추가: 눌렀을 때 어두운 색으로 전환 후 유지
+                btnStartAnim.classList.add('running');
+                const prevText = btnStartAnim.textContent; btnStartAnim.textContent = 'Running…';
+                try {
+                    if (selectedMode === 'uiOnly') { await run_UI_only(); }
+                    else if (selectedMode === 'uiThenA') { await run_UI_then_A(); }
+                    else if (selectedMode === 'aThenUi') { await run_A_then_UI(); }
+                } finally {
+                    btnStartAnim.classList.remove('running'); // latched는 유지
+                    btnStartAnim.textContent = prevText;
+                }
+            });
+
 
             // resize clamp
             let resizeTimer = null; window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { const { start, end } = computeTargets(); const cur = ensureNumber(parseFloat(getComputedStyle(bar).left), 0); bar.style.left = toPx(Math.max(start, Math.min(cur, end))); }, 100); });
@@ -582,10 +786,10 @@
                     console.assert(Number.isFinite(trackW), 'trackW');
                     console.assert(Number.isFinite(barW), 'barW');
                     // CSV tests
-                    const sampleRows = [{ timestamp: '2025-09-23T00:00:00.000Z', participant_id: 'P01', kind: 'LR_start', code: 0, side_byte: 0, demo_mode: 0, rt_ms: 123 }, { timestamp: '2025-09-23T00:00:01.000Z', participant_id: 'P01', kind: 'end', code: '\"X\"', side_byte: 1, demo_mode: 1, rt_ms: 0 }];
+                    const sampleRows = [{ timestamp: '2025-09-23T00:00:00.000Z', participant_id: 'P01', kind: 'LR_start', code: 0, side_byte: 0, demo_mode: 0, rt_ms: 123 }, { timestamp: '2025-09-23T00:00:01.000Z', participant_id: 'P01', kind: 'end', code: '"X"', side_byte: 1, demo_mode: 1, rt_ms: 0 }];
                     const csv = toCSV(sampleRows);
                     console.assert(csv.includes('\n') && csv.split('\n').length === 3, 'CSV newline join');
-                    console.assert(csv.includes('\"\"X\"\"'), 'CSV escaping of quotes');
+                    console.assert(csv.includes('""X""'), 'CSV escaping of quotes');
                     // writer readiness should be false before connect
                     console.assert(!writerReady(), 'writer should not be ready before connect');
                 } catch (e) { console.warn('[tests]', e); }
