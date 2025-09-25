@@ -1141,9 +1141,10 @@ void loop()
 
 
             const float GAIN = 5.0f;
-            playArrayWithGainCentered(waveformB_PR, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+            playArrayWithGainCentered(waveformB_PR, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt); //40hz (25ms)
             delay(50);
-            playArrayWithGainCentered(waveformB, waveformSize, GAIN, DAC_PIN_A21, delayPerSampleUs_rt);
+            playArrayWithGainCentered(waveformB, waveformSize, GAIN, DAC_PIN_A21, delayPerSampleUs_rt); //40hz (25ms)
+            //currently : 50ms
             Serial.println("it's capital and + La");
             //playWaveForSeconds2(waveformA, 256, 5.0f, DAC_PIN_A22, 40.0f, 1.0f);
         }
