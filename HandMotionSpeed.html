@@ -163,12 +163,20 @@
             position: relative;
             width: var(--track-width);
             height: var(--track-height);
+            /* track은 이제 배경만(또는 없음). outline은 rail이 가짐 */
+        }
+
+        /* rail은 bar의 기준 좌표계가 되므로 relative가 더 안전 */
+        .rail {
+            position: relative; /* <= 이걸로 바꿔도 됩니다(absolute여도 동작은 함) */
+            left: 0;
+            top: 0;
+            height: var(--track-height);
+            width: var(--rail-width, var(--track-width));
             border-radius: 999px;
             background: linear-gradient(to right, rgba(255,255,255,.08), rgba(255,255,255,.02));
             box-shadow: inset 0 0 0 2px rgba(255,255,255,.07);
             overflow: hidden;
-            margin-top: 30px;
-            margin-bottom: 30px;
         }
 
         /* 카운트다운 오버레이 */
@@ -187,11 +195,10 @@
             transition: opacity .12s ease;
         }
 
-            .countdown.show {
-                opacity: 1;
-            }
+        .countdown.show {
+            opacity: 1;
+        }
 
-        /* 원형 이동 바: 지름 = 트랙 높이 */
         .bar {
             position: absolute;
             top: 0;
@@ -199,8 +206,9 @@
             width: var(--track-height);
             height: var(--track-height);
             border-radius: 50%;
-            background: linear-gradient(135deg, #79c0ff, #9ae6b4);
-            box-shadow: 0 0 0 2px rgba(0,0,0,.25), 0 8px 20px rgba(64,162,255,.25);
+            background: linear-gradient(135deg, #79c0ff, #9ae6b4); /* 복구 */
+            box-shadow: 0 0 0 2px rgba(0,0,0,.25), 0 8px 20px rgba(64,162,255,.25); /* 복구 */
+            z-index: 1; /* countdown 등과 겹칠 때 위로 */
         }
 
         .controls {
@@ -292,7 +300,6 @@
             margin-bottom: 8px;
         }
 
-        /* NEW: moving state (애니메이션 중 바 색상 빨강 계열) */
         .bar.moving {
             background: linear-gradient(135deg, #ff4d4d, #ff8a8a);
             box-shadow: 0 0 0 2px rgba(0,0,0,.25), 0 8px 20px rgba(255,64,64,.30);
@@ -394,6 +401,10 @@
                     <input id="targetHz" type="number" min="1" value="40" style="width:80px" />
                 </label>
                 <label style="display:flex;align-items:center;gap:6px;">
+                    <input type="checkbox" id="syncSOA" checked />
+                    두 자극 간 대기시간 SOA 반영
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;">
                     <input type="checkbox" id="scaleDistanceBySOA" checked />
                     이동 거리도 SOA 비례(속도는 고정)
                 </label>
@@ -412,7 +423,9 @@
             </div>
 
             <div class="track" id="track" aria-label="animation-track">
-                <div class="bar" id="bar" role="img" aria-label="moving bar"></div>
+                <div class="rail" id="rail">
+                    <div class="bar" id="bar" role="img" aria-label="moving bar"></div>
+                </div>
                 <div class="countdown" id="countdown" aria-live="polite" aria-atomic="true"></div>
             </div>
             <div class="controls">
@@ -436,6 +449,23 @@
                 const n = parseFloat(s);
                 return Number.isFinite(n) ? n : 3000;
             };
+            //------SOA------------
+            // 총 시간 = 2*cycle + wait(=max(0, SOA - cycle))
+            function totalMsFor(soaMs, cycleMs) {
+                const waitMs = Math.max(0, soaMs - cycleMs);
+                return 2 * cycleMs + waitMs;
+            }
+
+            // baseline은 “현재 주파수에서 SOA=50ms”로 두는 예시
+            const BASELINE_SOA_MS = 50;
+
+            // 거리 스케일 팩터: 현재 총시간 / 기준 총시간
+            function distanceScale() {
+                const { cycleMs, soaMs } = computeTiming();
+                const baseTotal = totalMsFor(BASELINE_SOA_MS, cycleMs);
+                const curTotal = totalMsFor(soaMs, cycleMs);
+                return baseTotal > 0 ? (curTotal / baseTotal) : 1;
+            }
 
             // ===== Elements =====
 
@@ -530,6 +560,36 @@
                     alert('Serial 연결 실패: 포트/권한을 확인하세요.' + (e?.message || e));
                 }
             }
+
+            const rail = document.getElementById('rail');
+
+            function measureWidths() {
+                const trackW = ensureNumber(track?.clientWidth) || ensureNumber(track?.offsetWidth) || ensureNumber(track?.getBoundingClientRect?.().width);
+                const railW = ensureNumber(rail?.clientWidth) || ensureNumber(rail?.offsetWidth) || ensureNumber(rail?.getBoundingClientRect?.().width) || trackW;
+                const barW = ensureNumber(bar?.clientWidth) || ensureNumber(bar?.offsetWidth) || ensureNumber(bar?.getBoundingClientRect?.().width);
+                return { trackW, railW, barW };
+            }
+
+            function computeTargets() {
+                const { railW, barW } = measureWidths();
+                const endLeft = Math.max(0, ensureNumber(railW - barW));
+                return { start: 0, end: endLeft, ok: Number.isFinite(endLeft) && endLeft >= 0 };
+            }
+
+            function applyDistanceScale() {
+                const { trackW, barW } = measureWidths();           // track의 현재 실제 폭
+                const k = distanceScale();                          // (현재 SOA 총시간 / 기준 SOA 총시간)
+                const minRail = Math.max(barW, 40);                 // 너무 작아지지 않게 안전 최소폭
+                const newRailW = Math.max(minRail, Math.round(trackW * Math.min(k, 1)));
+                // 트랙보다 커지지 않게 k를 1로 클램프(필요하면 >1도 허용 가능)
+
+                rail.style.width = newRailW + 'px';
+
+                // 바가 새 레일 범위 안에 있도록 즉시 클램프
+                const { start, end } = computeTargets();
+                const cur = ensureNumber(parseFloat(getComputedStyle(bar).left), 0);
+                bar.style.left = toPx(Math.max(start, Math.min(cur, end)));
+            }
             //SoA
             function getSOAms() {
                 return Number(soaSelect?.value ?? 50);
@@ -550,10 +610,28 @@
                 // CSS 이동시간을 파형 1사이클로 맞춤 (시각-촉각 일관성)
                 document.documentElement.style.setProperty('--move-duration', `${Math.round(cycleMs)}ms`);
             }
-            soaSelect?.addEventListener('change', applyTimingToUI);
-            targetHzInput?.addEventListener('input', applyTimingToUI);
+            // SOA 바뀌면: 속도(transition 시간)는 그대로, 레일 폭만 업데이트
+            soaSelect?.addEventListener('change', () => {
+                applyDistanceScale();
+            });
+            // Hz 바뀌면: 속도 갱신 + 레일도 재계산 (cycleMs가 바뀌면 distanceScale도 변함)
+            targetHzInput?.addEventListener('input', () => {
+                applyTimingToUI();     // 기존: --move-duration 업데이트(속도)
+                applyDistanceScale();  // 추가: 레일 폭 갱신
+            });
+
             // 초기 1회 적용
             applyTimingToUI();
+            applyDistanceScale();
+
+            // 창 크기 바뀔 때도 레일 재계산
+            let resizeTimer = null;
+            window.addEventListener('resize', () => {
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(() => {
+                    applyDistanceScale();
+                }, 100);
+            });
 
             async function maybeSleepSOA() {
                 const { waitMs } = computeTiming();
@@ -642,52 +720,17 @@
             // 초기 렌더
             renderDirectionPanel();
 
-            // ===== Layout helpers =====
-            function measureWidths() {
-                const t = ensureNumber(track?.clientWidth) || ensureNumber(track?.offsetWidth) || ensureNumber(track?.getBoundingClientRect?.().width);
-                const b = ensureNumber(bar?.clientWidth) || ensureNumber(bar?.offsetWidth) || ensureNumber(bar?.getBoundingClientRect?.().width);
-                return { trackW: t, barW: b };
-            }
             // 요소 참조
             const scaleDistanceBySOA = document.getElementById('scaleDistanceBySOA');
 
-            // 총 시간 = 2*cycle + wait(=max(0, SOA - cycle))
-            function totalMsFor(soaMs, cycleMs) {
-                const waitMs = Math.max(0, soaMs - cycleMs);
-                return 2 * cycleMs + waitMs;
-            }
-
-            // baseline은 “현재 주파수에서 SOA=50ms”로 두는 예시
-            const BASELINE_SOA_MS = 50;
-
-            // 거리 스케일 팩터 계산 (총 시간 비율)
-            function distanceScale() {
-                const { cycleMs, soaMs } = computeTiming();
-                const baseTotal = totalMsFor(BASELINE_SOA_MS, cycleMs);
-                const curTotal = totalMsFor(soaMs, cycleMs);
-                // 0으로 나눔 방지 + 음수 방지
-                return baseTotal > 0 ? (curTotal / baseTotal) : 1;
-            }
-
-            // 기존 computeTargets()를 수정
-            function computeTargets() {
-                const { trackW, barW } = measureWidths();
-                const rawEnd = Math.max(0, ensureNumber(trackW - barW));
-
-                // SOA에 따라 이동거리 스케일 (옵션)
-                let endLeft = rawEnd;
-                if (scaleDistanceBySOA?.checked) {
-                    const k = distanceScale();
-                    endLeft = Math.round(rawEnd * k);
-                    // 트랙을 넘지 않도록 클램프
-                    endLeft = Math.max(0, Math.min(endLeft, rawEnd));
-                }
-
-                return { start: 0, end: endLeft, ok: Number.isFinite(endLeft) && endLeft >= 0 };
-            }
-
             // SOA/Hz 변경 시 레이아웃 재계산
-            soaSelect?.addEventListener('change', () => { applyTimingToUI(); /* 속도 반영 */ });
+            soaSelect?.addEventListener('change', () => {
+                // move-duration은 건드리지 않음 (속도 유지)
+                const { start, end } = computeTargets();
+                const cur = ensureNumber(parseFloat(getComputedStyle(bar).left), 0);
+                bar.style.left = toPx(Math.max(start, Math.min(cur, end)));
+            });
+
             targetHzInput?.addEventListener('input', () => { applyTimingToUI(); });
             scaleDistanceBySOA?.addEventListener('change', () => {
                 // 즉시 효과를 보려면 바의 현재 위치도 새 범위 안으로 클램프
@@ -728,6 +771,24 @@
                         : '←←←←←←←←←←←←←←←←←←';
                 }
             }
+
+            // ❶ 유틸 추가 (문자열 전송)
+            async function sendText(str) {
+                if (demo) { await sleep(5); return; }
+                if (!writerReady()) { alert('시리얼이 연결되지 않았습니다.'); throw new Error('serial not ready'); }
+                const enc = new TextEncoder();
+                await writer.write(enc.encode(str));
+            }
+
+            // ❷ 현재 SOA 값을 보드로 전송 ("S60\n" 같은 라인)
+            // SOA 한 번만 전송 + 콘솔 로깅
+            async function sendSOA() {
+                const soaMs = Number(soaSelect?.value ?? 50);
+                console.log('[UI] sendSOA ->', soaMs, 'ms');
+                await sendText(`S${soaMs}\n`);
+            }
+
+
 
             // ===== Experiment State & Log =====
             let running = false; // animation running
@@ -835,10 +896,17 @@
             async function sendCommandA(delayMs = 0) {
                 if (delayMs > 0) await sleep(delayMs);
                 if (!demo && !writerReady()) { alert('시리얼이 연결되지 않았습니다.'); throw new Error('serial not ready'); }
-                const ch = 'A'.charCodeAt(0);
-                await sendByte(ch);
-                logEvent('cmdA_sent', { code: ch });
+                await sendSOA();
+                try {
+                    await sendText(`A\n`);              // 1) 라인 방식
+                } catch (_) { }
+                try {
+                    await sendByte('A'.charCodeAt(0));  // 2) 바이트 방식
+                } catch (_) { }
+                logEvent('cmdA_sent', { code: 'A' });
             }
+
+
 
             // ===== Orchestrators for timing modes =====
             function disableTimingBtns(dis) {
@@ -856,10 +924,10 @@
                     bar.style.transition = 'none'; bar.style.left = toPx(start);
                     await new Promise(requestAnimationFrame);
 
-                    //await showCountdown(3);
-                    await (syncSOA?.checked ? maybeSleepSOA() : showCountdown(3));
+                    await showCountdown(3);
+                    if (syncSOA?.checked) await maybeSleepSOA();
                     await sendCommandA(0);
-                    await delay(100);
+                   // await delay(100);
 
                     phaseText.textContent = '좌→우 이동 중…'; setArrows('LR');
                     //setMoving(true);
@@ -867,11 +935,11 @@
                     await new Promise(r => bar.addEventListener('transitionend', e => e.propertyName === 'left' && r(), { once: true }));
                     
 
-                    //await showCountdown(3);
-                    await (syncSOA?.checked ? maybeSleepSOA() : showCountdown(3));
+                    await showCountdown(3);
+                    if (syncSOA?.checked) await maybeSleepSOA();
                     //setMoving(false);
                     await sendCommandA(0);
-                    await delay(100);
+                    //await delay(100);
 
                     phaseText.textContent = '우→좌 이동 중…'; setArrows('RL');
                     //setMoving(true);
@@ -891,8 +959,8 @@
                     bar.style.transition = 'none'; bar.style.left = toPx(start);
                     await new Promise(requestAnimationFrame);
 
-                    //await showCountdown(3);
-                    await (syncSOA?.checked ? maybeSleepSOA() : showCountdown(3));
+                    await showCountdown(3);
+                    if (syncSOA?.checked) await maybeSleepSOA();
                     await sendCommandA(0); // 요청대로 during 모드에서도 유지
                     //setMoving(true);
                     phaseText.textContent = '좌→우 이동 중…'; setArrows('LR');
@@ -923,8 +991,8 @@
                     bar.style.transition = 'none'; bar.style.left = toPx(start);
                     await new Promise(requestAnimationFrame);
 
-                    //await showCountdown(3);
-                    await (syncSOA?.checked ? maybeSleepSOA() : showCountdown(3));
+                    await showCountdown(3);
+                    if (syncSOA?.checked) await maybeSleepSOA();
 
                     //setMoving(true);
                     phaseText.textContent = '좌→우 이동 중…'; setArrows('LR');
@@ -936,8 +1004,8 @@
                     await waitForLeftTransition(bar);
                     await sendCommandA(100);
 
-                    //await showCountdown(3);
-                    await (syncSOA?.checked ? maybeSleepSOA() : showCountdown(3));
+                    await showCountdown(3);
+                    if (syncSOA?.checked) await maybeSleepSOA();
                     //setMoving(true);
                     phaseText.textContent = '우→좌 이동 중…'; setArrows('RL');
                     bar.style.left = toPx(start);
@@ -1011,17 +1079,6 @@
                     btnStartAnim.classList.remove('running');
                     btnStartAnim.textContent = prevText;
                 }
-            });
-
-            // resize clamp
-            let resizeTimer = null;
-            window.addEventListener('resize', () => {
-                clearTimeout(resizeTimer);
-                resizeTimer = setTimeout(() => {
-                    const { start, end } = computeTargets();
-                    const cur = ensureNumber(parseFloat(getComputedStyle(bar).left), 0);
-                    bar.style.left = toPx(Math.max(start, Math.min(cur, end)));
-                }, 100);
             });
 
             // Dev quick tests

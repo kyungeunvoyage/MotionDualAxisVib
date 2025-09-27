@@ -902,9 +902,32 @@ void loop()
         stopVibration(hapDrive);
     }
 
-    if (Serial.available() > 0)
+
+    while (Serial.available() > 0)
     {
-        char command = Serial.read();
+        int p = Serial.peek();
+        if (p == '\r' || p == '\n') { Serial.read(); continue; }
+
+        if (p == 'S') {
+            // S라인: "S50\n" 같은 형식
+            String line = Serial.readStringUntil('\n');  // 'S' 포함한 한 줄 통째로
+            // 안전 가드
+            if (line.length() >= 2 && line.charAt(0) == 'S') {
+                int v = line.substring(1).toInt();         // "S60" -> 60
+                if (v >= 10 && v <= 300) {
+                    soaControl = (float)v;
+                    const float cycle_ms = 1000.0f / targetHz;
+                    const int   wait_ms = max(0, (int)lround(soaControl - cycle_ms));
+                    Serial.printf("[SOA] desired=%d ms, cycle=%.2f ms, wait=%d ms\n",
+                        (int)soaControl, cycle_ms, wait_ms);
+                }
+                else {
+                    Serial.printf("[SOA] ignored=%d (out of range)\n", v);
+                }
+            }
+            continue; // 다음 루프
+
+        char command = (char)Serial.read();
         if (command == '0')
         {
             //b -> C 횡단 
@@ -1001,12 +1024,13 @@ void loop()
         else if (command == '5') soaControl = 50;
         else if (command == '6') soaControl = 70;
         else if (command == '7') soaControl = 90;
-        else if (command == 'z') soaControl = 110;
-        else if (command == 'Z') soaControl = 130;
+        else if (command == '8') soaControl = 110;
+        else if (command == '9') soaControl = 130;
 
 
         //imu calibration 1
-        else if (command == '8') {
+
+        else if (command == 'z') {
             // 주파수 고정(예: 40Hz)에서 baseGain = 3~8까지 1초씩 측정
             static const float baseGList[] = { 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f };
             const int M = sizeof(baseGList) / sizeof(baseGList[0]);
@@ -1034,7 +1058,7 @@ void loop()
             );
         }
         //imu calibration 2
-        else if (command == '9')
+        else if (command == 'Z')
         {
             static const float baseGList[] = { 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f };
             static const float freqList[] = { 10.0f, 20.0f, 30.0f, 40.0f, 60.0f, 80.0f };
@@ -1081,11 +1105,28 @@ void loop()
             playWaveForSeconds2(wPhase0, 256, 5.0f, DAC_PIN_A22, 40.0f, 1.0f);
         }
 
-        else if (command == 'S')
-        {
-            playAsymTimingDual(wPhase0, 256, 5.0f, 5.0f, DAC_PIN_A22, DAC_PIN_A21,
-                /*delayRiseUs=*/200, /*delayFallUs=*/200, /*invertA21=*/true);
+        else if (command == 'S') {
+        // 호스트가 "S60\n" 같은 라인을 보냅니다.
+        int v = Serial.parseInt();           // 숫자만 뽑아옴 (공백/CR/LF는 무시됨)
+
+        // (선택) 줄 끝 정리: 남아있다면 CR/LF 소비
+        if (Serial.peek() == '\r') Serial.read();
+        if (Serial.peek() == '\n') Serial.read();
+
+        // 합리적 범위 체크 (필요 시 조정하세요)
+        if (v >= 10 && v <= 300) {
+            soaControl = (float)v;
+
+            // 현재 설정을 에코(HTML이 읽어 UI 동기화할 수 있도록)
+            const float cycle_ms = 1000.0f / targetHz;
+            const int   wait_ms = max(0, (int)lround(soaControl - cycle_ms));
+            Serial.printf("[SOA] desired=%d ms, cycle=%.2f ms, wait=%d ms\n",
+                (int)soaControl, cycle_ms, wait_ms);
         }
+        else {
+            Serial.printf("[SOA] ignored=%d (out of range)\n", v);
+        }
+}
         
         // + La (a -> d) 
         //ampitude가 좀 세야할 것 같음
@@ -1094,12 +1135,12 @@ void loop()
         //waveform B +  (Linear) 
         //만들어야 할 것 : waveform B -, waveform C +,- (linear) 
         // Rotation
-        else if (command == 'A') 
+        else if (command == 'A')
         {
             updateDelayFromTargetHz();                  // targetHz 반영 (예: 40Hz)
             const float GAIN = 5.0f;
             const float cycle_ms = 1000.0f / targetHz;  // 40Hz → 25ms
-            const int desiredSOA_ms = soaControl;       // 40, 50, 150 등
+            const int desiredSOA_ms = (int)lround(soaControl);  // ← 방금 S로 바뀐 값
             const int wait_ms = max(0, (int)lround(desiredSOA_ms - cycle_ms));
 
             uint32_t tA = micros();
@@ -1113,6 +1154,7 @@ void loop()
             Serial.printf("[SOA] desired=%d ms, cycle=%.2f ms, wait=%d ms, effective≈%.2f ms\n",
                 desiredSOA_ms, cycle_ms, wait_ms, effectiveSOA_ms);
         }
+
 
 
         // - La (d -> a) 

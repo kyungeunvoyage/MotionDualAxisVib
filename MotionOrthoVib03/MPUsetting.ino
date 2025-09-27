@@ -20,10 +20,9 @@ extern int toDac_12bit_centered(int16_t v);  // 메인 탭의 DAC 매핑 함수
 #define REG_INT_ENABLE       0x38
 #define REG_ACCEL_XOUT_H     0x3B
 
-
-static uint8_t  g_mpu_addr = MPU_ADDR;
-static float    g_accel_lsb_per_g = 4096.0f; // 기본 ±8g
-static float    g_accel_g_per_lsb = 1.0f / 4096.0f;
+static uint8_t g_mpu_addr = MPU_ADDR;            // I2C address (0x68)
+static float   g_accel_lsb_per_g = 4096.0f;      // 기본 ±8g
+static float   g_accel_g_per_lsb = 1.0f / 4096.0f;
 
 /* ================== I2C helpers ================== */
 static inline bool i2cWriteByte(uint8_t addr, uint8_t reg, uint8_t data) {
@@ -128,19 +127,19 @@ float mpu9250_readAccelAxisG(char axis) {
 }
 
 /* ================== 주파수-보정 LUT & 보간 ================== */
-//struct FG { float f; float g; };
+struct FG { float f; float g; };
 FG kGainLUT[] = {
-    // ← 캘리브레이션 끝나면 Serial 출력된 값들로 교체하세요.
-    {10.0f, 2.315490f},
-    {15.0f, 2.300659f},
-    {20.0f, 2.270110f},
-    {30.0f, 2.102659f},
-    {40.0f, 1.949178f},
-    {50.0f, 1.878106f},
-    {60.0f, 1.922439f},
-    {80.0f, 2.037328f},
+  {10.0f, 2.315490f},
+  {15.0f, 2.300659f},
+  {20.0f, 2.270110f},
+  {30.0f, 2.102659f},
+  {40.0f, 1.949178f},
+  {50.0f, 1.878106f},
+  {60.0f, 1.922439f},
+  {80.0f, 2.037328f},
 };
 int kGainLUT_N = sizeof(kGainLUT) / sizeof(kGainLUT[0]);
+
 
 float interpGainLUT(float f) {
     if (kGainLUT_N <= 0) return 1.0f;
@@ -513,7 +512,8 @@ void runFixedFreqGainSweep_MPU9250(
     float warmup_s,
     bool useMagnitude,
     char axisForSingle
-) {
+) 
+{
     if (!wave || N <= 0 || M <= 0 || freqHz <= 0.0f) return;
 
     // DC 제거(평균) 미리 계산
@@ -578,7 +578,7 @@ void runFixedFreqGainSweep_MPU9250(
         Serial.println(clipsPct, 3);
     }
 
-    Serial.println(F("# (Tip) 위 CSV를 복사해 엑셀/파이썬에서 baseGain-세기 곡선 그려보면 추세 확인 쉬움"));
+    //erial.println(F("# (Tip) 위 CSV를 복사해 엑셀/파이썬에서 baseGain-세기 곡선 그려보면 추세 확인 쉬움"));
 }
 
 
