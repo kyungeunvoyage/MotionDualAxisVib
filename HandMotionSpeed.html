@@ -292,6 +292,13 @@
             margin-bottom: 8px;
         }
 
+        /* NEW: moving state (애니메이션 중 바 색상 빨강 계열) */
+        .bar.moving {
+            background: linear-gradient(135deg, #ff4d4d, #ff8a8a);
+            box-shadow: 0 0 0 2px rgba(0,0,0,.25), 0 8px 20px rgba(255,64,64,.30);
+        }
+
+
         .chip {
             width: 36px;
             height: 36px;
@@ -370,6 +377,29 @@
                 <button id="btnUIThenA" class="btn mode" type="button" title="UI 끝난 직후 A 전송">③ After Motion</button>
             </div>
 
+            <div class="controls toolbar" id="soaControls">
+                <label>
+                    SOA
+                    <select id="soaSelect">
+                        <option value="30">30 ms (키 4)</option>
+                        <option value="50" selected>50 ms (키 5)</option>
+                        <option value="70">70 ms (키 6)</option>
+                        <option value="90">90 ms (키 7)</option>
+                        <option value="110">110 ms (키 z)</option>
+                        <option value="130">130 ms (키 Z)</option>
+                    </select>
+                </label>
+                <label>
+                    targetHz
+                    <input id="targetHz" type="number" min="1" value="40" style="width:80px" />
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;">
+                    <input type="checkbox" id="scaleDistanceBySOA" checked />
+                    이동 거리도 SOA 비례(속도는 고정)
+                </label>
+            </div>
+
+
             <div class="title"></div>
 
             <!-- 방향 안내 패널 -->
@@ -408,6 +438,12 @@
             };
 
             // ===== Elements =====
+
+            const soaSelect = document.getElementById('soaSelect');
+            const targetHzInput = document.getElementById('targetHz');
+            const syncSOA = document.getElementById('syncSOA');
+
+
             const track = $('#track');
             const bar = $('#bar');
             const btnStartAnim = $('#startBtn');
@@ -459,6 +495,28 @@
                     }
                     const p = await navigator.serial.requestPort();
                     await p.open({ baudRate: 115200 });
+                    // --- 읽기 스트림 준비 (라인 단위 파싱) ---
+                    const textDecoder = new TextDecoderStream();
+                    p.readable.pipeTo(textDecoder.writable);
+                    const reader = textDecoder.readable.getReader();
+
+                    (async () => {
+                        let buf = '';
+                        while (true) {
+                            const { value, done } = await reader.read();
+                            if (done) break;
+                            if (value) {
+                                buf += value;
+                                let nl;
+                                while ((nl = buf.indexOf('\n')) >= 0) {
+                                    const line = buf.slice(0, nl).trim();
+                                    buf = buf.slice(nl + 1);
+                                    handleSerialLine(line);
+                                }
+                            }
+                        }
+                    })().catch(console.error);
+
                     if (!p.writable) { throw new Error('이 포트는 writable 스트림을 제공하지 않습니다.'); }
                     port = p; writer = port.writable.getWriter();
                     statusBadge.textContent = '연결됨'; statusBadge.classList.add('ok');
@@ -472,6 +530,56 @@
                     alert('Serial 연결 실패: 포트/권한을 확인하세요.' + (e?.message || e));
                 }
             }
+            //SoA
+            function getSOAms() {
+                return Number(soaSelect?.value ?? 50);
+            }
+            function getTargetHz() {
+                const hz = Number(targetHzInput?.value ?? 40);
+                return Number.isFinite(hz) && hz > 0 ? hz : 40;
+            }
+            function computeTiming() {
+                const hz = getTargetHz();
+                const cycleMs = 1000 / hz;                       // 1사이클 시간
+                const soaMs = getSOAms();
+                const waitMs = Math.max(0, soaMs - cycleMs);     // INO와 동일 로직
+                return { hz, cycleMs, soaMs, waitMs };
+            }
+            function applyTimingToUI() {
+                const { cycleMs } = computeTiming();
+                // CSS 이동시간을 파형 1사이클로 맞춤 (시각-촉각 일관성)
+                document.documentElement.style.setProperty('--move-duration', `${Math.round(cycleMs)}ms`);
+            }
+            soaSelect?.addEventListener('change', applyTimingToUI);
+            targetHzInput?.addEventListener('input', applyTimingToUI);
+            // 초기 1회 적용
+            applyTimingToUI();
+
+            async function maybeSleepSOA() {
+                const { waitMs } = computeTiming();
+                if (syncSOA?.checked) {
+                    await sleep(waitMs); // UI만 실행 모드에서 두 동작 간 간격을 SOA에 맞춤
+                }
+            }
+
+            function handleSerialLine(line) {
+                // 예: [SOA] desired=50 ms, cycle=25.00 ms, wait=25 ms, effective≈50.00 ms
+                const m = line.match(/\[SOA\].*desired\s*=\s*(\d+)\s*ms/i);
+                if (m) {
+                    const desired = m[1];
+                    const opt = document.querySelector(`#soaSelect option[value="${desired}"]`);
+                    if (opt) {
+                        document.getElementById('soaSelect').value = desired;
+                        applyTimingToUI();               // move-duration 재계산(Hz 반영)
+                        // 대기 시간은 maybeSleepSOA()가 매번 computeTiming()으로 반영
+                        console.log('[UI] Synced SOA from board ->', desired, 'ms');
+                    }
+                }
+
+                // 필요 시 targetHz도 동기화하고 싶다면 보드에서 로그 찍고 여기에 정규식 추가
+                // const mhz = line.match(/targetHz\s*=\s*([0-9.]+)/i); ...
+            }
+
 
             // ===== 타이밍 모드 =====
             let selectedMode = null; // 'uiOnly' | 'uiThenA' | 'aThenUi'
@@ -523,6 +631,10 @@
                 }
             }
 
+            // ===== add near other helpers =====
+            function setMoving(on) { bar.classList.toggle('moving', !!on); }
+
+
             chipLR.addEventListener('click', () => setDirPreset('LR'));
             chipUD.addEventListener('click', () => setDirPreset('UD'));
             chipFB.addEventListener('click', () => setDirPreset('FB'));
@@ -536,11 +648,54 @@
                 const b = ensureNumber(bar?.clientWidth) || ensureNumber(bar?.offsetWidth) || ensureNumber(bar?.getBoundingClientRect?.().width);
                 return { trackW: t, barW: b };
             }
+            // 요소 참조
+            const scaleDistanceBySOA = document.getElementById('scaleDistanceBySOA');
+
+            // 총 시간 = 2*cycle + wait(=max(0, SOA - cycle))
+            function totalMsFor(soaMs, cycleMs) {
+                const waitMs = Math.max(0, soaMs - cycleMs);
+                return 2 * cycleMs + waitMs;
+            }
+
+            // baseline은 “현재 주파수에서 SOA=50ms”로 두는 예시
+            const BASELINE_SOA_MS = 50;
+
+            // 거리 스케일 팩터 계산 (총 시간 비율)
+            function distanceScale() {
+                const { cycleMs, soaMs } = computeTiming();
+                const baseTotal = totalMsFor(BASELINE_SOA_MS, cycleMs);
+                const curTotal = totalMsFor(soaMs, cycleMs);
+                // 0으로 나눔 방지 + 음수 방지
+                return baseTotal > 0 ? (curTotal / baseTotal) : 1;
+            }
+
+            // 기존 computeTargets()를 수정
             function computeTargets() {
                 const { trackW, barW } = measureWidths();
-                const endLeft = Math.max(0, ensureNumber(trackW - barW));
+                const rawEnd = Math.max(0, ensureNumber(trackW - barW));
+
+                // SOA에 따라 이동거리 스케일 (옵션)
+                let endLeft = rawEnd;
+                if (scaleDistanceBySOA?.checked) {
+                    const k = distanceScale();
+                    endLeft = Math.round(rawEnd * k);
+                    // 트랙을 넘지 않도록 클램프
+                    endLeft = Math.max(0, Math.min(endLeft, rawEnd));
+                }
+
                 return { start: 0, end: endLeft, ok: Number.isFinite(endLeft) && endLeft >= 0 };
             }
+
+            // SOA/Hz 변경 시 레이아웃 재계산
+            soaSelect?.addEventListener('change', () => { applyTimingToUI(); /* 속도 반영 */ });
+            targetHzInput?.addEventListener('input', () => { applyTimingToUI(); });
+            scaleDistanceBySOA?.addEventListener('change', () => {
+                // 즉시 효과를 보려면 바의 현재 위치도 새 범위 안으로 클램프
+                const { start, end } = computeTargets();
+                const cur = ensureNumber(parseFloat(getComputedStyle(bar).left), 0);
+                bar.style.left = toPx(Math.max(start, Math.min(cur, end)));
+            });
+
 
             // ===== Countdown (3,2,1) overlay =====
             async function showCountdown(sec = 3) {
@@ -701,21 +856,30 @@
                     bar.style.transition = 'none'; bar.style.left = toPx(start);
                     await new Promise(requestAnimationFrame);
 
-                    await showCountdown(3);
+                    //await showCountdown(3);
+                    await (syncSOA?.checked ? maybeSleepSOA() : showCountdown(3));
                     await sendCommandA(0);
                     await delay(100);
 
                     phaseText.textContent = '좌→우 이동 중…'; setArrows('LR');
+                    //setMoving(true);
                     bar.style.transition = 'left var(--move-duration) linear'; bar.style.left = toPx(end);
                     await new Promise(r => bar.addEventListener('transitionend', e => e.propertyName === 'left' && r(), { once: true }));
+                    
 
-                    await showCountdown(3);
+                    //await showCountdown(3);
+                    await (syncSOA?.checked ? maybeSleepSOA() : showCountdown(3));
+                    //setMoving(false);
                     await sendCommandA(0);
                     await delay(100);
 
-                    phaseText.textContent = '우→좌 이동 중…'; setArrows('RL'); bar.style.left = toPx(start);
+                    phaseText.textContent = '우→좌 이동 중…'; setArrows('RL');
+                    //setMoving(true);
+                    bar.style.left = toPx(start);
                     await new Promise(r => bar.addEventListener('transitionend', e => e.propertyName === 'left' && r(), { once: true }));
+                    //setMoving(false);
                     phaseText.textContent = '완료';
+
                 } finally { running = false; disableTimingBtns(false); }
             }
 
@@ -727,16 +891,23 @@
                     bar.style.transition = 'none'; bar.style.left = toPx(start);
                     await new Promise(requestAnimationFrame);
 
-                    await showCountdown(3);
+                    //await showCountdown(3);
+                    await (syncSOA?.checked ? maybeSleepSOA() : showCountdown(3));
                     await sendCommandA(0); // 요청대로 during 모드에서도 유지
+                    //setMoving(true);
                     phaseText.textContent = '좌→우 이동 중…'; setArrows('LR');
                     bar.style.transition = 'left var(--move-duration) linear'; bar.style.left = toPx(end);
                     await new Promise(r => bar.addEventListener('transitionend', e => e.propertyName === 'left' && r(), { once: true }));
+                    //setMoving(false);
 
-                    await showCountdown(3);
+                    //await showCountdown(3);
+                    await (syncSOA?.checked ? maybeSleepSOA() : showCountdown(3));
 
-                    phaseText.textContent = '우→좌 이동 중…'; setArrows('RL'); bar.style.left = toPx(start);
+                    phaseText.textContent = '우→좌 이동 중…'; setArrows('RL');
+                    //setMoving(true);
+                    bar.style.left = toPx(start);
                     await new Promise(r => bar.addEventListener('transitionend', e => e.propertyName === 'left' && r(), { once: true }));
+                    //setMoving(false);
 
                     await sendCommandA(0);
                     phaseText.textContent = '완료';
@@ -752,21 +923,26 @@
                     bar.style.transition = 'none'; bar.style.left = toPx(start);
                     await new Promise(requestAnimationFrame);
 
-                    await showCountdown(3);
+                    //await showCountdown(3);
+                    await (syncSOA?.checked ? maybeSleepSOA() : showCountdown(3));
 
+                    //setMoving(true);
                     phaseText.textContent = '좌→우 이동 중…'; setArrows('LR');
                     bar.style.transition = 'left var(--move-duration) linear';
                     await new Promise(requestAnimationFrame);
                     bar.style.left = toPx(end);
+                    //setMoving(false);
 
                     await waitForLeftTransition(bar);
                     await sendCommandA(100);
 
-                    await showCountdown(3);
-
+                    //await showCountdown(3);
+                    await (syncSOA?.checked ? maybeSleepSOA() : showCountdown(3));
+                    //setMoving(true);
                     phaseText.textContent = '우→좌 이동 중…'; setArrows('RL');
                     bar.style.left = toPx(start);
                     await waitForLeftTransition(bar);
+                    //setMoving(false);
 
                     await sendCommandA(100);
 
