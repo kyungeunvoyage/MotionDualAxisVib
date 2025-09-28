@@ -1,5 +1,5 @@
 ﻿/*
- Name:		MotionOrthoVib03.ino
+ Name:		MainExp.ino
  Created:	2025-08-03 오전 11:41:25
  Author:	HCITECH_01
 */
@@ -50,7 +50,7 @@ unsigned long vibDuration = 0;
 
 //================DA7280 setup====================
 void initDA7280(Haptic_Driver& driver) {
-    
+
 
     if (!driver.begin()) {
         Serial.println("DA7280 not found.");
@@ -125,7 +125,7 @@ void setup() {
     while (!Serial); // USB serial 연결 대기
     delay(100);        // (선택) 약간의 추가 안정화 대기
 
-    
+
     Serial.println("Hello Helllo AND Initiated");
     initDA7280(hapDrive);
 
@@ -139,7 +139,7 @@ void setup() {
     CreateAllWaveforms();  // << 여기서 한 번에 생성!
     generatePositiveBiasedWaveform();
 
-    //time phase 
+    //time phase
     for (int i = 0; i < 256; i++) high_highTP[i] = high_high[255 - i];
 
     //Polarity reverse
@@ -166,8 +166,8 @@ void setup() {
         waveformD_PR[i] = -waveformD[i];
     }
 
-    
-    //Teensy DAC 12bit 이고, 해상도 지정을 해서 내부 스케일이 맞게끔 진행 
+
+    //Teensy DAC 12bit 이고, 해상도 지정을 해서 내부 스케일이 맞게끔 진행
     //이거 쓰니까 확실히 다름
 
     analogWriteResolution(12);
@@ -184,7 +184,7 @@ void setup() {
     //makeCompositeF_2F_Phase(wPhase0, 256, 1.0f, 1.0f, 0.0f, true, true);   // 오른쪽 당김 쪽
     //makeCompositeF_2F_Phase(wPhase180, 256, 1.0f, 1.0f, -180.0f, true, true);  // 왼쪽 당김 쪽
 
-    
+
 }
 //=================setup===========================
 
@@ -272,24 +272,24 @@ void playWaveForSeconds2(const int16_t* w, int N,
 
 
 void playArrayWithGainCentered(const int16_t* arr, int n, float gain, int dacPin, float delayUs) {
-    // 평균값 산출 (== dc 오프셋) 
+    // 평균값 산출 (== dc 오프셋)
     long sum = 0;
     for (int i = 0; i < n; ++i) sum += arr[i];
     float mean = (float)sum / (float)n;
 
     for (int i = 0; i < n; ++i) {
-        float v = (arr[i] - mean) * gain;                // dc 제거 -> 평균화 
-        int16_t v16 = (int16_t)constrain((long)lround(v), -32767, 32767);  //clipping 
+        float v = (arr[i] - mean) * gain;                // dc 제거 -> 평균화
+        int16_t v16 = (int16_t)constrain((long)lround(v), -32767, 32767);  //clipping
         //int dacValue = map(val, -32767, 32767, 0, 4095);
         analogWrite(dacPin, toDac_12bit_centered(v16));
-        delayMicroseconds((int)delayUs); //샘플간 간격 유지~ 
+        delayMicroseconds((int)delayUs); //샘플간 간격 유지~
     }
 }
 
 
 //================gain setting=====================
 
-//느린 복귀를 위해 raw 
+//느린 복귀를 위해 raw
 void playArrayRaw(const int16_t* arr, int n, float gain, int dacPin, float delayUs) {
     for (int i = 0; i < n; i++) {
         long v = lroundf(arr[i] * gain);
@@ -372,7 +372,7 @@ void playHalfSineWithRatio(const int16_t* w, int N, float gain, int dacPin,
 //==============DUO play==========================
 // rise와 fall에 서로 다른 per-sample 지연을 주면서
 // 두 DAC 핀으로 동시 출력 (A22 정상, A21은 invert 가능)
-void playAsymTimingDual(const int16_t* w, int N,float gainA22, float gainA21,int dacPinA22, int dacPinA21,uint32_t delayRiseUs, uint32_t delayFallUs,
+void playAsymTimingDual(const int16_t* w, int N, float gainA22, float gainA21, int dacPinA22, int dacPinA21, uint32_t delayRiseUs, uint32_t delayFallUs,
     bool invertA21)
 {
     int p = findPeakIndex(w, N);
@@ -456,8 +456,8 @@ static void buildTimeScheduleUs(const int16_t* w, int N, float delayPerSampleUs,
 }
 
 // A22는 정상, A21은 폴라리티 반전(옵션)해서 "offsetA21_us"만큼 늦게 시작하여 동시 스케줄링 출력
-void playHalfSineWithRatioDualOffset(const int16_t* w, int N, float gainA22, float gainA21,int dacPinA22, int dacPinA21,float delayPerSampleUs, float rRise, float rFall,
-    bool invertA21, uint32_t offsetA21_us,int repeats = 5)
+void playHalfSineWithRatioDualOffset(const int16_t* w, int N, float gainA22, float gainA21, int dacPinA22, int dacPinA21, float delayPerSampleUs, float rRise, float rFall,
+    bool invertA21, uint32_t offsetA21_us, int repeats = 5)
 {
     // DC 중심화(평균 제거)
     long sum = 0;
@@ -755,8 +755,8 @@ void playArrayWithGainCentered_1cycle(
  * - 총 재생시간을 직접 넣지 않고, 원하는 사이클 수만큼 정확히 출력
  */
 
-void playArrayWithGainCentered_cycles(const int16_t* w, int N, float gain, int dacPin,float hz, uint32_t cycles,
-uint32_t* clipped_out = nullptr) {
+void playArrayWithGainCentered_cycles(const int16_t* w, int N, float gain, int dacPin, float hz, uint32_t cycles,
+    uint32_t* clipped_out = nullptr) {
     if (hz <= 0.0f || N <= 0 || cycles == 0) return;
 
     const double T_us = 1000000.0 / (double)hz;
@@ -788,7 +788,7 @@ uint32_t* clipped_out = nullptr) {
 }
 
 //=====================================================asymmetric vibration generator=====================================================
-//목적:기본파 + 2차 고조파를 위상차로 합성한 256샘플 파형을 만들어본다. 이미 가지고 있는 함수를 써서 gain 을 맞춰서 플레이갈긴다. 
+//목적:기본파 + 2차 고조파를 위상차로 합성한 256샘플 파형을 만들어본다. 이미 가지고 있는 함수를 써서 gain 을 맞춰서 플레이갈긴다.
 
 // 유틸: 배열 평균 제거(DC 제거)
 static inline void removeDC_int16(int16_t* w, int N) {
@@ -820,11 +820,11 @@ static inline void normalizePeak_int16(int16_t* w, int N) {
 }
 
 /*
-기본파 + 2차 고조파 합성 만들기 (한 주기 = N 샘플) 
-A1_rel, A2_rel : 상대 진폭 (무단위), 실제 강도는 재생 시, gain 으로 조절 
-phi_deg : 2차 성분의 위상 오프셋 (도 단위 : 0, -90, -180) 
-removeDC : 평균값 제거 
-normalizePeak : 피크 기준으로 쁠마 32767 맞춰 정규화 할지 말지 
+기본파 + 2차 고조파 합성 만들기 (한 주기 = N 샘플)
+A1_rel, A2_rel : 상대 진폭 (무단위), 실제 강도는 재생 시, gain 으로 조절
+phi_deg : 2차 성분의 위상 오프셋 (도 단위 : 0, -90, -180)
+removeDC : 평균값 제거
+normalizePeak : 피크 기준으로 쁠마 32767 맞춰 정규화 할지 말지
 */
 static void makeCompositeF_2F_Phase(
     int16_t* out, int N,
@@ -893,9 +893,9 @@ static void playCompositeF_2F_Phase_now(
 
 
 // the loop function runs over and over again until power down or reset
-void loop() 
+void loop()
 {
-    //generate new waveform 
+    //generate new waveform
 
     if (vibrating && millis() - vibStart >= vibDuration)
     {
@@ -905,17 +905,214 @@ void loop()
 
     while (Serial.available() > 0)
     {
-        int p = Serial.peek();
-        if (p == '\r' || p == '\n') { Serial.read(); continue; }
+        if (vibrating && millis() - vibStart >= vibDuration) stopVibration(hapDrive);
 
-        if (p == 'S') {
-            // S라인: "S50\n" 같은 형식
-            String line = Serial.readStringUntil('\n');  // 'S' 포함한 한 줄 통째로
-            // 안전 가드
-            if (line.length() >= 2 && line.charAt(0) == 'S') {
-                int v = line.substring(1).toInt();         // "S60" -> 60
+        while (Serial.available() > 0) {
+            int ch = Serial.peek();
+
+            // 줄 단위 SOA: "S50\n"
+            if (ch == 'S') {
+                String line = Serial.readStringUntil('\n'); // 'S..' 포함
+                if (line.length() >= 2 && line.charAt(0) == 'S') {
+                    int v = line.substring(1).toInt();
+                    if (v >= 10 && v <= 300) {
+                        soaControl = (float)v;
+                        const float cycle_ms = 1000.0f / targetHz;
+                        const int wait_ms = max(0, (int)lround(soaControl - cycle_ms));
+                        Serial.printf("[SOA] desired=%d ms, cycle=%.2f ms, wait=%d ms\n",
+                            (int)soaControl, cycle_ms, wait_ms);
+                    }
+                    else {
+                        Serial.printf("[SOA] ignored=%d (out of range)\n", v);
+                    }
+                }
+                continue;
+            }
+
+            char command = (char)Serial.read();
+            if (command == '0')
+            {
+                //b -> C 횡단
+                //YY
+                //
+                //update hz
+                updateDelayFromTargetHz();
+
+                //for comb1 (yz)
+                const float GAIN = 3.0f;
+                for (int repeat = 0; repeat < 10; repeat++)
+                {
+                    //Left flesh
+                    playArrayWithGainCentered(impulseDynamicPR, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+                    delay(500); //(phase)
+
+                    //시간차 조정 어떻게 하냐?
+
+                    //Right Flesh
+                    playArrayWithGainCentered(impulse_dynamic, waveformSize, GAIN, DAC_PIN_A21, delayPerSampleUs_rt);
+                    //하나의 pulse 이후 쉬기
+                    delay(500);
+                }
+
+            }
+
+            //Practice session
+            else if (command == '1')
+            {
+                updateDelayFromTargetHz();
+                const float GAIN = 3.0f;
+                // rise:fall = 1:2
+                for (int i = 0; i < 10; i++)
+                {
+                    playArrayWithGainCentered(wave_impulseDampedTail, waveformSize, GAIN, DAC_PIN_A21, delayPerSampleUs_rt);
+                    delay(100);
+                }
+                //playHalfSineWithRatio(wave_impulseDampedTail, waveformSize, GAIN, DAC_PIN_A22,
+                //    delayPerSampleUs_rt, 1.0f, 2.0f, /*repeats=*/5);
+            }
+            else if (command == '2')
+            {
+                //updateDelayFromTargetHz();
+                //const float GAIN = 3.0f;
+                // rise:fall = 1:3
+                /*
+                for (int i = 0; i < 10; i++)
+                {
+                    playArrayWithGainCentered(impulseDampedTailPR, waveformSize, GAIN, DAC_PIN_A21, delayPerSampleUs_rt);
+                    delay(100);
+                }
+                */
+                //playHalfSineWithRatio(impulseDampedTailPR, waveformSize, GAIN, DAC_PIN_A22,
+                //    delayPerSampleUs_rt, 1.0f, 2.0f, /*repeats=*/5);
+
+                float baseG_A22 = 3.0f;
+                float baseG_A21 = 5.0f; // ← A21만 한 단계 더 크게
+                float f = 40.0f;
+
+                float G22 = compensatedGain(baseG_A22, f);
+                float G21 = compensatedGain(baseG_A21, f);
+
+                playArrayWithGainCentered_1cycle(wave_impulseDampedTail, 256, 3.0f, DAC_PIN_A22, 40.0f);
+                delay(10);
+                playWaveForSeconds2(dat, waveformSize, G21, DAC_PIN_A21, f, 0.5f);
+            }
+            else if (command == '3')
+            {
+                // 예) dat 한 주기를 2.0초 동안 늘려서 A22로 재생
+                //float sec = 0.5f;
+                float G = 6.0f;                 // VCA면 그냥 고정게인, LRA면 f=1/sec에 맞춰 보정 필요할 수 있음
+                //playWaveForSeconds2(dat, 256, G, DAC_PIN_A22, /*hz=*/1.0f / sec, /*sec=*/sec);
+
+                //playWaveOneCycleForSeconds_Interpolated(dat, 256, /*gain=*/5.0f, DAC_PIN_A22, /*sec=*/2.0f, /*upsample=*/4);
+
+                //hz = 40;
+                // a -> d
+                // repulsive force : 반대로 잡아 당김 / 진동의 방향성 -> / 움직임 right-to-left 일 때
+                //playArrayWithGainCentered(impulse_releasePR, waveformSize, G, DAC_PIN_A22, delayPerSampleUs_rt);
+                playArrayWithGainCentered_1cycle(impulse_releasePR, waveformSize, G, DAC_PIN_A22, delayPerSampleUs_rt);
+                //delay(10); //delay 0.01s; -> ㅂㄹ
+                delay(50); //이게 중요한듯
+                //playArrayWithGainCentered(impulse_release, waveformSize, G, DAC_PIN_A21, delayPerSampleUs_rt);
+                playArrayWithGainCentered_1cycle(impulse_release, waveformSize, G, DAC_PIN_A21, delayPerSampleUs_rt);
+                //playWaveForSeconds2(dat, 256, G, DAC_PIN_A22, 40.0f, sec);
+
+
+                // attractive force :
+
+            }
+
+
+            else if (command == '4') soaControl = 30;
+            else if (command == '5') soaControl = 50;
+            else if (command == '6') soaControl = 70;
+            else if (command == '7') soaControl = 90;
+            else if (command == '8') soaControl = 110;
+            else if (command == '9') soaControl = 130;
+
+
+            //imu calibration 1
+
+            else if (command == 'z') {
+                // 주파수 고정(예: 40Hz)에서 baseGain = 3~8까지 1초씩 측정
+                static const float baseGList[] = { 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f };
+                const int M = sizeof(baseGList) / sizeof(baseGList[0]);
+
+                // 40 Hz 추이
+                runFixedFreqGainSweep_MPU9250(
+                    dat, waveformSize, DAC_PIN_A22,
+                    /*freqHz=*/40.0f,
+                    baseGList, M,
+                    /*secPerGain=*/1.0f,
+                    /*imu_rate_hz=*/1000,
+                    /*warmup_s=*/0.20f,
+                    /*useMagnitude=*/true, /*axis=*/'z'
+                );
+
+                // 필요하면 10 Hz도 추가로
+                runFixedFreqGainSweep_MPU9250(
+                    dat, waveformSize, DAC_PIN_A22,
+                    /*freqHz=*/10.0f,
+                    baseGList, M,
+                    /*secPerGain=*/1.0f,
+                    /*imu_rate_hz=*/1000,
+                    /*warmup_s=*/0.20f,
+                    /*useMagnitude=*/true, /*axis=*/'z'
+                );
+            }
+            //imu calibration 2
+            else if (command == 'Z')
+            {
+                static const float baseGList[] = { 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f };
+                static const float freqList[] = { 10.0f, 20.0f, 30.0f, 40.0f, 60.0f, 80.0f };
+
+                Serial.println(F("\n==== BaseGain Sweep (RAW vs COMP) ===="));
+
+                // 필요하면 IMU 설정(ODR/DLPF)은 setup에서 이미 수행됨.
+                runBaseGainSweep_MPU9250(
+                    /*wave=*/dat,             /*N=*/waveformSize,
+                    /*dacPin=*/DAC_PIN_A22,
+                    /*baseGList=*/baseGList,  /*M=*/(int)(sizeof(baseGList) / sizeof(baseGList[0])),
+                    /*freqList=*/freqList,    /*K=*/(int)(sizeof(freqList) / sizeof(freqList[0])),
+                    /*secPerCombo=*/1.0f,     // 각 조합 1초 측정
+                    /*imu_rate_hz=*/1000,     // IMU 샘플링(실제 read 주기)
+                    /*warmup_s=*/0.20f,       // 워밍업 구간(초): 측정에서 제외
+                    /*useMagnitude=*/true,    // |a| RMS 기준. 축 하나만 보려면 false로 하고 axis='z' 등
+                    /*axisForSingle=*/'z',
+                    /*alsoTestCompensated=*/true // RAW와 LUT보정 둘 다 측정
+                );
+
+                Serial.println(F("==== End of BaseGain Sweep ====\n"));
+            }
+            //imu calibration 3
+            else if (command == 'K')
+            {
+                //calibration code !!!!!!!!!!!!
+                static const float freqs[] = { 10, 15, 20, 30, 40, 50, 60, 80 };
+                runFreqCalibration_MPU9250(
+                    dat, waveformSize, DAC_PIN_A22,
+                    /*baseGain=*/3.0f,
+                    freqs, (int)(sizeof(freqs) / sizeof(freqs[0])),
+                    /*secPerFreq=*/1.0f,
+                    /*targetRMS_g=*/0.80f,
+                    /*imu_rate_hz=*/1000,
+                    /*warmup_s=*/0.20f,
+                    /*useMagnitude=*/true, /*axis=*/'z'
+                );
+            }
+
+            else if (command == 'S') {
+                // 호스트가 "S60\n" 같은 라인을 보냅니다.
+                int v = Serial.parseInt();           // 숫자만 뽑아옴 (공백/CR/LF는 무시됨)
+
+                // (선택) 줄 끝 정리: 남아있다면 CR/LF 소비
+                if (Serial.peek() == '\r') Serial.read();
+                if (Serial.peek() == '\n') Serial.read();
+
+                // 합리적 범위 체크 (필요 시 조정하세요)
                 if (v >= 10 && v <= 300) {
                     soaControl = (float)v;
+
+                    // 현재 설정을 에코(HTML이 읽어 UI 동기화할 수 있도록)
                     const float cycle_ms = 1000.0f / targetHz;
                     const int   wait_ms = max(0, (int)lround(soaControl - cycle_ms));
                     Serial.printf("[SOA] desired=%d ms, cycle=%.2f ms, wait=%d ms\n",
@@ -925,287 +1122,77 @@ void loop()
                     Serial.printf("[SOA] ignored=%d (out of range)\n", v);
                 }
             }
-            continue; // 다음 루프
 
-        char command = (char)Serial.read();
-        if (command == '0')
-        {
-            //b -> C 횡단 
-            //YY
-            // 
-            //update hz
-            updateDelayFromTargetHz();
-
-            //for comb1 (yz) 
-            const float GAIN = 3.0f;
-            for (int repeat = 0; repeat < 10; repeat++)
+            // + La (a -> d)
+            else if (command == 'A')
             {
-                //Left flesh
-                playArrayWithGainCentered(impulseDynamicPR, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
-                delay(500); //(phase)
+                updateDelayFromTargetHz();                  // targetHz 반영 (예: 40Hz)
+                const float GAIN = 5.0f;
+                const float cycle_ms = 1000.0f / targetHz;  // 40Hz → 25ms
+                const int desiredSOA_ms = (int)lround(soaControl);  // ← 방금 S로 바뀐 값
+                const int wait_ms = max(0, (int)lround(desiredSOA_ms - cycle_ms));
 
-                //시간차 조정 어떻게 하냐? 
+                uint32_t tA = micros();
+                playArrayWithGainCentered(waveformB_PR, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+                delay(wait_ms);
+                uint32_t tB = micros();
+                playArrayWithGainCentered(waveformB, waveformSize, GAIN, DAC_PIN_A21, delayPerSampleUs_rt);
 
-                //Right Flesh
-                playArrayWithGainCentered(impulse_dynamic, waveformSize, GAIN, DAC_PIN_A21, delayPerSampleUs_rt);
-                //하나의 pulse 이후 쉬기
-                delay(500);
+                // 로깅: 실제 onsets 차이(블로킹 호출 시작 시각 차이)
+                float effectiveSOA_ms = (tB - tA) / 1000.0f;
+                Serial.printf("[SOA] desired=%d ms, cycle=%.2f ms, wait=%d ms, effective≈%.2f ms\n",
+                    desiredSOA_ms, cycle_ms, wait_ms, effectiveSOA_ms);
             }
 
-        }
-
-        //Practice session 
-        else if (command == '1')
-        {
-            updateDelayFromTargetHz();
-            const float GAIN = 3.0f;
-            // rise:fall = 1:2
-            for (int i = 0; i < 10; i++)
+            // - La (d -> a)
+            else if (command == 'a')
             {
-                playArrayWithGainCentered(wave_impulseDampedTail, waveformSize, GAIN, DAC_PIN_A21, delayPerSampleUs_rt);
-                delay(100);
+
+                updateDelayFromTargetHz();                  // targetHz 반영 (예: 40Hz)
+                const float GAIN = 5.0f;
+                const float cycle_ms = 1000.0f / targetHz;  // 40Hz → 25ms
+                const int desiredSOA_ms = soaControl;       // 40, 50, 150 등
+                const int wait_ms = max(0, (int)lround(desiredSOA_ms - cycle_ms));
+
+                uint32_t tA = micros();
+                playArrayWithGainCentered(waveformB, waveformSize, GAIN, DAC_PIN_A21, delayPerSampleUs_rt);
+                delay(wait_ms);
+                uint32_t tB = micros();
+                playArrayWithGainCentered(waveformB_PR, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+
+                // 로깅: 실제 onsets 차이(블로킹 호출 시작 시각 차이)
+                float effectiveSOA_ms = (tB - tA) / 1000.0f;
+                Serial.printf("[SOA] desired=%d ms, cycle=%.2f ms, wait=%d ms, effective≈%.2f ms\n",
+                    desiredSOA_ms, cycle_ms, wait_ms, effectiveSOA_ms);
+                Serial.println("it's small and - La");
+                //playWaveForSeconds2(waveformB, 256, 5.0f, DAC_PIN_A22, 40.0f, 1.0f);
             }
-            //playHalfSineWithRatio(wave_impulseDampedTail, waveformSize, GAIN, DAC_PIN_A22,
-            //    delayPerSampleUs_rt, 1.0f, 2.0f, /*repeats=*/5);
-        }
-        else if (command == '2')
-        {
-            //updateDelayFromTargetHz();
-            //const float GAIN = 3.0f;
-            // rise:fall = 1:3
-            /*
-            for (int i = 0; i < 10; i++)
+
+            // + Lb (b -> c)
+            else if (command == 'B')
             {
-                playArrayWithGainCentered(impulseDampedTailPR, waveformSize, GAIN, DAC_PIN_A21, delayPerSampleUs_rt);
-                delay(100);
+                updateDelayFromTargetHz();                  // targetHz 반영 (예: 40Hz)
+                const float GAIN = 5.0f;
+                const float cycle_ms = 1000.0f / targetHz;  // 40Hz → 25ms
+                const int desiredSOA_ms = soaControl;       // 40, 50, 150 등
+                const int wait_ms = max(0, (int)lround(desiredSOA_ms - cycle_ms));
+
+                uint32_t tA = micros();
+                playArrayWithGainCentered(waveformB, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+                delay(wait_ms);
+                uint32_t tB = micros();
+                playArrayWithGainCentered(waveformB_PR, waveformSize, GAIN, DAC_PIN_A21, delayPerSampleUs_rt);
+
+                // 로깅: 실제 onsets 차이(블로킹 호출 시작 시각 차이)
+                float effectiveSOA_ms = (tB - tA) / 1000.0f;
+                Serial.printf("[SOA] desired=%d ms, cycle=%.2f ms, wait=%d ms, effective≈%.2f ms\n",
+                    desiredSOA_ms, cycle_ms, wait_ms, effectiveSOA_ms);
+                //targetHz = 40;
             }
-            */
-            //playHalfSineWithRatio(impulseDampedTailPR, waveformSize, GAIN, DAC_PIN_A22,
-            //    delayPerSampleUs_rt, 1.0f, 2.0f, /*repeats=*/5);
 
-            float baseG_A22 = 3.0f;
-            float baseG_A21 = 5.0f; // ← A21만 한 단계 더 크게
-            float f = 40.0f;
-
-            float G22 = compensatedGain(baseG_A22, f);
-            float G21 = compensatedGain(baseG_A21, f);
-
-            playArrayWithGainCentered_1cycle(wave_impulseDampedTail, 256, 3.0f, DAC_PIN_A22, 40.0f);
-            delay(10);
-            playWaveForSeconds2(dat, waveformSize, G21, DAC_PIN_A21, f, 0.5f);
-        }
-        else if (command == '3')
-        {
-            // 예) dat 한 주기를 2.0초 동안 늘려서 A22로 재생
-            float sec = 0.5f;
-            float G = 6.0f;                 // VCA면 그냥 고정게인, LRA면 f=1/sec에 맞춰 보정 필요할 수 있음
-            //playWaveForSeconds2(dat, 256, G, DAC_PIN_A22, /*hz=*/1.0f / sec, /*sec=*/sec);
-
-            //playWaveOneCycleForSeconds_Interpolated(dat, 256, /*gain=*/5.0f, DAC_PIN_A22, /*sec=*/2.0f, /*upsample=*/4);
-
-            //hz = 40;
-            // a -> d
-            // repulsive force : 반대로 잡아 당김 / 진동의 방향성 -> / 움직임 right-to-left 일 때 
-            //playArrayWithGainCentered(impulse_releasePR, waveformSize, G, DAC_PIN_A22, delayPerSampleUs_rt);
-            playArrayWithGainCentered_1cycle(impulse_releasePR, waveformSize, G, DAC_PIN_A22, delayPerSampleUs_rt);
-            //delay(10); //delay 0.01s; -> ㅂㄹ
-            delay(50); //이게 중요한듯 
-            //playArrayWithGainCentered(impulse_release, waveformSize, G, DAC_PIN_A21, delayPerSampleUs_rt);
-            playArrayWithGainCentered_1cycle(impulse_release, waveformSize, G, DAC_PIN_A21, delayPerSampleUs_rt);
-            //playWaveForSeconds2(dat, 256, G, DAC_PIN_A22, 40.0f, sec);
-
-
-            // attractive force :
-
-        }
-
-
-        else if (command == '4') soaControl = 30;
-        else if (command == '5') soaControl = 50;
-        else if (command == '6') soaControl = 70;
-        else if (command == '7') soaControl = 90;
-        else if (command == '8') soaControl = 110;
-        else if (command == '9') soaControl = 130;
-
-
-        //imu calibration 1
-
-        else if (command == 'z') {
-            // 주파수 고정(예: 40Hz)에서 baseGain = 3~8까지 1초씩 측정
-            static const float baseGList[] = { 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f };
-            const int M = sizeof(baseGList) / sizeof(baseGList[0]);
-
-            // 40 Hz 추이
-            runFixedFreqGainSweep_MPU9250(
-                dat, waveformSize, DAC_PIN_A22,
-                /*freqHz=*/40.0f,
-                baseGList, M,
-                /*secPerGain=*/1.0f,
-                /*imu_rate_hz=*/1000,
-                /*warmup_s=*/0.20f,
-                /*useMagnitude=*/true, /*axis=*/'z'
-            );
-
-            // 필요하면 10 Hz도 추가로
-            runFixedFreqGainSweep_MPU9250(
-                dat, waveformSize, DAC_PIN_A22,
-                /*freqHz=*/10.0f,
-                baseGList, M,
-                /*secPerGain=*/1.0f,
-                /*imu_rate_hz=*/1000,
-                /*warmup_s=*/0.20f,
-                /*useMagnitude=*/true, /*axis=*/'z'
-            );
-        }
-        //imu calibration 2
-        else if (command == 'Z')
-        {
-            static const float baseGList[] = { 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f };
-            static const float freqList[] = { 10.0f, 20.0f, 30.0f, 40.0f, 60.0f, 80.0f };
-
-            Serial.println(F("\n==== BaseGain Sweep (RAW vs COMP) ===="));
-
-            // 필요하면 IMU 설정(ODR/DLPF)은 setup에서 이미 수행됨.
-            runBaseGainSweep_MPU9250(
-                /*wave=*/dat,             /*N=*/waveformSize,
-                /*dacPin=*/DAC_PIN_A22,
-                /*baseGList=*/baseGList,  /*M=*/(int)(sizeof(baseGList) / sizeof(baseGList[0])),
-                /*freqList=*/freqList,    /*K=*/(int)(sizeof(freqList) / sizeof(freqList[0])),
-                /*secPerCombo=*/1.0f,     // 각 조합 1초 측정
-                /*imu_rate_hz=*/1000,     // IMU 샘플링(실제 read 주기)
-                /*warmup_s=*/0.20f,       // 워밍업 구간(초): 측정에서 제외
-                /*useMagnitude=*/true,    // |a| RMS 기준. 축 하나만 보려면 false로 하고 axis='z' 등
-                /*axisForSingle=*/'z',
-                /*alsoTestCompensated=*/true // RAW와 LUT보정 둘 다 측정
-            );
-
-            Serial.println(F("==== End of BaseGain Sweep ====\n"));
-        }
-        //imu calibration 3
-        else if (command == 'K') 
-        {
-            //calibration code !!!!!!!!!!!!
-            static const float freqs[] = { 10, 15, 20, 30, 40, 50, 60, 80 };
-            runFreqCalibration_MPU9250(
-                dat, waveformSize, DAC_PIN_A22,
-                /*baseGain=*/3.0f,
-                freqs, (int)(sizeof(freqs) / sizeof(freqs[0])),
-                /*secPerFreq=*/1.0f,
-                /*targetRMS_g=*/0.80f,
-                /*imu_rate_hz=*/1000,
-                /*warmup_s=*/0.20f,
-                /*useMagnitude=*/true, /*axis=*/'z'
-            );
-        }
-
-        //합성파형 재생
-        else if (command == 'F')
-        {
-            //흠 뭐가 다른지 모르겟는데 ㅋㅋㅋ
-            playWaveForSeconds2(wPhase0, 256, 5.0f, DAC_PIN_A22, 40.0f, 1.0f);
-        }
-
-        else if (command == 'S') {
-        // 호스트가 "S60\n" 같은 라인을 보냅니다.
-        int v = Serial.parseInt();           // 숫자만 뽑아옴 (공백/CR/LF는 무시됨)
-
-        // (선택) 줄 끝 정리: 남아있다면 CR/LF 소비
-        if (Serial.peek() == '\r') Serial.read();
-        if (Serial.peek() == '\n') Serial.read();
-
-        // 합리적 범위 체크 (필요 시 조정하세요)
-        if (v >= 10 && v <= 300) {
-            soaControl = (float)v;
-
-            // 현재 설정을 에코(HTML이 읽어 UI 동기화할 수 있도록)
-            const float cycle_ms = 1000.0f / targetHz;
-            const int   wait_ms = max(0, (int)lround(soaControl - cycle_ms));
-            Serial.printf("[SOA] desired=%d ms, cycle=%.2f ms, wait=%d ms\n",
-                (int)soaControl, cycle_ms, wait_ms);
-        }
-        else {
-            Serial.printf("[SOA] ignored=%d (out of range)\n", v);
-        }
-}
-        
-        // + La (a -> d) 
-        //ampitude가 좀 세야할 것 같음
-
-
-        //waveform B +  (Linear) 
-        //만들어야 할 것 : waveform B -, waveform C +,- (linear) 
-        // Rotation
-        else if (command == 'A')
-        {
-            updateDelayFromTargetHz();                  // targetHz 반영 (예: 40Hz)
-            const float GAIN = 5.0f;
-            const float cycle_ms = 1000.0f / targetHz;  // 40Hz → 25ms
-            const int desiredSOA_ms = (int)lround(soaControl);  // ← 방금 S로 바뀐 값
-            const int wait_ms = max(0, (int)lround(desiredSOA_ms - cycle_ms));
-
-            uint32_t tA = micros();
-            playArrayWithGainCentered(waveformB_PR, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
-            delay(wait_ms);
-            uint32_t tB = micros();
-            playArrayWithGainCentered(waveformB, waveformSize, GAIN, DAC_PIN_A21, delayPerSampleUs_rt);
-
-            // 로깅: 실제 onsets 차이(블로킹 호출 시작 시각 차이)
-            float effectiveSOA_ms = (tB - tA) / 1000.0f;
-            Serial.printf("[SOA] desired=%d ms, cycle=%.2f ms, wait=%d ms, effective≈%.2f ms\n",
-                desiredSOA_ms, cycle_ms, wait_ms, effectiveSOA_ms);
-        }
-
-
-
-        // - La (d -> a) 
-        else if (command == 'a')
-        {
-
-            updateDelayFromTargetHz();                  // targetHz 반영 (예: 40Hz)
-            const float GAIN = 5.0f;
-            const float cycle_ms = 1000.0f / targetHz;  // 40Hz → 25ms
-            const int desiredSOA_ms = soaControl;       // 40, 50, 150 등
-            const int wait_ms = max(0, (int)lround(desiredSOA_ms - cycle_ms));
-
-            uint32_t tA = micros();
-            playArrayWithGainCentered(waveformB, waveformSize, GAIN, DAC_PIN_A21, delayPerSampleUs_rt);
-            delay(wait_ms);
-            uint32_t tB = micros();
-            playArrayWithGainCentered(waveformB_PR, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
-
-            // 로깅: 실제 onsets 차이(블로킹 호출 시작 시각 차이)
-            float effectiveSOA_ms = (tB - tA) / 1000.0f;
-            Serial.printf("[SOA] desired=%d ms, cycle=%.2f ms, wait=%d ms, effective≈%.2f ms\n",
-                desiredSOA_ms, cycle_ms, wait_ms, effectiveSOA_ms);
-            Serial.println("it's small and - La");
-            //playWaveForSeconds2(waveformB, 256, 5.0f, DAC_PIN_A22, 40.0f, 1.0f);
-        }
-
-        // + Lb (b -> c)
-        else if (command == 'B')
-        {
-            updateDelayFromTargetHz();                  // targetHz 반영 (예: 40Hz)
-            const float GAIN = 5.0f;
-            const float cycle_ms = 1000.0f / targetHz;  // 40Hz → 25ms
-            const int desiredSOA_ms = soaControl;       // 40, 50, 150 등
-            const int wait_ms = max(0, (int)lround(desiredSOA_ms - cycle_ms));
-
-            uint32_t tA = micros();
-            playArrayWithGainCentered(waveformB, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
-            delay(wait_ms);
-            uint32_t tB = micros();
-            playArrayWithGainCentered(waveformB_PR, waveformSize, GAIN, DAC_PIN_A21, delayPerSampleUs_rt);
-
-            // 로깅: 실제 onsets 차이(블로킹 호출 시작 시각 차이)
-            float effectiveSOA_ms = (tB - tA) / 1000.0f;
-            Serial.printf("[SOA] desired=%d ms, cycle=%.2f ms, wait=%d ms, effective≈%.2f ms\n",
-                desiredSOA_ms, cycle_ms, wait_ms, effectiveSOA_ms);
-            //targetHz = 40;
-        }
-
-        //-Lb (c ->b) 
-        else if (command == 'b')
-        {
+            //-Lb (c ->b)
+            else if (command == 'b')
+            {
                 updateDelayFromTargetHz();                  // targetHz 반영 (예: 40Hz)
                 const float GAIN = 5.0f;
                 const float cycle_ms = 1000.0f / targetHz;  // 40Hz → 25ms
@@ -1222,76 +1209,75 @@ void loop()
                 float effectiveSOA_ms = (tB - tA) / 1000.0f;
                 Serial.printf("[SOA] desired=%d ms, cycle=%.2f ms, wait=%d ms, effective≈%.2f ms\n",
                     desiredSOA_ms, cycle_ms, wait_ms, effectiveSOA_ms);
-        }
+            }
 
-        // + Ra (b-d-a-c)
-        else if (command == 'D')
-        {
-            // 어딘가 위쪽에: targetHz 반영 후 한 사이클(ms)
-            updateDelayFromTargetHz();
-            const float GAIN = 5.0f;
-            const float cycle_ms = 1000.0f / targetHz;           // 40Hz → 25ms
-            const int   desiredSOA_ms = soaControl;                   // 40 / 50 / 150 ...
-            const int   wait_ms = max(0, (int)lround(desiredSOA_ms - cycle_ms));
+            // + Ra (b-d-a-c)
+            else if (command == 'D')
+            {
+                // 어딘가 위쪽에: targetHz 반영 후 한 사이클(ms)
+                updateDelayFromTargetHz();
+                const float GAIN = 5.0f;
+                const float cycle_ms = 1000.0f / targetHz;           // 40Hz → 25ms
+                const int   desiredSOA_ms = soaControl;                   // 40 / 50 / 150 ...
+                const int   wait_ms = max(0, (int)lround(desiredSOA_ms - cycle_ms));
 
-            // (선택) 실제 onset 로깅
-            auto mark = []() { return micros(); };
+                // (선택) 실제 onset 로깅
+                auto mark = []() { return micros(); };
 
-            uint32_t t0 = mark();
-            playArrayWithGainCentered(waveformB, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
-            delay(wait_ms);
+                uint32_t t0 = mark();
+                playArrayWithGainCentered(waveformB, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+                delay(wait_ms);
 
-            uint32_t t1 = mark();
-            playArrayWithGainCentered(waveformB, waveformSize, GAIN, DAC_PIN_A21, delayPerSampleUs_rt);
-            delay(wait_ms);
+                uint32_t t1 = mark();
+                playArrayWithGainCentered(waveformB, waveformSize, GAIN, DAC_PIN_A21, delayPerSampleUs_rt);
+                delay(wait_ms);
 
-            uint32_t t2 = mark();
-            playArrayWithGainCentered(waveformB_PR, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
-            delay(wait_ms);
+                uint32_t t2 = mark();
+                playArrayWithGainCentered(waveformB_PR, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+                delay(wait_ms);
 
-            uint32_t t3 = mark();
-            playArrayWithGainCentered(waveformB_PR, waveformSize, GAIN, DAC_PIN_A21, delayPerSampleUs_rt);
+                uint32_t t3 = mark();
+                playArrayWithGainCentered(waveformB_PR, waveformSize, GAIN, DAC_PIN_A21, delayPerSampleUs_rt);
 
-            // (선택) 유효 SOA 확인
-            Serial.printf("[SOA] eff01≈%.2f ms, eff12≈%.2f ms, eff23≈%.2f ms\n",
-                (t1 - t0) / 1000.0, (t2 - t1) / 1000.0, (t3 - t2) / 1000.0);
+                // (선택) 유효 SOA 확인
+                Serial.printf("[SOA] eff01≈%.2f ms, eff12≈%.2f ms, eff23≈%.2f ms\n",
+                    (t1 - t0) / 1000.0, (t2 - t1) / 1000.0, (t3 - t2) / 1000.0);
 
-        }
-        // - Ra (
-        else if (command == 'd')
-        {
-            // 어딘가 위쪽에: targetHz 반영 후 한 사이클(ms)
-            updateDelayFromTargetHz();
-            const float GAIN = 5.0f;
-            const float cycle_ms = 1000.0f / targetHz;           // 40Hz → 25ms
-            const int   desiredSOA_ms = soaControl;                   // 40 / 50 / 150 ...
-            const int   wait_ms = max(0, (int)lround(desiredSOA_ms - cycle_ms));
+            }
+            // - Ra (
+            else if (command == 'd')
+            {
+                // 어딘가 위쪽에: targetHz 반영 후 한 사이클(ms)
+                updateDelayFromTargetHz();
+                const float GAIN = 5.0f;
+                const float cycle_ms = 1000.0f / targetHz;           // 40Hz → 25ms
+                const int   desiredSOA_ms = soaControl;                   // 40 / 50 / 150 ...
+                const int   wait_ms = max(0, (int)lround(desiredSOA_ms - cycle_ms));
 
-            // (선택) 실제 onset 로깅
-            auto mark = []() { return micros(); };
+                // (선택) 실제 onset 로깅
+                auto mark = []() { return micros(); };
 
-            uint32_t t0 = mark();
-            playArrayWithGainCentered(waveformB_PR, waveformSize, GAIN, DAC_PIN_A21, delayPerSampleUs_rt);
-            delay(wait_ms);
+                uint32_t t0 = mark();
+                playArrayWithGainCentered(waveformB_PR, waveformSize, GAIN, DAC_PIN_A21, delayPerSampleUs_rt);
+                delay(wait_ms);
 
-            uint32_t t1 = mark();
-            playArrayWithGainCentered(waveformB_PR, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
-            delay(wait_ms);
+                uint32_t t1 = mark();
+                playArrayWithGainCentered(waveformB_PR, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+                delay(wait_ms);
 
-            uint32_t t2 = mark();
-            playArrayWithGainCentered(waveformB, waveformSize, GAIN, DAC_PIN_A21, delayPerSampleUs_rt);
-            delay(wait_ms);
+                uint32_t t2 = mark();
+                playArrayWithGainCentered(waveformB, waveformSize, GAIN, DAC_PIN_A21, delayPerSampleUs_rt);
+                delay(wait_ms);
 
-            uint32_t t3 = mark();
-            playArrayWithGainCentered(waveformB, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
+                uint32_t t3 = mark();
+                playArrayWithGainCentered(waveformB, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
 
-            // (선택) 유효 SOA 확인
-            Serial.printf("[SOA] eff01≈%.2f ms, eff12≈%.2f ms, eff23≈%.2f ms\n",
-                (t1 - t0) / 1000.0, (t2 - t1) / 1000.0, (t3 - t2) / 1000.0);
+                // (선택) 유효 SOA 확인
+                Serial.printf("[SOA] eff01≈%.2f ms, eff12≈%.2f ms, eff23≈%.2f ms\n",
+                    (t1 - t0) / 1000.0, (t2 - t1) / 1000.0, (t3 - t2) / 1000.0);
+            }
+
         }
 
     }
-
-    
 }
-

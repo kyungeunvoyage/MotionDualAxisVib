@@ -438,9 +438,15 @@
             </div>
 
             <div class="controls" id="responseControls">
-                <button id="btnRepulsive" class="btn choice rep" type="button" disabled>Repulsive (J)</button>
-                <button id="btnAttractive" class="btn choice att" type="button" disabled>Attractive (K)</button>
+                <!--Q를 누르면-->
+                <button id="btnRepulsive" class="btn choice rep" type="button" disabled>Repulsive</button>
+                <!--J를 누르면-->
+                <button id="btnAttractive" class="btn choice att" type="button" disabled>Attractive</button>
             </div>
+            <div class="controls" id="runControls">
+                <button id="startBtn" class="btn start">다음</button>
+            </div>
+
         </section>
     </main>
 
@@ -807,6 +813,7 @@
 
             // LR/RL용 방향 화살표(실제 이동 축은 그대로 수평)
             function setArrows(dir) { // dir: 'LR' or 'RL'
+                lastUIDir = (dir === 'LR') ? 'LR' : 'RL';
                 if (dirPreset === 'UD') {
                     // 시각 보조만 변경 (애니메이션은 그대로 수평)
                     arrowLine.textContent = dir === 'LR'
@@ -894,7 +901,9 @@
                 phaseText.textContent = '좌→우 이동 중…';
                 const codeLR = ensureNumber($('#codeLR').value, 0);
                 const sideLR = ensureNumber($('#sideLR').value, 0);
-                await sendByte(codeLR); await sendByte(sideLR);
+                //await sendByte(codeLR); await sendByte(sideLR);
+                await sendText(String(codeLR) + '\n');   // '0\n' 또는 '1\n'
+                await sendText(String(sideLR) + '\n');
                 logEvent('LR_start', { code: codeLR, side_byte: sideLR });
 
                 bar.style.transition = 'left var(--move-duration) linear';
@@ -1081,15 +1090,21 @@
             function toCSV(rows)
             {
               if (!rows.length) return '';
-              const cols = [
-                'timestamp','participant_id','kind','trial',
-                'sensation','code','side_byte','demo_mode','rt_ms',
-                'soa_ms','target_hz','mode','dir'
-              ];
+                const cols = [
+                    'timestamp', 'participant_id', 'kind', 'trial',
+                    'axis_preset', 'ui_dir',
+                    'sensation',
+                    'code', 'side_byte', 'demo_mode', 'rt_ms',
+                    'soa_ms', 'target_hz', 'mode'
+                ];
               const esc = v => { if (v == null) return ''; const s = String(v); return /[",\n]/.test(s) ? '"' + s.replaceAll('"','""') + '"' : s; };
               const header = cols.join(',');
               const body = rows.map(r => cols.map(c => esc(r[c])).join(',')).join('\n');
               return header + '\n' + body;
+            }
+
+            function axisPresetCSV() {
+                return dirPreset; // 'LR' | 'UD' | 'FB' 그대로 저장 (또는 '좌우/상하/전후'로 바꾸고 싶으면 매핑)
             }
 
 

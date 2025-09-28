@@ -1,16 +1,5 @@
-﻿/***** ================== MPUsetting.ino ================== *****/
-#include <Arduino.h>
-#include <Wire.h>
-#include "MPUsetting.h"
-
-/*  메인 탭에 정의된 함수/변수 사용 선언  */
-extern int toDac_12bit_centered(int16_t v);  // 메인 탭의 DAC 매핑 함수
-// 재생 함수가 메인 탭에만 있다면 필요 시 이렇게 extern 선언해서 호출 가능:
-// extern void playWaveForSeconds2(const int16_t* w, int N, float gain, int dacPin, float hz, float sec);
-
-/* ================== MPU-9250 (MPU-6500) 레지스터 ================== */
-#define MPU_ADDR             0x68
-#define REG_PWR_MGMT_1       0x6B
+﻿#define MPU_ADDR 0x68
+#define REG_PWR_MGMT_1 0x6B
 #define REG_SMPLRT_DIV       0x19
 #define REG_CONFIG           0x1A
 #define REG_GYRO_CONFIG      0x1B
@@ -20,17 +9,13 @@ extern int toDac_12bit_centered(int16_t v);  // 메인 탭의 DAC 매핑 함수
 #define REG_INT_ENABLE       0x38
 #define REG_ACCEL_XOUT_H     0x3B
 
-static uint8_t g_mpu_addr = MPU_ADDR;
-static float   g_accel_lsb_per_g = 4096.0f;
-static float   g_accel_g_per_lsb = 1.0f / 4096.0f;
-
-/* ================== I2C helpers ================== */
-static inline bool i2cWriteByte(uint8_t addr, uint8_t reg, uint8_t data) {
+static inline bool i2cWriteByte(uint8_t addr, uint8_t reg, uint8_t data){
     Wire.beginTransmission(addr);
     Wire.write(reg);
     Wire.write(data);
     return (Wire.endTransmission() == 0);
 }
+
 static inline bool i2cReadBytes(uint8_t addr, uint8_t reg, uint8_t* buf, size_t len) {
     Wire.beginTransmission(addr);
     Wire.write(reg);
@@ -39,6 +24,11 @@ static inline bool i2cReadBytes(uint8_t addr, uint8_t reg, uint8_t* buf, size_t 
     for (size_t i = 0; i < len && Wire.available(); ++i) buf[i] = Wire.read();
     return (Wire.available() == 0);
 }
+
+extern int toDac_12bit_centered(int16_t v);
+static uint8_t g_mpu_addr = MPU_ADDR;
+static float g_accel_lsb_per_g = 4096.0f;
+static float g_accel_g_per_lsb = 1.0f / 4096.0f;
 
 /* ================== MPU-9250 가속도 시작 ==================
  * accel_fs: ACCEL_FS_* (±2/4/8/16 g)
@@ -127,7 +117,7 @@ float mpu9250_readAccelAxisG(char axis) {
 }
 
 /* ================== 주파수-보정 LUT & 보간 ================== */
-struct FG { float f; float g; };
+//struct FG { float f; float g; }; (헤더에서 한번만)
 FG kGainLUT[] = {
   {10.0f, 2.315490f},
   {15.0f, 2.300659f},
@@ -577,6 +567,4 @@ void runFixedFreqGainSweep_MPU9250(
         Serial.print(measRMS_g, 6); Serial.print(',');
         Serial.println(clipsPct, 3);
     }
-
-    //erial.println(F("# (Tip) 위 CSV를 복사해 엑셀/파이썬에서 baseGain-세기 곡선 그려보면 추세 확인 쉬움"));
 }
