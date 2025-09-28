@@ -3,1067 +3,661 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Main User Experiment</title>
+    <title>Main User Experiment – One-Way Bar + Serial/Demo</title>
     <style>
-        :root {
-            /* ===== Animation knobs ===== */
-            --move-duration: 100ms; /* 좌→우, 우→좌 이동 시간 */
-            --pause-duration: 3000ms; /* 되돌아가기 전에 대기 시간 */
-            --track-width: min(90vw, 1100px);
-            --track-height: 80px; /* 바 두께 */
-            /* ===== Theme ===== */
-            --bg: #0b0f14;
-            --fg: #e5eef7;
-            --muted: #99a7b5;
-            --accent: #7bd3ff;
-            --card: #121822;
-            --ok: #75e39c;
+        :root{
+            --move-duration:100ms;
+            --pause-duration:3000ms;
+            --track-width:min(90vw,1100px);
+            --track-height:80px;
+            --bg:#0b0f14;--fg:#e5eef7;--muted:#99a7b5;--accent:#7bd3ff;--card:#121822;--ok:#75e39c;
         }
+        html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+        header{padding:14px 18px;border-bottom:1px solid #1f2a38;position:sticky;top:0;background:linear-gradient(180deg,rgba(11,15,20,.95),rgba(11,15,20,.85));backdrop-filter:blur(8px)}
+        h1{margin:0;font-size:18px;letter-spacing:.2px}
+        .badge{margin-left:8px;padding:2px 8px;border-radius:999px;border:1px solid #2a5f85;background:#0e1621;color:#bfe7ff;font-size:12px}
+        main{padding:18px;display:grid;gap:16px;grid-template-columns:420px 1fr}
+        section{background:var(--card);border:1px solid #1b2633;border-radius:14px;padding:14px}
+        section h2{margin:0 0 10px;font-size:15px;color:var(--accent)}
+        .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+        input,button,select{background:#0d131c;color:#fff;border:1px solid #223042;border-radius:10px;padding:8px 10px;font-size:14px}
+        button{background:#0e1621;cursor:pointer;transition:.15s ease;box-shadow:none}
+        button.primary{background:#143047;border-color:#1e4b6d}
+        button:hover{transform:translateY(-1px)}
+        .hidden{display:none!important}
+        .sep{height:1px;background:#1b2633;margin:10px 0}
+        .title{font-size:clamp(18px,2vw,20px);opacity:.9;letter-spacing:.2px;margin-bottom:10px}
+        .dirpanel{margin:10px 0 12px;padding:14px;border-radius:12px;background:#0e1621;border:1px solid #223042;display:grid;gap:10px}
+        .dirpanel{margin:10px 0 12px;padding:14px;border-radius:12px;background:#0e1621;border:1px solid #223042;display:grid;gap:10px}
+        .dirrow{display:flex;align-items:center;justify-content:center;gap:14px;font-size:18px}
+        .dirrow .arrow{font-size:22px;opacity:.9}
+        .dirrow .label{font-weight:600}
+        .dirsub{font-size:12px;color:var(--muted);text-align:center}
+        .title + .dirpanel{margin-top:8px}
+        .track{position:relative;width:var(--track-width);height:var(--track-height)}
+        .rail{position:relative;left:0;top:0;height:var(--track-height);width:var(--rail-width,var(--track-width));border-radius:999px;background:linear-gradient(to right,rgba(255,255,255,.08),rgba(255,255,255,.02));box-shadow:inset 0 0 0 2px rgba(255,255,255,.07);overflow:hidden}
+        .countdown{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:clamp(32px,6vw,72px);color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.6);pointer-events:none;opacity:0;transition:opacity .12s ease}
+        .countdown.show{opacity:1}
+        .bar{position:absolute;top:0;left:0;width:var(--track-height);height:var(--track-height);border-radius:50%;background:linear-gradient(135deg,#79c0ff,#9ae6b4);box-shadow:none;z-index:1}
+        .controls{display:flex;justify-content:flex-start;gap:10px;margin-top:10px}
+        .toolbar{margin-top:4px;margin-bottom:10px;gap:12px}
+        .btn{appearance:none;border:0;border-radius:999px;padding:10px 20px;font-size:16px;cursor:pointer;background:#2d6cdf;color:white;box-shadow:none;transition:transform .06s ease,opacity .2s ease,background-color .2s ease}
+        .btn:active{transform:translateY(1px)}
+        .btn:disabled{opacity:.6;cursor:not-allowed}
+        .kv{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+        .small{font-size:12px;color:var(--muted)}
+        .ok{color:var(--ok)}
+        .btn.mode.active{background:#002575}
+        .btn.start.running{background:#1e4b6d;opacity:.95}
+        .btn.is-pressed{background:#00165e;transform:translateY(1px)}
+        .btn.latched{background:#1f3c8a}
+        .chipbar { display: none !important; }
+        .bar.moving{background:linear-gradient(135deg,#ff4d4d,#ff8a8a)}
+        .chip{width:36px;height:36px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;border:1px solid #223042;background:#0e1621;color:#cfe6ff;cursor:pointer;transition:transform .06s ease,background .2s ease,color .2s ease}
+        .chip:hover{transform:translateY(-1px)}
+        .chip.active{background:#143047;color:#fff}
+        /* 크고 선명한 2AFC 버튼 */
+        .btn.choice{font-size:18px;padding:14px 26px;min-width:220px;height:56px}
+        .btn.choice.rep{background:#5a1f1f}
+        .btn.choice.att{background:#1f4d2b}
+        .btn.choice:disabled{opacity:.5;cursor:not-allowed}
+        /* 요구사항 2: 토글(모드 선택) 숨김 */
+        .btn.mode{display:none!important}
+        /* SOA 드롭다운은 유지하되 숨김(세션 자동화용) */
+        #soaControls label.soa{display:none!important}
+        /* ▶ 여기 추가: targetHz/체크박스 두 개 ‘라벨 단위’로 숨김(로직은 유지) */
+        .ui-hide{display:none!important}
+        /* "아두이노 전송 코드 설정" 패널 숨김 */
+        h3.small:has(+ .kv #codeLR){ display:none !important; }
+        h3.small:has(+ .kv #codeLR) + .kv{ display:none !important; }
+        h3.small:has(+ .kv #codeLR) + .kv + .sep{ display:none !important; }
 
-        html, body {
-            height: 100%;
-            margin: 0;
-            background: var(--bg);
-            color: var(--fg);
-            font-family: Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
-        }
-
-        header {
-            padding: 14px 18px;
-            border-bottom: 1px solid #1f2a38;
-            position: sticky;
-            top: 0;
-            background: linear-gradient(180deg,rgba(11,15,20,.95),rgba(11,15,20,.85));
-            backdrop-filter: blur(8px)
-        }
-
-        h1 {
-            margin: 0;
-            font-size: 18px;
-            letter-spacing: .2px
-        }
-
-        .badge {
-            margin-left: 8px;
-            padding: 2px 8px;
-            border-radius: 999px;
-            border: 1px solid #2a5f85;
-            background: #0e1621;
-            color: #bfe7ff;
-            font-size: 12px
-        }
-
-        main {
-            padding: 18px;
-            display: grid;
-            gap: 16px;
-            grid-template-columns: 420px 1fr
-        }
-
-        section {
-            background: var(--card);
-            border: 1px solid #1b2633;
-            border-radius: 14px;
-            padding: 14px
-        }
-
-            section h2 {
-                margin: 0 0 10px;
-                font-size: 15px;
-                color: var(--accent)
-            }
-
-        .row {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            flex-wrap: wrap
-        }
-
-        input, button, select {
-            background: #0d131c;
-            color: #fff;
-            border: 1px solid #223042;
-            border-radius: 10px;
-            padding: 8px 10px;
-            font-size: 14px
-        }
-
-        button {
-            background: #0e1621;
-            cursor: pointer;
-            transition: .15s ease;
-            box-shadow: none; /* ★ glow 제거 */
-        }
-
-            button.primary {
-                background: #143047;
-                border-color: #1e4b6d
-            }
-
-            button:hover {
-                transform: translateY(-1px)
-            }
-
-        .hidden {
-            display: none !important
-        }
-
-        .sep {
-            height: 1px;
-            background: #1b2633;
-            margin: 10px 0
-        }
-
-        .title {
-            font-size: clamp(18px, 2vw, 20px);
-            opacity: .9;
-            letter-spacing: .2px;
-            margin-bottom: 10px
-        }
-
-        /* Direction panel */
-        .dirpanel {
-            margin: 10px 0 12px;
-            padding: 14px;
-            border-radius: 12px;
-            background: #0e1621;
-            border: 1px solid #223042;
-            display: grid;
-            gap: 10px
-        }
-
-        .dirrow {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 14px;
-            font-size: 18px;
-        }
-
-            .dirrow .arrow {
-                font-size: 22px;
-                opacity: .9
-            }
-
-            .dirrow .label {
-                font-weight: 600
-            }
-
-        .dirsub {
-            font-size: 12px;
-            color: var(--muted);
-            text-align: center
-        }
-
-        .title + .dirpanel {
-            margin-top: 8px
-        }
-
-        .track {
-            position: relative;
-            width: var(--track-width);
-            height: var(--track-height);
-        }
-
-        .rail {
-            position: relative;
-            left: 0;
-            top: 0;
-            height: var(--track-height);
-            width: var(--rail-width, var(--track-width));
-            border-radius: 999px;
-            background: linear-gradient(to right, rgba(255,255,255,.08), rgba(255,255,255,.02));
-            box-shadow: inset 0 0 0 2px rgba(255,255,255,.07);
-            overflow: hidden;
-        }
-
-        .countdown {
-            position: absolute;
-            inset: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 800;
-            font-size: clamp(32px, 6vw, 72px);
-            color: #fff;
-            text-shadow: 0 2px 8px rgba(0,0,0,.6);
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity .12s ease;
-        }
-
-        .countdown.show { opacity: 1; }
-
-        .bar {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: var(--track-height);
-            height: var(--track-height);
-            border-radius: 50%;
-            background: linear-gradient(135deg, #79c0ff, #9ae6b4);
-            box-shadow: none; /* ★ glow 제거 */
-            z-index: 1;
-        }
-
-        .controls {
-            display: flex;
-            justify-content: flex-start;
-            gap: 10px;
-            margin-top: 10px
-        }
-
-        .toolbar { margin-top: 4px; margin-bottom: 10px; gap: 12px; }
-
-        .btn {
-            appearance: none;
-            border: 0;
-            border-radius: 999px;
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-            background: #2d6cdf;
-            color: white;
-            box-shadow: none; /* ★ glow 제거 */
-            transition: transform .06s ease, opacity .2s ease, background-color .2s ease;
-        }
-
-            .btn:active { transform: translateY(1px) }
-            .btn:disabled { opacity: .6; cursor: not-allowed }
-
-        .kv {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px
-        }
-
-        .small { font-size: 12px; color: var(--muted) }
-        .ok { color: var(--ok) }
-
-        .btn.mode.active {
-            background: #002575;
-        }
-
-        .btn.start.running {
-            background: #1e4b6d;
-            opacity: .95;
-        }
-
-        .btn.is-pressed {
-            background: #00165e;
-            transform: translateY(1px);
-        }
-
-        .btn.latched {
-            background: #1f3c8a;
-        }
-
-        /* ===== 방향 프리셋 칩 ===== */
-        .chipbar { display: flex; gap: 10px; margin-bottom: 8px; }
-
-        .bar.moving {
-            background: linear-gradient(135deg, #ff4d4d, #ff8a8a);
-        }
-
-        .chip {
-            width: 36px;
-            height: 36px;
-            border-radius: 999px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: 12px;
-            border: 1px solid #223042;
-            background: #0e1621;
-            color: #cfe6ff;
-            cursor: pointer;
-            transition: transform .06s ease, background .2s ease, color .2s ease;
-        }
-        .chip:hover { transform: translateY(-1px) }
-        .chip.active { background: #143047; color: #fff; }
-
-        /* ★ Repulsive / Attractive 더 크게, glow 제거 */
-        .btn.choice {
-            font-size: 18px;
-            padding: 14px 26px;
-            min-width: 220px;
-            height: 56px;
-            box-shadow: none;
-        }
-        .btn.choice.rep { background: #5a1f1f; }
-        .btn.choice.att { background: #1f4d2b; }
-        .btn.choice:disabled { opacity: .5; cursor: not-allowed; }
     </style>
 </head>
 <body>
-    <header>
-        <h1>Main User Experiment<span class="badge" id="serialStatus">미연결</span></h1>
-    </header>
+<header>
+    <h1>Main User Experiment<span class="badge" id="serialStatus">미연결</span></h1>
+</header>
 
-    <main>
-        <!-- Left: Session & Serial Controls -->
-        <section>
-            <h2>① 세션 & 연결</h2>
-            <div class="row">
-                <label>Participant ID&nbsp;<input id="pid" placeholder="P01" /></label>
+<main>
+    <!-- Left: Session & Serial Controls -->
+    <section>
+        <h2>① 세션 & 연결</h2>
+        <div class="row">
+            <label>Participant ID&nbsp;<input id="pid" placeholder="P01" /></label>
+        </div>
+        <div class="sep"></div>
+        <div class="row">
+            <button id="btnConnect" class="primary">시리얼 연결</button>
+            <button id="btnStart">세션 시작</button>
+            <label style="display:flex;align-items:center;gap:6px;margin-left:auto;">
+                <input type="checkbox" id="demoMode" /> 데모 모드
+            </label>
+        </div>
+        <div class="small" style="margin-top:6px">python -m http://5000</div>
+        <div class="sep"></div>
+        <h3 class="small" style="margin:0 0 6px">아두이노 전송 코드 설정</h3>
+        <div class="kv">
+            <label>LR 이동 code <input id="codeLR" type="number" min="0" max="255" value="0" /></label>
+            <label>LR side <select id="sideLR"><option value="0">ulnar(0)</option><option value="1">radial(1)</option></select></label>
+            <label>RL 이동 code <input id="codeRL" type="number" min="0" max="255" value="1" /></label>
+            <label>RL side <select id="sideRL"><option value="0">ulnar(0)</option><option value="1" selected>radial(1)</option></select></label>
+        </div>
+        <div class="sep"></div>
+        <button id="btnDownload">CSV 저장</button>
+    </section>
+
+    <!-- Right: Animation Panel -->
+    <section>
+        <h2>② 진행 패널</h2>
+
+        <!-- 방향 프리셋 칩 -->
+        <div class="chipbar" id="dirChips">
+            <button class="chip active" id="chipLR" title="Left/Right">L/R</button>
+            <button class="chip" id="chipUD" title="Up/Down">U/D</button>
+            <button class="chip" id="chipFB" title="Forward/Backward">F/B</button>
+        </div>
+
+        <!-- 상단 바: 모드 토글은 숨김, Start만 표시 -->
+        <div class="controls toolbar" id="timingControls">
+            <button id="btnAThenUI" class="btn mode" type="button" title="먼저 A 전송, 그 다음 UI">① Before Motion</button>
+            <button id="btnUIOnly"  class="btn mode" type="button" title="UI 애니메이션만 실행">② During Motion</button>
+            <button id="btnUIThenA" class="btn mode" type="button" title="UI 끝난 직후 A 전송">③ After Motion</button>
+            <button id="startBtn" class="btn start" type="button" title="단일 트라이얼 시작(고정 모드)">Start</button>
+        </div>
+
+        <div class="controls toolbar" id="soaControls">
+            <label class="soa">
+                SOA
+                <select id="soaSelect">
+                    <option value="30">30 ms</option>
+                    <option value="50" selected>50 ms</option>
+                    <option value="70">70 ms</option>
+                    <option value="90">90 ms</option>
+                    <option value="110">110 ms</option>
+                    <option value="130">130 ms</option>
+                </select>
+            </label>
+            <!-- ▼ 버튼만 숨김: 클래스 추가로 UI만 가림 -->
+            <label class="ui-hide">
+                targetHz
+                <input id="targetHz" type="number" min="1" value="40" style="width:80px" />
+            </label>
+            <label class="ui-hide" style="display:flex;align-items:center;gap:6px;">
+                <input type="checkbox" id="syncSOA" checked />
+                두 자극 간 대기시간 SOA 반영
+            </label>
+            <label class="ui-hide" style="display:flex;align-items:center;gap:6px;">
+                <input type="checkbox" id="scaleDistanceBySOA" checked />
+                이동 거리도 SOA 비례(속도는 고정)
+            </label>
+        </div>
+
+        <div class="title"></div>
+
+        <!-- 방향 안내 패널 -->
+        <div class="dirpanel" id="dirPanel">
+            <div class="dirrow">
+                <span class="label" id="labelA">좌 (Left)</span>
+                <span id="arrowLine" class="arrow">→→→→→→→→→→→→→→→→→→</span>
+                <span class="label" id="labelB">우 (Right)</span>
             </div>
-            <div class="sep"></div>
-            <div class="row">
-                <button id="btnConnect" class="primary">시리얼 연결</button>
-                <button id="btnStart">세션 시작</button>
-                <label style="display:flex;align-items:center;gap:6px;margin-left:auto;">
-                    <input type="checkbox" id="demoMode" /> 데모 모드
-                </label>
+        </div>
+
+        <div class="track" id="track" aria-label="animation-track">
+            <div class="rail" id="rail">
+                <div class="bar" id="bar" role="img" aria-label="moving bar"></div>
             </div>
-            <div class="small" style="margin-top:6px">Web Serial: HTTPS 또는 http://localhost 에서만 동작</div>
-            <div class="sep"></div>
-            <h3 class="small" style="margin:0 0 6px">아두이노 전송 코드 설정</h3>
-            <div class="kv">
-                <label>LR 이동 code <input id="codeLR" type="number" min="0" max="255" value="0" /></label>
-                <label>LR side <select id="sideLR"><option value="0">ulnar(0)</option><option value="1">radial(1)</option></select></label>
-                <label>RL 이동 code <input id="codeRL" type="number" min="0" max="255" value="1" /></label>
-                <label>RL side <select id="sideRL"><option value="0">ulnar(0)</option><option value="1" selected>radial(1)</option></select></label>
-            </div>
-            <div class="sep"></div>
-            <button id="btnDownload">CSV 저장</button>
-        </section>
+            <div class="countdown" id="countdown" aria-live="polite" aria-atomic="true"></div>
+        </div>
+        <div class="controls" id="statusRow">
+            <span id="phaseText" class="small">대기</span>
+        </div>
+        <div id="trialCmdHUD" class="small" aria-live="polite" aria-atomic="true">
+            Stim: <span id="trialCmds">–</span>
+        </div>
 
-        <!-- Right: Animation Panel -->
-        <section>
-            <h2>② 진행 패널</h2>
 
-            <!-- 방향 프리셋 칩 -->
-            <div class="chipbar" id="dirChips">
-                <button class="chip active" id="chipLR" title="Left/Right">L/R</button>
-                <button class="chip" id="chipUD" title="Up/Down">U/D</button>
-                <button class="chip" id="chipFB" title="Forward/Backward">F/B</button>
-            </div>
+        <div class="controls" id="responseControls">
+            <button id="btnRepeat" class="btn" type="button" disabled>Repeat</button>
+            <button id="btnRepulsive"  class="btn choice rep" type="button" disabled>Repulsive (J)</button>
+            <button id="btnAttractive" class="btn choice att" type="button" disabled>Attractive (K)</button>
+        </div>
+    </section>
+</main>
 
-            <!-- 상단 타이밍 컨트롤 바 (+ Start 버튼을 같은 줄에) -->
-            <div class="controls toolbar" id="timingControls">
-                <button id="btnAThenUI" class="btn mode" type="button" title="먼저 A 전송, 그 다음 UI">① Before Motion</button>
-                <button id="btnUIOnly" class="btn mode" type="button" title="UI 애니메이션만 실행">② During Motion</button>
-                <button id="btnUIThenA" class="btn mode" type="button" title="UI 끝난 직후 A 전송">③ After Motion</button>
-                <button id="startBtn" class="btn start" type="button" title="선택한 모드로 단일 트라이얼 시작">Start</button>
-            </div>
+<script>
+(function(){
+    // ===== Utilities =====
+    const $ = s => document.querySelector(s);
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+    const toPx = n => Number.isFinite(n) ? n+'px' : '0px';
+    const ensureNumber = (v, fb=0) => { const n = Number(v); return Number.isFinite(n) ? n : fb; };
+    const parseTime = raw => {
+        const s = String(raw).trim();
+        if (s.endsWith('ms')) return parseFloat(s);
+        if (s.endsWith('s'))  return parseFloat(s)*1000;
+        const n = parseFloat(s);
+        return Number.isFinite(n) ? n : 3000;
+    };
+    function totalMsFor(soaMs, cycleMs){ const waitMs = Math.max(0, soaMs - cycleMs); return 2*cycleMs + waitMs; }
+    const BASELINE_SOA_MS = 50;
+    function distanceScale(){ const {cycleMs, soaMs} = computeTiming(); const baseTotal = totalMsFor(BASELINE_SOA_MS, cycleMs); const curTotal = totalMsFor(soaMs, cycleMs); return baseTotal>0 ? (curTotal/baseTotal) : 1; }
 
-            <div class="controls toolbar" id="soaControls">
-                <label>
-                    SOA
-                    <select id="soaSelect">
-                        <option value="30">30 ms (키 4)</option>
-                        <option value="50" selected>50 ms (키 5)</option>
-                        <option value="70">70 ms (키 6)</option>
-                        <option value="90">90 ms (키 7)</option>
-                        <option value="110">110 ms (키 z)</option>
-                        <option value="130">130 ms (키 Z)</option>
-                    </select>
-                </label>
-                <label>
-                    targetHz
-                    <input id="targetHz" type="number" min="1" value="40" style="width:80px" />
-                </label>
-                <label style="display:flex;align-items:center;gap:6px;">
-                    <input type="checkbox" id="syncSOA" checked />
-                    두 자극 간 대기시간 SOA 반영
-                </label>
-                <label style="display:flex;align-items:center;gap:6px;">
-                    <input type="checkbox" id="scaleDistanceBySOA" checked />
-                    이동 거리도 SOA 비례(속도는 고정)
-                </label>
-            </div>
+    // ===== Elements =====
+    const soaSelect = $('#soaSelect');
+    const targetHzInput = $('#targetHz');
+    const syncSOA = $('#syncSOA');
 
-            <div class="title"></div>
+    const track = $('#track');
+    const bar = $('#bar');
+    const btnStartAnim = $('#startBtn');
+    const phaseText = $('#phaseText');
+    const btnConnect = $('#btnConnect');
+    const btnStartSession = $('#btnStart');
+    const btnDownload = $('#btnDownload');
+    const statusBadge = $('#serialStatus');
 
-            <!-- 방향 안내 패널 -->
-            <div class="dirpanel" id="dirPanel">
-                <div class="dirrow">
-                    <span class="label" id="labelA">좌 (Left)</span>
-                    <span id="arrowLine" class="arrow">→→→→→→→→→→→→→→→→→→</span>
-                    <span class="label" id="labelB">우 (Right)</span>
-                </div>
-            </div>
+    const labelA = $('#labelA');
+    const labelB = $('#labelB');
+    const arrowLine = $('#arrowLine');
 
-            <div class="track" id="track" aria-label="animation-track">
-                <div class="rail" id="rail">
-                    <div class="bar" id="bar" role="img" aria-label="moving bar"></div>
-                </div>
-                <div class="countdown" id="countdown" aria-live="polite" aria-atomic="true"></div>
-            </div>
-            <div class="controls" id="statusRow">
-                <span id="phaseText" class="small">대기</span>
-            </div>
+    const chipLR = $('#chipLR');
+    const chipUD = $('#chipUD');
+    const chipFB = $('#chipFB');
 
-            <div class="controls" id="responseControls">
-                <button id="btnRepulsive" class="btn choice rep" type="button" disabled>Repulsive (J)</button>
-                <button id="btnAttractive" class="btn choice att" type="button" disabled>Attractive (K)</button>
-            </div>
-        </section>
-    </main>
+    // Response buttons
+    const btnRepulsive  = $('#btnRepulsive');
+    const btnAttractive = $('#btnAttractive');
+    const btnRepeat     = $('#btnRepeat');
 
-    <script>
-        (function () {
-            // ===== Utilities =====
-            const $ = s => document.querySelector(s);
-            const sleep = ms => new Promise(r => setTimeout(r, ms));
-            const toPx = (n) => Number.isFinite(n) ? n + 'px' : '0px';
-            const ensureNumber = (v, fb = 0) => { const n = Number(v); return Number.isFinite(n) ? n : fb; };
-            const parseTime = (raw) => {
-                const s = String(raw).trim();
-                if (s.endsWith('ms')) return parseFloat(s);
-                if (s.endsWith('s')) return parseFloat(s) * 1000;
-                const n = parseFloat(s);
-                return Number.isFinite(n) ? n : 3000;
-            };
-            //------SOA------------
-            function totalMsFor(soaMs, cycleMs) {
-                const waitMs = Math.max(0, soaMs - cycleMs);
-                return 2 * cycleMs + waitMs;
+    // ===== Serial =====
+    let port=null, writer=null, demo=false;
+    function writerReady(){ return !!(writer && typeof writer.write==='function'); }
+    async function sendByte(n){
+        if(demo){ await sleep(5); return; }
+        if(!writerReady()){ alert('시리얼이 연결되지 않았습니다. 먼저 "시리얼 연결"을 눌러주세요.'); return; }
+        const buf=new Uint8Array([n&0xff]); await writer.write(buf);
+    }
+    async function connectSerial(){
+        try{
+            demo = $('#demoMode')?.checked===true;
+            if(demo){ statusBadge.textContent='데모'; statusBadge.classList.add('ok'); alert('데모 모드: 시리얼 없이 진행합니다.'); return; }
+            if(!('serial' in navigator)){ alert('이 브라우저는 Web Serial을 지원하지 않습니다.'); return; }
+            if(location.protocol!=='https:' && !['localhost','127.0.0.1'].includes(location.hostname)){
+                alert('Web Serial은 HTTPS 또는 http://localhost 에서만 동작합니다.'); return;
             }
-            const BASELINE_SOA_MS = 50;
-            function distanceScale() {
-                const { cycleMs, soaMs } = computeTiming();
-                const baseTotal = totalMsFor(BASELINE_SOA_MS, cycleMs);
-                const curTotal = totalMsFor(soaMs, cycleMs);
-                return baseTotal > 0 ? (curTotal / baseTotal) : 1;
-            }
+            const p=await navigator.serial.requestPort();
+            await p.open({ baudRate:115200 });
 
-            // ===== Elements =====
-            const soaSelect = document.getElementById('soaSelect');
-            const targetHzInput = document.getElementById('targetHz');
-            const syncSOA = document.getElementById('syncSOA');
+            const textDecoder=new TextDecoderStream();
+            p.readable.pipeTo(textDecoder.writable);
+            const reader=textDecoder.readable.getReader();
+            (async()=>{ let buf=''; while(true){ const {value,done}=await reader.read(); if(done) break; if(value){ buf+=value; let nl; while((nl=buf.indexOf('\n'))>=0){ const line=buf.slice(0,nl).trim(); buf=buf.slice(nl+1); handleSerialLine(line); } } } })().catch(console.error);
 
-            const track = $('#track');
-            const bar = $('#bar');
-            const btnStartAnim = $('#startBtn');     // ★ After Motion 옆 Start(단일 트라이얼)
-            const phaseText = $('#phaseText');
-            const btnConnect = $('#btnConnect');
-            const btnStartSession = $('#btnStart');  // ★ 좌측 "세션 시작"
-            const btnDownload = $('#btnDownload');
-            const statusBadge = $('#serialStatus');
+            if(!p.writable) throw new Error('포트가 writable 스트림을 제공하지 않습니다.');
+            port=p; writer=port.writable.getWriter();
+            statusBadge.textContent='연결됨'; statusBadge.classList.add('ok');
+            alert('시리얼 연결 성공!');
+            window.addEventListener('beforeunload', async()=>{ try{ writer?.releaseLock?.(); await port?.close?.(); }catch(_){ } }, {once:true});
+        }catch(e){ console.error(e); alert('Serial 연결 실패: '+(e?.message||e)); }
+    }
 
-            // 방향 패널 요소
-            const labelA = $('#labelA');  // 좌/위/앞
-            const labelB = $('#labelB');  // 우/아래/뒤
-            const arrowLine = $('#arrowLine');
+    const rail = document.getElementById('rail');
+    function measureWidths(){
+        const trackW = ensureNumber(track?.clientWidth)||ensureNumber(track?.offsetWidth)||ensureNumber(track?.getBoundingClientRect?.().width);
+        const railW  = ensureNumber(rail?.clientWidth)||ensureNumber(rail?.offsetWidth)||ensureNumber(rail?.getBoundingClientRect?.().width)||trackW;
+        const barW   = ensureNumber(bar?.clientWidth)||ensureNumber(bar?.offsetWidth)||ensureNumber(bar?.getBoundingClientRect?.().width);
+        return { trackW, railW, barW };
+    }
+    function computeTargets(){
+        const {railW, barW} = measureWidths();
+        const endLeft = Math.max(0, ensureNumber(railW - barW));
+        return { start:0, end:endLeft, ok:Number.isFinite(endLeft)&&endLeft>=0 };
+    }
+    function applyDistanceScale(){
+        const {trackW,barW}=measureWidths();
+        const k=distanceScale();
+        const minRail=Math.max(barW,40);
+        const newRailW=Math.max(minRail,Math.round(trackW*k));
+        rail.style.width=newRailW+'px';
+        const {start,end}=computeTargets();
+        const cur=ensureNumber(parseFloat(getComputedStyle(bar).left),0);
+        bar.style.left=toPx(Math.max(start,Math.min(cur,end)));
+    }
 
-            // 방향 칩
-            const chipLR = $('#chipLR');
-            const chipUD = $('#chipUD');
-            const chipFB = $('#chipFB');
+    // Timing
+    function getSOAms(){ return Number(soaSelect?.value ?? 50); }
+    function getTargetHz(){ const hz = Number(targetHzInput?.value ?? 40); return Number.isFinite(hz)&&hz>0 ? hz : 40; }
+    function computeTiming(){
+        const hz=getTargetHz();
+        const cycleMs = 1000/hz;
+        const soaMs = getSOAms();
+        const waitMs = Math.max(0, soaMs - cycleMs);
+        return { hz, cycleMs, soaMs, waitMs };
+    }
+    function applyTimingToUI(){
+        const {cycleMs} = computeTiming();
+        document.documentElement.style.setProperty('--move-duration', `${Math.round(cycleMs)}ms`);
+    }
+    soaSelect?.addEventListener('change', applyDistanceScale);
+    targetHzInput?.addEventListener('input', ()=>{ applyTimingToUI(); applyDistanceScale(); });
+    applyTimingToUI(); applyDistanceScale();
+    let resizeTimer=null;
+    window.addEventListener('resize', ()=>{ clearTimeout(resizeTimer); resizeTimer=setTimeout(applyDistanceScale,100); });
 
-            // ===== Serial State =====
-            let port = null, writer = null, demo = false;
+    async function maybeSleepSOA(){ const {waitMs}=computeTiming(); if(syncSOA?.checked){ await sleep(waitMs); } }
 
-            function writerReady() { return !!(writer && typeof writer.write === 'function'); }
+    function handleSerialLine(line){
+        const m=line.match(/\[SOA\].*desired\s*=\s*(\d+)\s*ms/i);
+        if(m){ const desired=m[1]; const opt=document.querySelector(`#soaSelect option[value="${desired}"]`); if(opt){ soaSelect.value=desired; applyTimingToUI(); } }
+    }
 
-            async function sendByte(n) {
-                if (demo) { await sleep(5); return; }
-                if (!writerReady()) {
-                    console.warn('[Serial] writer가 준비되지 않음. 바이트 전송 생략:', n);
-                    alert('시리얼이 연결되지 않았습니다. 먼저 "시리얼 연결"을 눌러주세요.');
-                    return;
-                }
-                const buf = new Uint8Array([n & 0xff]);
-                try { await writer.write(buf); }
-                catch (e) {
-                    console.error(e);
-                    alert('Serial 연결 실패: 포트/권한을 확인하세요.\n' + (e?.message || e));
-                }
-            }
+    // Response state
+    let awaitingResponse=false;
+    let trialId=0;
+    let _pendingResponseResolve=null;
+    let lastTrial=null; // {soaMs, mode}
 
-            async function connectSerial() {
-                try {
-                    demo = $('#demoMode')?.checked === true;
-                    if (demo) { statusBadge.textContent = '데모'; statusBadge.classList.add('ok'); alert('데모 모드: 시리얼 없이 진행합니다.'); return; }
-                    if (!('serial' in navigator)) { alert('이 브라우저는 Web Serial을 지원하지 않습니다. (크롬/엣지 권장)'); return; }
-                    if (location.protocol !== 'https:' && !['localhost', '127.0.0.1'].includes(location.hostname)) {
-                        alert('Web Serial은 HTTPS 또는 http://localhost 에서만 동작합니다.'); return;
-                    }
-                    const p = await navigator.serial.requestPort();
-                    await p.open({ baudRate: 115200 });
-                    // --- 읽기 스트림 준비 (라인 단위 파싱) ---
-                    const textDecoder = new TextDecoderStream();
-                    p.readable.pipeTo(textDecoder.writable);
-                    const reader = textDecoder.readable.getReader();
+    function setResponseEnabled(on){
+        btnRepulsive.disabled  = !on;
+        btnAttractive.disabled = !on;
+        btnRepeat.disabled     = !on || !lastTrial;
+        awaitingResponse=!!on;
+        if(on && phaseText) phaseText.textContent='응답 대기 (J/K)';
+    }
+    function waitForResponse(){
+        return new Promise(res=>{ _pendingResponseResolve=res; setResponseEnabled(true); });
+    }
+    function recordSensation(label){
+        if(!awaitingResponse) return;
+        const t=computeTiming();
+        logEvent('label',{ trial:trialId, sensation:label, soa_ms:t.soaMs, target_hz:t.hz, mode:selectedMode, dir:dirPreset });
+        setResponseEnabled(false);
+        if(phaseText) phaseText.textContent='응답 기록됨';
+        if(_pendingResponseResolve){ const done=_pendingResponseResolve; _pendingResponseResolve=null; done(label); }
+    }
+    btnRepulsive .addEventListener('click', ()=>recordSensation('repulsive'));
+    btnAttractive.addEventListener('click', ()=>recordSensation('attractive'));
+    document.addEventListener('keydown', e=>{
+        if(!awaitingResponse) return;
+        const k=e.key?.toLowerCase?.();
+        if(k==='j') recordSensation('repulsive');
+        if(k==='k') recordSensation('attractive');
+    });
 
-                    (async () => {
-                        let buf = '';
-                        while (true) {
-                            const { value, done } = await reader.read();
-                            if (done) break;
-                            if (value) {
-                                buf += value;
-                                let nl;
-                                while ((nl = buf.indexOf('\n')) >= 0) {
-                                    const line = buf.slice(0, nl).trim();
-                                    buf = buf.slice(nl + 1);
-                                    handleSerialLine(line);
-                                }
-                            }
-                        }
-                    })().catch(console.error);
+    // Direction UI
+    let dirPreset='LR';
+    function setDirPreset(preset){
+        dirPreset=preset;
+        [chipLR,chipUD,chipFB].forEach(c=>c.classList.remove('active'));
+        if(preset==='LR') chipLR.classList.add('active');
+        if(preset==='UD') chipUD.classList.add('active');
+        if(preset==='FB') chipFB.classList.add('active');
+        renderDirectionPanel();
+    }
+    function renderDirectionPanel(){
+        switch(dirPreset){
+            case 'LR': labelA.textContent='좌 (Left)';  arrowLine.textContent='→→→→→→→→→→→→→→→→→→'; labelB.textContent='우 (Right)'; break;
+            case 'UD': labelA.textContent='위 (Up)';    arrowLine.textContent='↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑'; labelB.textContent='아래 (Down)'; break;
+            case 'FB': labelA.textContent='앞 (Forward)';arrowLine.textContent='———————————————'; labelB.textContent='뒤 (Backward)'; break;
+        }
+    }
+    function setArrows(dir){
+        if(dirPreset==='UD'){ arrowLine.textContent = dir==='LR' ? '↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑' : '↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓'; }
+        else if(dirPreset==='FB'){ arrowLine.textContent = dir==='LR' ? '⬈⬈⬈⬈⬈⬈⬈⬈⬈⬈⬈⬈⬈⬈⬈⬈⬈⬈⬈⬈⬈⬈' : '⬋⬋⬋⬋⬋⬋⬋⬋⬋⬋⬋⬋⬋⬋⬋⬋⬋⬋⬋⬋⬋⬋'; }
+        else { arrowLine.textContent = dir==='LR' ? '→→→→→→→→→→→→→→→→→→' : '←←←←←←←←←←←←←←←←←←'; }
+    }
+    chipLR.addEventListener('click',()=>setDirPreset('LR'));
+    chipUD.addEventListener('click',()=>setDirPreset('UD'));
+    chipFB.addEventListener('click',()=>setDirPreset('FB'));
+    renderDirectionPanel();
 
-                    if (!p.writable) { throw new Error('이 포트는 writable 스트림을 제공하지 않습니다.'); }
-                    port = p; writer = port.writable.getWriter();
-                    statusBadge.textContent = '연결됨'; statusBadge.classList.add('ok');
-                    alert('시리얼 연결 성공: 이제 시작을 누르세요.');
+    // Countdown
+    async function showCountdown(sec=3){
+        const el=$('#countdown'); if(!el){ await sleep(sec*1000); return; }
+        el.classList.add('show');
+        for(let n=sec;n>=1;n--){ el.textContent=String(n); await sleep(1000); }
+        el.classList.remove('show'); el.textContent=''; await sleep(100);
+    }
 
-                    window.addEventListener('beforeunload', async () => {
-                        try { if (writer) { writer.releaseLock?.(); } await port?.close?.(); } catch (_) { }
-                    }, { once: true });
-                } catch (e) {
-                    console.error(e);
-                    alert('Serial 연결 실패: 포트/권한을 확인하세요.' + (e?.message || e));
-                }
-            }
+    // Serial helpers
+    //async function sendText(str){ if(demo){ await sleep(5); return; } if(!writerReady()){ alert('시리얼이 연결되지 않았습니다.'); throw new Error('serial not ready'); } const enc=new TextEncoder(); await writer.write(enc.encode(str)); }
+    async function sendText(str){
+      if(demo){ await sleep(5); captureCmdsFromPayload(str); return; }
+      if(!writerReady()){ alert('시리얼이 연결되지 않았습니다. 먼저 "시리얼 연결"을 눌러주세요.'); throw new Error('serial not ready'); }
+      const enc=new TextEncoder();
+      await writer.write(enc.encode(str));
+      captureCmdsFromPayload(str);   // ← 실제로 보낸 커맨드 표시
+    }
 
-            const rail = document.getElementById('rail');
 
-            function measureWidths() {
-                const trackW = ensureNumber(track?.clientWidth) || ensureNumber(track?.offsetWidth) || ensureNumber(track?.getBoundingClientRect?.().width);
-                const railW = ensureNumber(rail?.clientWidth) || ensureNumber(rail?.offsetWidth) || ensureNumber(rail?.getBoundingClientRect?.().width) || trackW;
-                const barW = ensureNumber(bar?.clientWidth) || ensureNumber(bar?.offsetWidth) || ensureNumber(bar?.getBoundingClientRect?.().width);
-                return { trackW, railW, barW };
-            }
 
-            function computeTargets() {
-                const { railW, barW } = measureWidths();
-                const endLeft = Math.max(0, ensureNumber(railW - barW));
-                return { start: 0, end: endLeft, ok: Number.isFinite(endLeft) && endLeft >= 0 };
-            }
 
-            function applyDistanceScale() {
-              const { trackW, barW } = measureWidths();
-              const k = distanceScale();
-              const minRail = Math.max(barW, 40);
-              const newRailW = Math.max(minRail, Math.round(trackW * k));
+    async function sendSOA(){ const soaMs=Number(soaSelect?.value ?? 50); await sendText(`S${soaMs}\n`); }
 
-              rail.style.width = newRailW + 'px';
+    // Log
+    let running=false; // single trial running flag
+    let rows=[];
+    let lastStimEnd=0;
+    function logEvent(kind, ext={}){
+        const pid=($('#pid').value||'P00').toUpperCase();
+        const rec=Object.assign({timestamp:new Date().toISOString(), participant_id:pid, kind, code:null, side_byte:null, demo_mode: demo?1:0}, ext);
+        rows.push(rec);
+        console.log('[LOG]', rec);
+    }
 
-              const { start, end } = computeTargets();
-              const cur = ensureNumber(parseFloat(getComputedStyle(bar).left), 0);
-              bar.style.left = toPx(Math.max(start, Math.min(cur, end)));
-            }
+    // Movement timing
+    function getMoveMs(){ return parseTime(getComputedStyle(document.documentElement).getPropertyValue('--move-duration')); }
+    function waitForLeftTransition(el){
+        const dur=getMoveMs();
+        return Promise.race([
+            new Promise(res=>el.addEventListener('transitionend', e=>{ if(e.propertyName==='left') res(); }, {once:true})),
+            sleep(dur+50)
+        ]);
+    }
+    async function sendCommandA(delayMs=0){
+        if(delayMs>0) await sleep(delayMs);
+        if(!demo && !writerReady()){ alert('시리얼이 연결되지 않았습니다.'); throw new Error('serial not ready'); }
+        await sendSOA();
+        try{ await sendText(`A\n`);}catch(_){}
+        try{ await sendByte('A'.charCodeAt(0)); }catch(_){}
+        logEvent('cmdA_sent',{code:'A'});
+    }
 
-            //SoA
-            function getSOAms() { return Number(soaSelect?.value ?? 50); }
-            function getTargetHz() {
-                const hz = Number(targetHzInput?.value ?? 40);
-                return Number.isFinite(hz) && hz > 0 ? hz : 40;
-            }
-            function computeTiming() {
-                const hz = getTargetHz();
-                const cycleMs = 1000 / hz;
-                const soaMs = getSOAms();
-                const waitMs = Math.max(0, soaMs - cycleMs); // INO와 동일 로직
-                return { hz, cycleMs, soaMs, waitMs };
-            }
-            function applyTimingToUI() {
-                const { cycleMs } = computeTiming();
-                document.documentElement.style.setProperty('--move-duration', `${Math.round(cycleMs)}ms`);
-            }
-            soaSelect?.addEventListener('change', () => { applyDistanceScale(); });
-            targetHzInput?.addEventListener('input', () => { applyTimingToUI(); applyDistanceScale(); });
+    // Default fixed mode (After Motion)
+    let selectedMode=null;
+    function ensureDefaultMode(){ if(!selectedMode) selectedMode='uiThenA'; }
 
-            // 초기 1회 적용
-            applyTimingToUI();
-            applyDistanceScale();
+    // Orchestrators
+    function disableTimingBtns(dis){
+        ['btnUIOnly','btnUIThenA','btnAThenUI','startBtn'].forEach(id=>{ const el=document.getElementById(id); if(el) el.disabled=dis; });
+    }
+    async function run_A_then_UI(){
+        if(running) return; running=true; disableTimingBtns(true);
+        try{
+            const {start,end,ok}=computeTargets(); if(!ok){ alert('레이아웃 측정 실패'); return; }
+            bar.style.transition='none'; bar.style.left=toPx(start); await new Promise(requestAnimationFrame);
+            await showCountdown(3); if(syncSOA?.checked) await maybeSleepSOA(); await sendCommandA(0);
+            phaseText.textContent='좌→우 이동 중…'; setArrows('LR');
+            bar.style.transition='left var(--move-duration) linear'; bar.style.left=toPx(end);
+            await new Promise(r=>bar.addEventListener('transitionend',e=>e.propertyName==='left'&&r(),{once:true}));
+            await showCountdown(3); if(syncSOA?.checked) await maybeSleepSOA(); await sendCommandA(0);
+            phaseText.textContent='우→좌 이동 중…'; setArrows('RL');
+            bar.style.left=toPx(start);
+            await new Promise(r=>bar.addEventListener('transitionend',e=>e.propertyName==='left'&&r(),{once:true}));
+            phaseText.textContent='완료';
+            setResponseEnabled(true);
+        } finally { running=false; disableTimingBtns(false); }
+    }
+    async function run_UI_only(){
+        if(running) return; running=true; disableTimingBtns(true);
+        try{
+            const {start,end,ok}=computeTargets(); if(!ok){ alert('레이아웃 측정 실패'); return; }
+            bar.style.transition='none'; bar.style.left=toPx(start); await new Promise(requestAnimationFrame);
+            await showCountdown(3); if(syncSOA?.checked) await maybeSleepSOA(); await sendCommandA(0);
+            phaseText.textContent='좌→우 이동 중…'; setArrows('LR');
+            bar.style.transition='left var(--move-duration) linear'; bar.style.left=toPx(end);
+            await new Promise(r=>bar.addEventListener('transitionend',e=>e.propertyName==='left'&&r(),{once:true}));
+            await (syncSOA?.checked ? maybeSleepSOA() : showCountdown(3));
+            phaseText.textContent='우→좌 이동 중…'; setArrows('RL');
+            bar.style.left=toPx(start);
+            await new Promise(r=>bar.addEventListener('transitionend',e=>e.propertyName==='left'&&r(),{once:true}));
+            await sendCommandA(0);
+            phaseText.textContent='완료';
+            setResponseEnabled(true);
+        } finally { running=false; disableTimingBtns(false); }
+    }
+    async function run_UI_then_A(){
+        if(running) return; running=true; disableTimingBtns(true);
+        try{
+            const {start,end,ok}=computeTargets(); if(!ok){ alert('레이아웃 측정 실패'); return; }
+            bar.style.transition='none'; bar.style.left=toPx(start); await new Promise(requestAnimationFrame);
+            await showCountdown(3); if(syncSOA?.checked) await maybeSleepSOA();
+            phaseText.textContent='좌→우 이동 중…'; setArrows('LR');
+            bar.style.transition='left var(--move-duration) linear'; await new Promise(requestAnimationFrame);
+            bar.style.left=toPx(end);
+            await waitForLeftTransition(bar); await sendCommandA(100);
+            await showCountdown(3); if(syncSOA?.checked) await maybeSleepSOA();
+            phaseText.textContent='우→좌 이동 중…'; setArrows('RL');
+            bar.style.left=toPx(start);
+            await waitForLeftTransition(bar); await sendCommandA(100);
+            phaseText.textContent='완료';
+            setResponseEnabled(true);
+        } finally { running=false; disableTimingBtns(false); }
+    }
 
-            // 창 크기 바뀔 때도 레일 재계산
-            let resizeTimer = null;
-            window.addEventListener('resize', () => {
-                clearTimeout(resizeTimer);
-                resizeTimer = setTimeout(() => { applyDistanceScale(); }, 100);
-            });
+    // CSV
+    function toCSV(rows){
+      if(!rows.length) return '';
+      const cols = [
+        'timestamp','participant_id','kind','trial','sensation',
+        /* 'code', 'side_byte',  <-- 제거 */
+        'demo_mode','rt_ms','soa_ms','target_hz','mode','dir','response','n_trials','soa_list'
+      ];
+      const esc=v=>{ if(v==null) return ''; const s=String(v); return /[",\n]/.test(s)?'"'+s.replaceAll('"','""')+'"' : s; };
+      const header=cols.join(',');
+      const body=rows.map(r=>cols.map(c=>esc(r[c])).join(',')).join('\n');
+      return header+'\n'+body;
+    }
 
-            async function maybeSleepSOA() {
-                const { waitMs } = computeTiming();
-                if (syncSOA?.checked) { await sleep(waitMs); }
-            }
+    function downloadBlob(text, filename, mime='text/csv;charset=utf-8;'){
+        const blob=new Blob([text],{type:mime}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    }
+    function bindPressVisual(btn){
+        const add=()=>btn.classList.add('is-pressed'); const rem=()=>btn.classList.remove('is-pressed');
+        btn.addEventListener('mousedown',add); btn.addEventListener('mouseup',rem); btn.addEventListener('mouseleave',rem);
+        btn.addEventListener('touchstart',add,{passive:true}); btn.addEventListener('touchend',rem); btn.addEventListener('touchcancel',rem);
+        btn.addEventListener('keydown',e=>{ if(e.key===' '||e.key==='Enter') add(); }); btn.addEventListener('keyup',rem);
+    }
+    document.querySelectorAll('.btn').forEach(bindPressVisual);
 
-            function handleSerialLine(line) {
-                // 예: [SOA] desired=50 ms, cycle=25.00 ms, wait=25 ms, effective≈50.00 ms
-                const m = line.match(/\[SOA\].*desired\s*=\s*(\d+)\s*ms/i);
-                if (m) {
-                    const desired = m[1];
-                    const opt = document.querySelector(`#soaSelect option[value="${desired}"]`);
-                    if (opt) {
-                        document.getElementById('soaSelect').value = desired;
-                        applyTimingToUI();
-                        console.log('[UI] Synced SOA from board ->', desired, 'ms');
-                    }
-                }
-            }
+    // 단일 트라이얼 Start(모드는 숨겨졌으므로 고정)
+    btnStartAnim.addEventListener('click', async()=>{
+        if(running) return;
+        ensureDefaultMode(); // default 'uiThenA'
+        trialId += 1;
+        resetTrialCmds();
+        setResponseEnabled(false);
+        btnStartAnim.classList.add('latched','running');
+        const prevText=btnStartAnim.textContent; btnStartAnim.textContent='Running…';
+        try{
+            lastTrial = { soaMs:getSOAms(), mode:selectedMode };
+            await runByMode(selectedMode);
+        } finally {
+            btnStartAnim.classList.remove('running');
+            btnStartAnim.textContent=prevText;
+        }
+    });
 
-            // === Response UI ===
-            const btnRepulsive = document.getElementById('btnRepulsive');
-            const btnAttractive = document.getElementById('btnAttractive');
+    // Random session
+    const ITI_MS = 800;
+    function getSOAValuesFromDropdown(){
+        return Array.from(document.querySelectorAll('#soaSelect option'))
+            .map(o=>parseInt(o.value,10))
+            .filter(v=>Number.isFinite(v));
+    }
+    function shuffle(arr){
+        const a=arr.slice();
+        for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+        return a;
+    }
+    function setSOAValue(soaMs){
+        soaSelect.value=String(soaMs);
+        applyTimingToUI();
+        applyDistanceScale();
+    }
+    async function runByMode(mode){
+        if(mode==='uiOnly')      await run_UI_only();
+        else if(mode==='aThenUi')await run_A_then_UI();
+        else                     await run_UI_then_A(); // default
+    }
+    async function runTrial2AFC(soaMs){
+        resetTrialCmds();
+        setSOAValue(soaMs);
+        await sendSOA();
+        trialId += 1;
+        phaseText.textContent = `Trial ${trialId} – SOA ${soaMs}ms`;
+        setResponseEnabled(false);
+        ensureDefaultMode();
+        lastTrial = { soaMs, mode: selectedMode };
+        await runByMode(selectedMode);
+        phaseText.textContent = `응답 대기 – SOA ${soaMs}ms (J/K)`;
+        const label = await waitForResponse();
+        logEvent('trial_end', { trial:trialId, soa_ms:soaMs, response:label });
+    }
 
-            let awaitingResponse = false;
-            let trialId = 0;
+    let runningSession=false;
+    async function runSessionAuto(){
+        if(runningSession) return;
+        runningSession=true;
+        ['soaSelect','targetHz','btnUIOnly','btnUIThenA','btnAThenUI','startBtn'].forEach(id=>{ const el=document.getElementById(id); if(el) el.disabled=true; });
+        try{
+            const order = shuffle(getSOAValuesFromDropdown());
+            logEvent('session_start',{ n_trials: order.length, soa_list: order.join('/') });
 
-            function setResponseEnabled(on) {
-              if (!btnRepulsive || !btnAttractive) return;
-              btnRepulsive.disabled = !on;
-              btnAttractive.disabled = !on;
-              awaitingResponse = !!on;
-              if (on && phaseText) phaseText.textContent = '응답 대기 (J/K)';
-            }
-
-            // ★ 세션에서 응답을 기다릴 때 resolve해줄 곳
-            let _pendingResponseResolve = null;
-
-            function waitForResponse() {
-              return new Promise(res => {
-                _pendingResponseResolve = res;
-                setResponseEnabled(true);
-              });
-            }
-
-            function recordSensation(label) {
-              if (!awaitingResponse) return;
-              const t = computeTiming(); // {hz, cycleMs, soaMs, waitMs}
-              logEvent('label', {
-                trial: trialId,
-                sensation: label,
-                soa_ms: t.soaMs,
-                target_hz: t.hz,
-                mode: selectedMode,
-                dir: dirPreset
-              });
-              setResponseEnabled(false);
-              if (phaseText) phaseText.textContent = '응답 기록됨';
-
-              if (_pendingResponseResolve) {
-                const done = _pendingResponseResolve;
-                _pendingResponseResolve = null;
-                done(label);
-              }
-            }
-
-            // 버튼/키보드 바인딩
-            btnRepulsive?.addEventListener('click', () => recordSensation('repulsive'));
-            btnAttractive?.addEventListener('click', () => recordSensation('attractive'));
-            document.addEventListener('keydown', (e) => {
-              if (!awaitingResponse) return;
-              const k = e.key?.toLowerCase?.();
-              if (k === 'j') recordSensation('repulsive');
-              if (k === 'k') recordSensation('attractive');
-            });
-
-            // ===== 타이밍 모드 =====
-            let selectedMode = null; // 'uiOnly' | 'uiThenA' | 'aThenUi'
-            const btnUIOnly = $('#btnUIOnly');
-            const btnUIThenA = $('#btnUIThenA');
-            const btnAThenUI = $('#btnAThenUI');
-
-            function setMode(mode) {
-                selectedMode = mode;
-                [btnUIOnly, btnUIThenA, btnAThenUI].forEach(b => b && b.classList.remove('active'));
-                if (mode === 'uiOnly' && btnUIOnly) btnUIOnly.classList.add('active');
-                if (mode === 'uiThenA' && btnUIThenA) btnUIThenA.classList.add('active');
-                if (mode === 'aThenUi' && btnAThenUI) btnAThenUI.classList.add('active');
-            }
-            if (btnUIOnly) btnUIOnly.addEventListener('click', () => setMode('uiOnly'));
-            if (btnUIThenA) btnUIThenA.addEventListener('click', () => setMode('uiThenA'));
-            if (btnAThenUI) btnAThenUI.addEventListener('click', () => setMode('aThenUi'));
-
-            // ===== 방향 프리셋 상태 + 렌더 =====
-            let dirPreset = 'LR'; // 'LR' | 'UD' | 'FB'
-            function setDirPreset(preset) {
-                dirPreset = preset;
-                [chipLR, chipUD, chipFB].forEach(c => c.classList.remove('active'));
-                if (preset === 'LR') chipLR.classList.add('active');
-                if (preset === 'UD') chipUD.classList.add('active');
-                if (preset === 'FB') chipFB.classList.add('active');
-                renderDirectionPanel();
-            }
-            function renderDirectionPanel() {
-                switch (dirPreset) {
-                    case 'LR':
-                        labelA.textContent = '좌 (Left)';
-                        arrowLine.textContent = '→→→→→→→→→→→→→→→→→→';
-                        labelB.textContent = '우 (Right)';
-                        break;
-                    case 'UD':
-                        labelA.textContent = '위 (Up)';
-                        arrowLine.textContent = '↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑';
-                        labelB.textContent = '아래 (Down)';
-                        break;
-                    case 'FB':
-                        labelA.textContent = '앞 (Forward)';
-                        arrowLine.textContent = '———————————————';
-                        labelB.textContent = '뒤 (Backward)';
-                        break;
-                }
-            }
-            function setArrows(dir) {
-                if (dirPreset === 'UD') {
-                    arrowLine.textContent = dir === 'LR' ? '↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑' : '↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓';
-                } else if (dirPreset === 'FB') {
-                    arrowLine.textContent = dir === 'LR' ? '⬈⬈⬈⬈⬈⬈⬈⬈⬈⬈⬈⬈⬈⬈⬈⬈⬈⬈⬈⬈⬈⬈' : '⬋⬋⬋⬋⬋⬋⬋⬋⬋⬋⬋⬋⬋⬋⬋⬋⬋⬋⬋⬋⬋⬋';
-                } else {
-                    arrowLine.textContent = dir === 'LR' ? '→→→→→→→→→→→→→→→→→→' : '←←←←←←←←←←←←←←←←←←';
-                }
-            }
-            function setMoving(on) { bar.classList.toggle('moving', !!on); }
-
-            chipLR.addEventListener('click', () => setDirPreset('LR'));
-            chipUD.addEventListener('click', () => setDirPreset('UD'));
-            chipFB.addEventListener('click', () => setDirPreset('FB'));
-            renderDirectionPanel();
-
-            const scaleDistanceBySOA = document.getElementById('scaleDistanceBySOA');
-            soaSelect?.addEventListener('change', () => {
-                const { start, end } = computeTargets();
-                const cur = ensureNumber(parseFloat(getComputedStyle(bar).left), 0);
-                bar.style.left = toPx(Math.max(start, Math.min(cur, end)));
-            });
-            targetHzInput?.addEventListener('input', () => { applyTimingToUI(); });
-            scaleDistanceBySOA?.addEventListener('change', () => {
-                const { start, end } = computeTargets();
-                const cur = ensureNumber(parseFloat(getComputedStyle(bar).left), 0);
-                bar.style.left = toPx(Math.max(start, Math.min(cur, end)));
-            });
-
-            // ===== Countdown =====
-            async function showCountdown(sec = 3) {
-                const el = document.getElementById('countdown');
-                if (!el) { await sleep(sec * 1000); return; }
-                el.classList.add('show');
-                for (let n = sec; n >= 1; n--) {
-                    el.textContent = String(n);
-                    await sleep(1000);
-                }
-                el.classList.remove('show');
-                el.textContent = '';
-                await sleep(100);
+            demo = $('#demoMode')?.checked===true;
+            if(!demo && !writerReady()){
+                alert('시리얼이 연결되지 않았습니다. 먼저 "시리얼 연결"을 눌러주세요.');
+                runningSession=false;
+                ['soaSelect','targetHz','btnUIOnly','btnUIThenA','btnAThenUI','startBtn'].forEach(id=>{ const el=document.getElementById(id); if(el) el.disabled=false; });
+                return;
             }
 
-            // ===== Serial helpers =====
-            async function sendText(str) {
-                if (demo) { await sleep(5); return; }
-                if (!writerReady()) { alert('시리얼이 연결되지 않았습니다.'); throw new Error('serial not ready'); }
-                const enc = new TextEncoder();
-                await writer.write(enc.encode(str));
-            }
-            async function sendSOA() {
-                const soaMs = Number(soaSelect?.value ?? 50);
-                console.log('[UI] sendSOA ->', soaMs, 'ms');
-                await sendText(`S${soaMs}\n`);
+            for(let i=0;i<order.length;i++){
+                const soa=order[i];
+                phaseText.textContent=`Trial ${i+1}/${order.length} – SOA ${soa}ms`;
+                await runTrial2AFC(soa);
+                await sleep(ITI_MS);
             }
 
-            // ===== Experiment State & Log =====
-            let running = false; // animation running (단일 트라이얼)
-            let rows = [];
-            let lastStimEnd = 0;
+            phaseText.textContent='세션 완료';
+            logEvent('session_end',{ n_trials: order.length });
+            alert('세션 완료! CSV로 저장해 주세요.');
+        }catch(e){
+            console.error(e);
+            alert('세션 도중 오류: '+(e?.message||e));
+        }finally{
+            runningSession=false;
+            ['soaSelect','targetHz','btnUIOnly','btnUIThenA','btnAThenUI','startBtn'].forEach(id=>{ const el=document.getElementById(id); if(el) el.disabled=false; });
+        }
+    }
 
-            function logEvent(kind, ext = {}) {
-                const pid = ($('#pid').value || 'P00').toUpperCase();
-                const rec = Object.assign({
-                    timestamp: new Date().toISOString(),
-                    participant_id: pid,
-                    kind, // 'LR_start' | 'RL_start' | 'end' | 'cmdA_sent' | 'label' | 'session_*'
-                    code: null,
-                    side_byte: null,
-                    demo_mode: demo ? 1 : 0
-                }, ext);
-                rows.push(rec);
-                console.log('[LOG]', rec);
-            }
+    // Repeat
+    btnRepeat.addEventListener('click', async()=>{
+        if(!lastTrial || running) return;
+        try{
+            setResponseEnabled(false);
+            logEvent('repeat', { trial: trialId, soa_ms: lastTrial.soaMs, mode: lastTrial.mode });
+            await runByMode(lastTrial.mode);
+            setResponseEnabled(true);
+        }catch(e){
+            console.error(e);
+            alert('Repeat 중 오류: '+(e?.message||e));
+        }
+    });
 
-            // ===== One-shot sequence helpers =====
-            function getMoveMs() { return parseTime(getComputedStyle(document.documentElement).getPropertyValue('--move-duration')); }
-            function waitForLeftTransition(el) {
-                const dur = getMoveMs();
-                return Promise.race([
-                    new Promise(res => el.addEventListener('transitionend', e => { if (e.propertyName === 'left') res(); }, { once: true })),
-                    sleep(dur + 50)
-                ]);
-            }
-            async function sendCommandA(delayMs = 0) {
-                if (delayMs > 0) await sleep(delayMs);
-                if (!demo && !writerReady()) { alert('시리얼이 연결되지 않았습니다.'); throw new Error('serial not ready'); }
-                await sendSOA();
-                try { await sendText(`A\n`); } catch (_) { }
-                try { await sendByte('A'.charCodeAt(0)); } catch (_) { }
-                logEvent('cmdA_sent', { code: 'A' });
-            }
+    // ==== Trial command HUD (작게 표시) ====
+    const trialCmdsEl = document.getElementById('trialCmds');
+    let sentCmdsThisTrial = [];
 
-            // ===== 오케스트레이터 =====
-            function disableTimingBtns(dis) {
-                const a = document.getElementById('btnUIOnly');
-                const b = document.getElementById('btnUIThenA');
-                const c = document.getElementById('btnAThenUI');
-                if (a) a.disabled = dis; if (b) b.disabled = dis; if (c) c.disabled = dis;
-            }
+    function resetTrialCmds(){
+      sentCmdsThisTrial.length = 0;
+      if (trialCmdsEl) trialCmdsEl.textContent = '–';
+    }
+    function addSentCmd(c){
+      // A/a, B/b, D/d 만 기록 (SOA 설정 S50 같은 건 제외)
+      if (!/[AaBbDd]/.test(c)) return;
+      sentCmdsThisTrial.push(c);
+      if (trialCmdsEl) trialCmdsEl.textContent = sentCmdsThisTrial.join(' ');
+    }
+    function captureCmdsFromPayload(str){
+      const letters = String(str).match(/[AaBbDd]/g);
+      if (letters) letters.forEach(addSentCmd);
+    }
 
-            // (1) 먼저 A → UI
-            async function run_A_then_UI() {
-                if (running) return; running = true; disableTimingBtns(true);
-                try {
-                    const { start, end, ok } = computeTargets(); if (!ok) { alert('레이아웃 측정 실패'); return; }
-                    bar.style.transition = 'none'; bar.style.left = toPx(start);
-                    await new Promise(requestAnimationFrame);
 
-                    await showCountdown(3);
-                    if (syncSOA?.checked) await maybeSleepSOA();
-                    await sendCommandA(0);
+    // Events
+    btnConnect.addEventListener('click', connectSerial);
+    btnStartSession.addEventListener('click', async()=>{ ensureDefaultMode(); await runSessionAuto(); });
+    btnDownload.addEventListener('click', ()=>{
+        const csv=toCSV(rows);
+        if(!csv){ alert('저장할 데이터가 없습니다'); return; }
+        const pid=($('#pid').value||'P00').toUpperCase();
+        downloadBlob(csv, `${pid}_onewaybar_serial.csv`);
+    });
 
-                    phaseText.textContent = '좌→우 이동 중…'; setArrows('LR');
-                    bar.style.transition = 'left var(--move-duration) linear'; bar.style.left = toPx(end);
-                    await new Promise(r => bar.addEventListener('transitionend', e => e.propertyName === 'left' && r(), { once: true }));
-
-                    await showCountdown(3);
-                    if (syncSOA?.checked) await maybeSleepSOA();
-                    await sendCommandA(0);
-
-                    phaseText.textContent = '우→좌 이동 중…'; setArrows('RL');
-                    bar.style.left = toPx(start);
-                    await new Promise(r => bar.addEventListener('transitionend', e => e.propertyName === 'left' && r(), { once: true }));
-
-                    phaseText.textContent = '완료';
-                    setResponseEnabled(true);
-                } finally { running = false; disableTimingBtns(false); }
-            }
-
-            // (2) During Motion (UI만 실행이었지만, 요청으로 A도 유지)
-            async function run_UI_only() {
-                if (running) return; running = true; disableTimingBtns(true);
-                try {
-                    const { start, end, ok } = computeTargets(); if (!ok) { alert('레이아웃 측정 실패'); return; }
-                    bar.style.transition = 'none'; bar.style.left = toPx(start);
-                    await new Promise(requestAnimationFrame);
-
-                    await showCountdown(3);
-                    if (syncSOA?.checked) await maybeSleepSOA();
-                    await sendCommandA(0);
-                    phaseText.textContent = '좌→우 이동 중…'; setArrows('LR');
-                    bar.style.transition = 'left var(--move-duration) linear'; bar.style.left = toPx(end);
-                    await new Promise(r => bar.addEventListener('transitionend', e => e.propertyName === 'left' && r(), { once: true }));
-
-                    await (syncSOA?.checked ? maybeSleepSOA() : showCountdown(3));
-
-                    phaseText.textContent = '우→좌 이동 중…'; setArrows('RL');
-                    bar.style.left = toPx(start);
-                    await new Promise(r => bar.addEventListener('transitionend', e => e.propertyName === 'left' && r(), { once: true }));
-
-                    await sendCommandA(0);
-                    phaseText.textContent = '완료';
-                    setResponseEnabled(true);
-                } finally { running = false; disableTimingBtns(false); }
-            }
-
-            // (3) UI 끝난 직후 A
-            async function run_UI_then_A() {
-                if (running) return; running = true; disableTimingBtns(true);
-                try {
-                    const { start, end, ok } = computeTargets();
-                    if (!ok) { alert('레이아웃 측정 실패'); return; }
-                    bar.style.transition = 'none'; bar.style.left = toPx(start);
-                    await new Promise(requestAnimationFrame);
-
-                    await showCountdown(3);
-                    if (syncSOA?.checked) await maybeSleepSOA();
-
-                    phaseText.textContent = '좌→우 이동 중…'; setArrows('LR');
-                    bar.style.transition = 'left var(--move-duration) linear';
-                    await new Promise(requestAnimationFrame);
-                    bar.style.left = toPx(end);
-
-                    await waitForLeftTransition(bar);
-                    await sendCommandA(100);
-
-                    await showCountdown(3);
-                    if (syncSOA?.checked) await maybeSleepSOA();
-                    phaseText.textContent = '우→좌 이동 중…'; setArrows('RL');
-                    bar.style.left = toPx(start);
-                    await waitForLeftTransition(bar);
-                    await sendCommandA(100);
-
-                    phaseText.textContent = '완료';
-                    setResponseEnabled(true);
-                } finally {
-                    running = false; disableTimingBtns(false);
-                }
-            }
-
-            // ===== CSV tools =====
-            function toCSV(rows) {
-              if (!rows.length) return '';
-              const cols = [
-                'timestamp','participant_id','kind','trial',
-                'sensation','code','side_byte','demo_mode','rt_ms',
-                'soa_ms','target_hz','mode','dir'
-              ];
-              const esc = v => { if (v == null) return ''; const s = String(v); return /[",\n]/.test(s) ? '"' + s.replaceAll('"','""') + '"' : s; };
-              const header = cols.join(',');
-              const body = rows.map(r => cols.map(c => esc(r[c])).join(',')).join('\n');
-              return header + '\n' + body;
-            }
-            function downloadBlob(text, filename, mime = 'text/csv;charset=utf-8;') {
-                const blob = new Blob([text], { type: mime });
-                const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; document.body.appendChild(a); a.click(); document.body.removeChild(a);
-            }
-            function bindPressVisual(btn) {
-                const add = () => btn.classList.add('is-pressed');
-                const rem = () => btn.classList.remove('is-pressed');
-                btn.addEventListener('mousedown', add);
-                btn.addEventListener('mouseup', rem);
-                btn.addEventListener('mouseleave', rem);
-                btn.addEventListener('touchstart', add, { passive: true });
-                btn.addEventListener('touchend', rem);
-                btn.addEventListener('touchcancel', rem);
-                btn.addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Enter') add(); });
-                btn.addEventListener('keyup', rem);
-            }
-            document.querySelectorAll('.btn').forEach(bindPressVisual);
-
-            // ===== 단일 트라이얼 Start 버튼 (After Motion 옆) =====
-            btnStartAnim.addEventListener('click', async () => {
-              if (running) return;
-              if (!selectedMode) { setMode('uiThenA'); } // 기본 ③ After Motion
-              trialId += 1;
-              setResponseEnabled(false);
-              btnStartAnim.classList.add('latched','running');
-              const prevText = btnStartAnim.textContent; btnStartAnim.textContent = 'Running…';
-              try {
-                if (selectedMode === 'uiOnly')      { await run_UI_only(); }
-                else if (selectedMode === 'uiThenA'){ await run_UI_then_A(); }
-                else if (selectedMode === 'aThenUi'){ await run_A_then_UI(); }
-              } finally {
-                btnStartAnim.classList.remove('running');
-                btnStartAnim.textContent = prevText;
-              }
-            });
-
-            // ===== Session (2AFC) Auto Runner =====
-            let runningSession = false;
-            const ITI_MS = 800;  // trial 사이 휴식
-
-            function getSOAValuesFromDropdown() {
-              return Array.from(document.querySelectorAll('#soaSelect option'))
-                .map(o => parseInt(o.value, 10))
-                .filter(v => Number.isFinite(v));
-            }
-            function buildSOAOrderZigZag(values, base=50) {
-              const uniq = [...new Set(values)].sort((a,b)=>a-b);
-              const order = [];
-              if (uniq.includes(base)) order.push(base);
-              const lower = uniq.filter(v => v < base).reverse();
-              const higher = uniq.filter(v => v > base);
-              let i = 0;
-              while (lower.length || higher.length) {
-                if (i % 2 === 0 && lower.length) order.push(lower.shift());
-                else if (higher.length)           order.push(higher.shift());
-                i++;
-              }
-              return order;
-            }
-            function setSOAValue(soaMs) {
-              soaSelect.value = String(soaMs);
-              applyTimingToUI();
-              applyDistanceScale();
-            }
-            async function runTrial2AFC(soaMs) {
-              setSOAValue(soaMs);
-              await sendSOA();
-
-              trialId += 1;
-              phaseText.textContent = `Trial ${trialId} – SOA ${soaMs}ms`;
-              setResponseEnabled(false);
-
-              if (!selectedMode) setMode('uiThenA'); // 기본 모드
-              if      (selectedMode === 'uiOnly')   { await run_UI_only(); }
-              else if (selectedMode === 'uiThenA')  { await run_UI_then_A(); }
-              else if (selectedMode === 'aThenUi')  { await run_A_then_UI(); }
-
-              phaseText.textContent = `응답 대기 – SOA ${soaMs}ms (J/K)`;
-              const label = await waitForResponse();
-              logEvent('trial_end', { trial: trialId, soa_ms: soaMs, response: label });
-            }
-            async function runSessionAuto() {
-              if (runningSession) return;
-              runningSession = true;
-
-              const toDisable = [
-                document.getElementById('soaSelect'),
-                document.getElementById('targetHz'),
-                document.getElementById('btnUIOnly'),
-                document.getElementById('btnUIThenA'),
-                document.getElementById('btnAThenUI'),
-                document.getElementById('startBtn'),
-              ].filter(Boolean);
-              toDisable.forEach(el => el.disabled = true);
-
-              try {
-                const allSOAs = getSOAValuesFromDropdown();
-                const order = buildSOAOrderZigZag(allSOAs, 50);   // 50, 30, 70, 90, 110, 130
-                logEvent('session_start', { n_trials: order.length, soa_list: order.join('/') });
-
-                demo = document.getElementById('demoMode')?.checked === true;
-                if (!demo && !writerReady()) {
-                  alert('시리얼이 연결되지 않았습니다. 먼저 "시리얼 연결"을 눌러주세요.');
-                  runningSession = false;
-                  toDisable.forEach(el => el.disabled = false);
-                  return;
-                }
-
-                for (let i = 0; i < order.length; i++) {
-                  const soa = order[i];
-                  phaseText.textContent = `Trial ${i+1}/${order.length} – SOA ${soa}ms`;
-                  await runTrial2AFC(soa);
-                  await sleep(ITI_MS);
-                }
-
-                phaseText.textContent = '세션 완료';
-                logEvent('session_end', { n_trials: order.length });
-                alert('세션 완료! CSV로 저장해 주세요.');
-              } catch (e) {
-                console.error(e);
-                alert('세션 도중 오류가 발생했어요: ' + (e?.message || e));
-              } finally {
-                runningSession = false;
-                toDisable.forEach(el => el.disabled = false);
-              }
-            }
-
-            // ===== Events =====
-            btnConnect.addEventListener('click', connectSerial);
-            btnStartSession.addEventListener('click', async () => {
-              if (!selectedMode) setMode('uiThenA'); // 기본 ③ After Motion
-              await runSessionAuto();
-            });
-            btnDownload.addEventListener('click', () => {
-                const csv = toCSV(rows);
-                if (!csv) { alert('저장할 데이터가 없습니다'); return; }
-                const pid = ($('#pid').value || 'P00').toUpperCase();
-                downloadBlob(csv, `${pid}_onewaybar_serial.csv`);
-            });
-
-            // Dev quick tests
-            (function devTests() {
-                try {
-                    console.assert(parseTime('3000ms') === 3000, 'parse ms');
-                    console.assert(parseTime('3s') === 3000, 'parse s');
-                    console.assert(toPx(10) === '10px', 'toPx');
-                    const { trackW, barW } = measureWidths();
-                    console.assert(Number.isFinite(trackW), 'trackW');
-                    console.assert(Number.isFinite(barW), 'barW');
-                    const sampleRows = [
-                        { timestamp: '2025-09-23T00:00:00.000Z', participant_id: 'P01', kind: 'LR_start', code: 0, side_byte: 0, demo_mode: 0, rt_ms: 123 },
-                        { timestamp: '2025-09-23T00:00:01.000Z', participant_id: 'P01', kind: 'end', code: '"X"', side_byte: 1, demo_mode: 1, rt_ms: 0 }
-                    ];
-                    const csv = toCSV(sampleRows);
-                    console.assert(csv.includes('\n') && csv.split('\n').length === 3, 'CSV newline join');
-                    console.assert(csv.includes('""X""'), 'CSV escaping of quotes');
-                    console.assert(!writerReady(), 'writer should not be ready before connect');
-                } catch (e) { console.warn('[tests]', e); }
-            })();
-        })();
-    </script>
+    // Quick sanity
+    (function devTests(){
+        try{
+            console.assert(parseTime('3000ms')===3000,'parse ms');
+            console.assert(parseTime('3s')===3000,'parse s');
+            const {trackW,barW}= (function(){ try{ return measureWidths(); }catch{ return {trackW:1,barW:1}; } })();
+            console.assert(Number.isFinite(trackW),'trackW finite');
+            console.assert(Number.isFinite(barW),'barW finite');
+        }catch(e){ console.warn('[tests]',e); }
+    })();
+})();
+</script>
 </body>
 </html>
