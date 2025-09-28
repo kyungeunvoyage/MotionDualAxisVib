@@ -1,5 +1,5 @@
 ﻿/*
- Name:		MotionOrthoVib03.ino
+ Name:		MainExp.ino
  Created:	2025-08-03 오전 11:41:25
  Author:	HCITECH_01
 */
@@ -50,7 +50,7 @@ unsigned long vibDuration = 0;
 
 //================DA7280 setup====================
 void initDA7280(Haptic_Driver& driver) {
-    
+
 
     if (!driver.begin()) {
         Serial.println("DA7280 not found.");
@@ -125,7 +125,7 @@ void setup() {
     while (!Serial); // USB serial 연결 대기
     delay(100);        // (선택) 약간의 추가 안정화 대기
 
-    
+
     Serial.println("Hello Helllo AND Initiated");
     initDA7280(hapDrive);
 
@@ -139,7 +139,7 @@ void setup() {
     CreateAllWaveforms();  // << 여기서 한 번에 생성!
     generatePositiveBiasedWaveform();
 
-    //time phase 
+    //time phase
     for (int i = 0; i < 256; i++) high_highTP[i] = high_high[255 - i];
 
     //Polarity reverse
@@ -166,8 +166,8 @@ void setup() {
         waveformD_PR[i] = -waveformD[i];
     }
 
-    
-    //Teensy DAC 12bit 이고, 해상도 지정을 해서 내부 스케일이 맞게끔 진행 
+
+    //Teensy DAC 12bit 이고, 해상도 지정을 해서 내부 스케일이 맞게끔 진행
     //이거 쓰니까 확실히 다름
 
     analogWriteResolution(12);
@@ -184,7 +184,7 @@ void setup() {
     //makeCompositeF_2F_Phase(wPhase0, 256, 1.0f, 1.0f, 0.0f, true, true);   // 오른쪽 당김 쪽
     //makeCompositeF_2F_Phase(wPhase180, 256, 1.0f, 1.0f, -180.0f, true, true);  // 왼쪽 당김 쪽
 
-    
+
 }
 //=================setup===========================
 
@@ -272,24 +272,24 @@ void playWaveForSeconds2(const int16_t* w, int N,
 
 
 void playArrayWithGainCentered(const int16_t* arr, int n, float gain, int dacPin, float delayUs) {
-    // 평균값 산출 (== dc 오프셋) 
+    // 평균값 산출 (== dc 오프셋)
     long sum = 0;
     for (int i = 0; i < n; ++i) sum += arr[i];
     float mean = (float)sum / (float)n;
 
     for (int i = 0; i < n; ++i) {
-        float v = (arr[i] - mean) * gain;                // dc 제거 -> 평균화 
-        int16_t v16 = (int16_t)constrain((long)lround(v), -32767, 32767);  //clipping 
+        float v = (arr[i] - mean) * gain;                // dc 제거 -> 평균화
+        int16_t v16 = (int16_t)constrain((long)lround(v), -32767, 32767);  //clipping
         //int dacValue = map(val, -32767, 32767, 0, 4095);
         analogWrite(dacPin, toDac_12bit_centered(v16));
-        delayMicroseconds((int)delayUs); //샘플간 간격 유지~ 
+        delayMicroseconds((int)delayUs); //샘플간 간격 유지~
     }
 }
 
 
 //================gain setting=====================
 
-//느린 복귀를 위해 raw 
+//느린 복귀를 위해 raw
 void playArrayRaw(const int16_t* arr, int n, float gain, int dacPin, float delayUs) {
     for (int i = 0; i < n; i++) {
         long v = lroundf(arr[i] * gain);
@@ -788,7 +788,7 @@ uint32_t* clipped_out = nullptr) {
 }
 
 //=====================================================asymmetric vibration generator=====================================================
-//목적:기본파 + 2차 고조파를 위상차로 합성한 256샘플 파형을 만들어본다. 이미 가지고 있는 함수를 써서 gain 을 맞춰서 플레이갈긴다. 
+//목적:기본파 + 2차 고조파를 위상차로 합성한 256샘플 파형을 만들어본다. 이미 가지고 있는 함수를 써서 gain 을 맞춰서 플레이갈긴다.
 
 // 유틸: 배열 평균 제거(DC 제거)
 static inline void removeDC_int16(int16_t* w, int N) {
@@ -820,11 +820,11 @@ static inline void normalizePeak_int16(int16_t* w, int N) {
 }
 
 /*
-기본파 + 2차 고조파 합성 만들기 (한 주기 = N 샘플) 
-A1_rel, A2_rel : 상대 진폭 (무단위), 실제 강도는 재생 시, gain 으로 조절 
-phi_deg : 2차 성분의 위상 오프셋 (도 단위 : 0, -90, -180) 
-removeDC : 평균값 제거 
-normalizePeak : 피크 기준으로 쁠마 32767 맞춰 정규화 할지 말지 
+기본파 + 2차 고조파 합성 만들기 (한 주기 = N 샘플)
+A1_rel, A2_rel : 상대 진폭 (무단위), 실제 강도는 재생 시, gain 으로 조절
+phi_deg : 2차 성분의 위상 오프셋 (도 단위 : 0, -90, -180)
+removeDC : 평균값 제거
+normalizePeak : 피크 기준으로 쁠마 32767 맞춰 정규화 할지 말지
 */
 static void makeCompositeF_2F_Phase(
     int16_t* out, int N,
@@ -893,9 +893,9 @@ static void playCompositeF_2F_Phase_now(
 
 
 // the loop function runs over and over again until power down or reset
-void loop() 
+void loop()
 {
-    //generate new waveform 
+    //generate new waveform
 
     if (vibrating && millis() - vibStart >= vibDuration)
     {
@@ -930,13 +930,13 @@ void loop()
         char command = (char)Serial.read();
         if (command == '0')
         {
-            //b -> C 횡단 
+            //b -> C 횡단
             //YY
-            // 
+            //
             //update hz
             updateDelayFromTargetHz();
 
-            //for comb1 (yz) 
+            //for comb1 (yz)
             const float GAIN = 3.0f;
             for (int repeat = 0; repeat < 10; repeat++)
             {
@@ -944,7 +944,7 @@ void loop()
                 playArrayWithGainCentered(impulseDynamicPR, waveformSize, GAIN, DAC_PIN_A22, delayPerSampleUs_rt);
                 delay(500); //(phase)
 
-                //시간차 조정 어떻게 하냐? 
+                //시간차 조정 어떻게 하냐?
 
                 //Right Flesh
                 playArrayWithGainCentered(impulse_dynamic, waveformSize, GAIN, DAC_PIN_A21, delayPerSampleUs_rt);
@@ -954,7 +954,7 @@ void loop()
 
         }
 
-        //Practice session 
+        //Practice session
         else if (command == '1')
         {
             updateDelayFromTargetHz();
@@ -1005,11 +1005,11 @@ void loop()
 
             //hz = 40;
             // a -> d
-            // repulsive force : 반대로 잡아 당김 / 진동의 방향성 -> / 움직임 right-to-left 일 때 
+            // repulsive force : 반대로 잡아 당김 / 진동의 방향성 -> / 움직임 right-to-left 일 때
             //playArrayWithGainCentered(impulse_releasePR, waveformSize, G, DAC_PIN_A22, delayPerSampleUs_rt);
             playArrayWithGainCentered_1cycle(impulse_releasePR, waveformSize, G, DAC_PIN_A22, delayPerSampleUs_rt);
             //delay(10); //delay 0.01s; -> ㅂㄹ
-            delay(50); //이게 중요한듯 
+            delay(50); //이게 중요한듯
             //playArrayWithGainCentered(impulse_release, waveformSize, G, DAC_PIN_A21, delayPerSampleUs_rt);
             playArrayWithGainCentered_1cycle(impulse_release, waveformSize, G, DAC_PIN_A21, delayPerSampleUs_rt);
             //playWaveForSeconds2(dat, 256, G, DAC_PIN_A22, 40.0f, sec);
@@ -1082,7 +1082,7 @@ void loop()
             Serial.println(F("==== End of BaseGain Sweep ====\n"));
         }
         //imu calibration 3
-        else if (command == 'K') 
+        else if (command == 'K')
         {
             //calibration code !!!!!!!!!!!!
             static const float freqs[] = { 10, 15, 20, 30, 40, 50, 60, 80 };
@@ -1127,13 +1127,13 @@ void loop()
             Serial.printf("[SOA] ignored=%d (out of range)\n", v);
         }
 }
-        
-        // + La (a -> d) 
+
+        // + La (a -> d)
         //ampitude가 좀 세야할 것 같음
 
 
-        //waveform B +  (Linear) 
-        //만들어야 할 것 : waveform B -, waveform C +,- (linear) 
+        //waveform B +  (Linear)
+        //만들어야 할 것 : waveform B -, waveform C +,- (linear)
         // Rotation
         else if (command == 'A')
         {
@@ -1157,7 +1157,7 @@ void loop()
 
 
 
-        // - La (d -> a) 
+        // - La (d -> a)
         else if (command == 'a')
         {
 
@@ -1203,7 +1203,7 @@ void loop()
             //targetHz = 40;
         }
 
-        //-Lb (c ->b) 
+        //-Lb (c ->b)
         else if (command == 'b')
         {
                 updateDelayFromTargetHz();                  // targetHz 반영 (예: 40Hz)
@@ -1292,6 +1292,5 @@ void loop()
 
     }
 
-    
-}
 
+}
