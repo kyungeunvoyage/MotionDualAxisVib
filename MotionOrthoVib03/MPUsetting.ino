@@ -20,8 +20,8 @@ extern int toDac_12bit_centered(int16_t v);  // 메인 탭의 DAC 매핑 함수
 #define REG_INT_ENABLE       0x38
 #define REG_ACCEL_XOUT_H     0x3B
 
-static uint8_t g_mpu_addr = MPU_ADDR;            // I2C address (0x68)
-static float   g_accel_lsb_per_g = 4096.0f;      // 기본 ±8g
+static uint8_t g_mpu_addr = MPU_ADDR;
+static float   g_accel_lsb_per_g = 4096.0f;
 static float   g_accel_g_per_lsb = 1.0f / 4096.0f;
 
 /* ================== I2C helpers ================== */
@@ -47,7 +47,7 @@ static inline bool i2cReadBytes(uint8_t addr, uint8_t reg, uint8_t* buf, size_t 
  */
 bool mpu9250_beginAccel(uint8_t accel_fs, uint8_t dlpf, uint16_t odr_hz) {
     delay(10);
-    if (!i2cWriteByte(g_mpu_addr, REG_PWR_MGMT_1, 0x01)) return false; // CLK=PLL
+    if (!i2cWriteByte(g_mpu_addr, REG_PWR_MGMT_1, 0x01)) return false;
     delay(10);
 
     // Gyro DLPF(ODR 영향): 0x02 ≈ 92Hz 대역
@@ -90,7 +90,7 @@ bool mpu9250_beginAccel(uint8_t accel_fs, uint8_t dlpf, uint16_t odr_hz) {
     return true;
 }
 
-//z축 정렬 check 
+//z축 정렬 check
 static inline float clampf(float x, float a, float b) {
     if (x < a) x = a;
     if (x > b) x = b;
@@ -512,7 +512,7 @@ void runFixedFreqGainSweep_MPU9250(
     float warmup_s,
     bool useMagnitude,
     char axisForSingle
-) 
+)
 {
     if (!wave || N <= 0 || M <= 0 || freqHz <= 0.0f) return;
 
@@ -580,7 +580,3 @@ void runFixedFreqGainSweep_MPU9250(
 
     //erial.println(F("# (Tip) 위 CSV를 복사해 엑셀/파이썬에서 baseGain-세기 곡선 그려보면 추세 확인 쉬움"));
 }
-
-
-
-

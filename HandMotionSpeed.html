@@ -576,20 +576,20 @@
                 return { start: 0, end: endLeft, ok: Number.isFinite(endLeft) && endLeft >= 0 };
             }
 
-            function applyDistanceScale() {
-                const { trackW, barW } = measureWidths();           // track의 현재 실제 폭
-                const k = distanceScale();                          // (현재 SOA 총시간 / 기준 SOA 총시간)
-                const minRail = Math.max(barW, 40);                 // 너무 작아지지 않게 안전 최소폭
-                const newRailW = Math.max(minRail, Math.round(trackW * Math.min(k, 1)));
-                // 트랙보다 커지지 않게 k를 1로 클램프(필요하면 >1도 허용 가능)
+            function applyDistanceScale()
+            {
+              const { trackW, barW } = measureWidths();
+              const k = distanceScale();
+              const minRail = Math.max(barW, 40);
+              const newRailW = Math.max(minRail, Math.round(trackW * k));
 
-                rail.style.width = newRailW + 'px';
+              rail.style.width = newRailW + 'px';
 
-                // 바가 새 레일 범위 안에 있도록 즉시 클램프
-                const { start, end } = computeTargets();
-                const cur = ensureNumber(parseFloat(getComputedStyle(bar).left), 0);
-                bar.style.left = toPx(Math.max(start, Math.min(cur, end)));
+              const { start, end } = computeTargets();
+              const cur = ensureNumber(parseFloat(getComputedStyle(bar).left), 0);
+              bar.style.left = toPx(Math.max(start, Math.min(cur, end)));
             }
+
             //SoA
             function getSOAms() {
                 return Number(soaSelect?.value ?? 50);
@@ -933,7 +933,7 @@
                     //setMoving(true);
                     bar.style.transition = 'left var(--move-duration) linear'; bar.style.left = toPx(end);
                     await new Promise(r => bar.addEventListener('transitionend', e => e.propertyName === 'left' && r(), { once: true }));
-                    
+
 
                     await showCountdown(3);
                     if (syncSOA?.checked) await maybeSleepSOA();
