@@ -901,9 +901,7 @@
                 phaseText.textContent = '좌→우 이동 중…';
                 const codeLR = ensureNumber($('#codeLR').value, 0);
                 const sideLR = ensureNumber($('#sideLR').value, 0);
-                //await sendByte(codeLR); await sendByte(sideLR);
-                await sendText(String(codeLR) + '\n');   // '0\n' 또는 '1\n'
-                await sendText(String(sideLR) + '\n');
+                await sendByte(codeLR); await sendByte(sideLR);
                 logEvent('LR_start', { code: codeLR, side_byte: sideLR });
 
                 bar.style.transition = 'left var(--move-duration) linear';
@@ -957,13 +955,13 @@
                 if (delayMs > 0) await sleep(delayMs);
                 if (!demo && !writerReady()) { alert('시리얼이 연결되지 않았습니다.'); throw new Error('serial not ready'); }
                 await sendSOA();
-                try {
-                    await sendText(`A\n`);              // 1) 라인 방식
-                } catch (_) { }
-                try {
-                    await sendByte('A'.charCodeAt(0));  // 2) 바이트 방식
-                } catch (_) { }
-                logEvent('cmdA_sent', { code: 'A' });
+                const soaMs = Number(soaSelect?.value ?? 50);
+                const enc = new TextEncoder();
+                const payload = `S${soaMs}\nA\n`;     // <-- 바이트 혼용 X, 개행 포함 O
+                await writer.write(enc.encode(payload));
+
+                logEvent('cmdA_sent', { mode: selectedMode, soa_ms: soaMs, dir: dirPreset });
+                console.log('[TX]', JSON.stringify(payload));
             }
 
 
@@ -1106,7 +1104,6 @@
             function axisPresetCSV() {
                 return dirPreset; // 'LR' | 'UD' | 'FB' 그대로 저장 (또는 '좌우/상하/전후'로 바꾸고 싶으면 매핑)
             }
-
 
             function downloadBlob(text, filename, mime = 'text/csv;charset=utf-8;') {
                 const blob = new Blob([text], { type: mime });

@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Exploratory Study Runner · Freq×Duration Sequencer</title>
+    <style>
+        :root {
+            --bg: #0b0f14;
+            --fg: #e5eef7;
+            --muted: #99a7b5;
+            --accent: #7bd3ff;
+            --card: #121822;
+            --ok: #75e39c
+        }
+
+        html, body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--fg);
+            font-family: Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif
+        }
+
+        header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #1f2a38;
+            position: sticky;
+            top: 0;
+            background: linear-gradient(180deg,rgba(11,15,20,.95),rgba(11,15,20,.85));
+            backdrop-filter: blur(8px)
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 20px;
+            letter-spacing: .2px
+        }
+
+        main {
+            padding: 20px;
+            display: grid;
+            gap: 16px;
+            grid-template-columns: 420px 1fr
+        }
+
+        section {
+            background: var(--card);
+            border: 1px solid #1b2633;
+            border-radius: 14px;
+            padding: 16px
+        }
+
+            section h2 {
+                margin: 0 0 10px;
+                font-size: 16px;
+                color: var(--accent)
+            }
+
+        .row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap
+        }
+
+        input, button, select {
+            background: #0d131c;
+            color: #fff;
+            border: 1px solid #223042;
+            border-radius: 10px;
+            padding: 8px 10px;
+            font-size: 14px
+        }
+
+        button {
+            background: #0e1621;
+            cursor: pointer;
+            transition: .15s ease
+        }
+
+            button.primary {
+                background: #143047;
+                border-color: #1e4b6d
+            }
+
+            button:hover {
+                transform: translateY(-1px)
+            }
+
+        .big {
+            font-size: 28px;
+            font-weight: 800
+        }
+
+        .hidden {
+            display: none !important
+        }
+
+        .sep {
+            height: 1px;
+            background: #1b2633;
+            margin: 10px 0
+        }
+
+        .panel {
+            padding: 10px;
+            border: 1px dashed #273447;
+            border-radius: 12px;
+            margin-bottom: 12px
+        }
+
+        #stateLine {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 16px;
+            padding: 10px 8px
+        }
+
+        #badge {
+            font-size: 13px;
+            color: #bfe7ff;
+            opacity: .85
+        }
+
+        #serialStatus {
+            margin-left: 8px
+        }
+
+        .pill {
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 999px;
+            border: 1px solid #2a5f85;
+            background: #0e1621;
+            color: #bfe7ff
+        }
+
+        .kv {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 4px 10px;
+            font-size: 13px;
+            color: var(--muted)
+        }
+
+        code {
+            background: #0e1621;
+            border: 1px solid #223042;
+            border-radius: 6px;
+            padding: 2px 6px
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Exploratory Study Runner · Freq×Duration Sequencer <span class="pill" id="serialStatus">미연결</span></h1>
+    </header>
+
+    <main>
+        <!-- Left: controls -->
+        <section>
+            <h2>① 세션 설정</h2>
+            <div class="row">
+                <label>Participant ID&nbsp;<input id="pid" placeholder="P01" /></label>
+                <label>
+                    Side
+                    <select id="sideSel">
+                        <option value="ulnar">Ulnar (A22)</option>
+                        <option value="radial">Radial (A21)</option>
+                    </select>
+                </label>
+                <label>데모 모드 <input type="checkbox" id="demoMode" /></label>
+            </div>
+            <div class="sep"></div>
+            <div class="row">
+                <button id="btnConnect" class="primary">시리얼 연결</button>
+                <button id="btnStart">시작 (70 조건)</button>
+                <button id="btnDownload">CSV 저장</button>
+            </div>
+            <div class="kv" style="margin-top:10px">
+                <!--><div>프로토콜</div><div><code>F&lt;Hz\n&gt; T&lt;ms\n&gt; C&lt;0|1\n&gt; S&lt;0|1\n&gt; X\n</code> (펌웨어에 해당 파서 필요)</div>-->
+                <div>Waveform</div><div><code>dat</code> (+ / −)</div>
+            </div>
+        </section>
+
+        <!-- Right: run panel -->
+        <section>
+            <h2>② 진행 패널</h2>
+            <div id="stateLine">
+                <div>
+                    <div class="big" id="phase">대기</div>
+                    <div id="badge">조건 <span id="condIdx">0</span>/70 · 남은 <span id="remain">70</span></div>
+                </div>
+                <div id="condPills" class="row"></div>
+            </div>
+
+            <div id="stimPanel" class="panel hidden">
+                <div class="row" style="justify-content:center;gap:12px;">
+                    <button id="btnPlay" class="primary">자극 재생</button>
+                    <button id="btnNext" disabled>다음 ▶</button>
+                    <span id="playHint"></span>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div>현재 조건</div>
+                <div class="kv" style="margin-top:6px">
+                    <div>Freq (Hz)</div><div id="currF">-</div>
+                    <div>Duration (s)</div><div id="currT">-</div>
+                    <div>Polarity</div><div id="currS">-</div>
+                    <div>Side</div><div id="currSide">-</div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // ===== helpers =====
+        const $ = s => document.querySelector(s);
+        const $$ = s => document.querySelectorAll(s);
+        const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+        // ===== serial state =====
+        let port, writer; let demo = false;
+
+        async function connectSerial() {
+            try {
+                demo = $('#demoMode')?.checked === true;
+                if (demo) {
+                    $('#serialStatus').textContent = '데모';
+                    $('#serialStatus').style.color = 'var(--ok)';
+                    alert('데모 모드: 시리얼 없이 진행합니다.');
+                    return;
+                }
+                if (!('serial' in navigator)) { alert('브라우저가 Web Serial을 지원하지 않습니다.'); return; }
+                if (location.protocol !== 'https:' && !['localhost', '127.0.0.1'].includes(location.hostname)) {
+                    alert('Web Serial은 HTTPS 또는 http://localhost 에서만 동작합니다.'); return;
+                }
+                const p = await navigator.serial.requestPort();
+                await p.open({ baudRate: 115200 });
+                port = p; writer = port.writable.getWriter();
+                $('#serialStatus').textContent = '연결됨';
+                $('#serialStatus').style.color = 'var(--ok)';
+                alert('시리얼 연결 성공');
+            } catch (e) { console.error(e); alert('Serial 연결 실패: ' + (e?.message || e)); }
+        }
+
+        async function sendText(s) {
+            if (demo) return;
+            if (!writer) { alert('시리얼 미연결'); throw new Error('serial not ready'); }
+            const enc = new TextEncoder();
+            await writer.write(enc.encode(s));
+        }
+
+        // ===== condition builder =====
+        const FREQS = [10, 20, 30, 40, 50, 60, 70];
+        const DURS = [0.5, 1.0, 1.5, 2.0, 2.5];
+        const SIGNS = [+1, -1]; // +: positive dat, -: negative dat
+
+        let conditions = [];
+        function buildConditions() {
+            conditions = [];
+            for (const f of FREQS) {
+                for (const t of DURS) {
+                    for (const s of SIGNS) {
+                        conditions.push({ f, t, s });
+                    }
+                }
+            }
+            // randomize to avoid order effects
+            for (let i = conditions.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [conditions[i], conditions[j]] = [conditions[j], conditions[i]];
+            }
+        }
+
+        // ===== run state =====
+        let idx = -1; // current index in conditions
+        let hasPlayed = false;
+
+        function updateHeader() {
+            $('#condIdx').textContent = (idx >= 0 ? idx + 1 : 0);
+            $('#remain').textContent = Math.max(0, conditions.length - (idx + 1));
+        }
+
+        function showCurrent() {
+            if (idx < 0 || idx >= conditions.length) return;
+            const c = conditions[idx];
+            $('#currF').textContent = c.f;
+            $('#currT').textContent = c.t.toFixed(1);
+            $('#currS').textContent = (c.s > 0 ? '+' : '−');
+            $('#currSide').textContent = $('#sideSel').value;
+
+            // pills for quick glance
+            $('#condPills').innerHTML = `
+            <span class="pill">${c.f} Hz</span>
+            <span class="pill">${c.t.toFixed(1)} s</span>
+            <span class="pill">${c.s > 0 ? 'POS' : 'NEG'}</span>
+          `;
+        }
+
+        function start() {
+            demo = $('#demoMode')?.checked === true;
+            buildConditions(); idx = -1; hasPlayed = false;
+            $('#phase').textContent = '대기';
+            $('#stimPanel').classList.remove('hidden');
+            next(); // jump to first
+        }
+
+        function next() {
+            if (idx + 1 >= conditions.length) {
+                $('#phase').textContent = '전체 종료';
+                $('#btnNext').disabled = true; $('#btnPlay').disabled = true;
+                return;
+            }
+            idx++; hasPlayed = false; updateHeader(); showCurrent();
+            $('#phase').textContent = '설정/재생 대기';
+            $('#btnNext').disabled = true; $('#btnPlay').disabled = false; $('#playHint').textContent = '';
+        }
+
+        async function play() {
+            if (idx < 0) return;
+            const c = conditions[idx];
+            $('#phase').textContent = demo ? '자극 중… (데모)' : '자극 중…';
+
+            // --- SERIAL PROTOCOL ---
+            // Expecting firmware that accepts ASCII command lines:
+            //   F<Hz>\n  (e.g., F40)         → target frequency (integer Hz)
+            //   T<ms>\n  (e.g., T1500)       → play duration in milliseconds
+            //   C<0|1>\n (0=positive dat,1=negative dat)
+            //   S<0|1>\n (0=A22 ulnar, 1=A21 radial)
+            //   X\n      → execute
+            // If your firmware differs, adjust payload below accordingly.
+
+            const code = (c.s > 0) ? 0 : 1; // dat+ / dat−
+            const sideByte = ($('#sideSel').value === 'ulnar') ? 0 : 1;
+            const payload = `F${c.f}\nT${Math.round(c.t * 1000)}\nC${code}\nS${sideByte}\nX\n`;
+
+            if (demo) {
+                await sleep(Math.round(c.t * 1000));
+            } else {
+                await sendText(payload);
+            }
+
+            hasPlayed = true;
+            $('#playHint').textContent = `재생 완료 (${c.f} Hz · ${c.t.toFixed(1)} s · ${c.s > 0 ? '+' : '−'})`;
+            $('#phase').textContent = '다음으로 진행 가능';
+            $('#btnNext').disabled = false;
+        }
+
+        // ===== CSV logging =====
+        const CSV_COLUMNS = ['timestamp', 'participant_id', 'side', 'freq_hz', 'duration_s', 'polarity', 'order_idx'];
+        let rows = [];
+
+        function logRow() {
+            if (idx < 0) return; const c = conditions[idx];
+            const pid = ($('#pid').value || 'P00').toUpperCase();
+            const side = $('#sideSel').value;
+            rows.push({
+                timestamp: new Date().toISOString(),
+                participant_id: pid,
+                side: side,
+                freq_hz: c.f,
+                duration_s: c.t,
+                polarity: c.s > 0 ? '+' : '-',
+                order_idx: idx + 1,
+            });
+        }
+
+        function toCSV(rows) {
+            if (!rows.length) return '';
+            const header = CSV_COLUMNS.join(',');
+            const esc = v => { if (v == null) return ''; const s = String(v); return /[",\n]/.test(s) ? '"' + s.replaceAll('"', '""') + '"' : s; };
+            const lines = rows.map(r => CSV_COLUMNS.map(c => esc(r[c])).join(','));
+            return header + '\n' + lines.join('\n');
+        }
+        function downloadBlob(text, filename, mime = 'text/csv;charset=utf-8;') {
+            const blob = new Blob([text], { type: mime });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob); a.download = filename;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        }
+
+        // ===== events =====
+        $('#btnConnect').addEventListener('click', connectSerial);
+        $('#btnStart').addEventListener('click', start);
+        $('#btnPlay').addEventListener('click', play);
+        $('#btnNext').addEventListener('click', () => { if (hasPlayed) { logRow(); } next(); });
+        $('#btnDownload').addEventListener('click', () => {
+            const csv = toCSV(rows);
+            if (!csv) { alert('저장할 데이터가 없습니다'); return; }
+            const pid = $('#pid').value || 'P00';
+            downloadBlob(csv, `${pid}_freqXdur_raw.csv`);
+        });
+    </script>
+</body>
+</html>
