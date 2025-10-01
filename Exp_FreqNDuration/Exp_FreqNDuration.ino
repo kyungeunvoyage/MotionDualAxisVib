@@ -50,8 +50,8 @@ unsigned long vibDuration = 0;
 // ======== Freq/Duration 선택 및 70조건 러너 ========
 static const float FREQS[] = { 10,20,30,40,50,60,70 };
 static const float DURS[] = { 0.5f,1.0f,1.5f,2.0f,2.5f };
-static const int   NF = sizeof(FREQS) / sizeof(FREQS[0]);
-static const int   NT = sizeof(DURS) / sizeof(DURS[0]);
+static const int  NF = sizeof(FREQS) / sizeof(FREQS[0]);
+static const int  NT = sizeof(DURS) / sizeof(DURS[0]);
 
 // 현재 수동 선택값 (0,1 버튼으로 순환 지정)
 static int   g_freqIdx = 0;
@@ -63,17 +63,18 @@ static float g_currDurS = DURS[0];
 static bool  g_sideIsRadial = false; // false: A22(ulnar), true: A21(radial)
 
 // 70개 조건 셋업: (f,t,sign)
-struct FDCase { float f; float t; bool neg; };
-static FDCase g_cases[70];
-static int    g_order[70];   // 셔플된 인덱스
-static int    g_caseCount = 0;
-static int    g_casePtr = -1;  // 현재 위치 (-1=시작 전)
+//struct FDCase { float f; float t; bool neg; };
+FDCase g_cases[70];
+int    g_order[70];   // 셔플된 인덱스
+int    g_caseCount = 0;
+int    g_casePtr = -1;  // 현재 위치 (-1=시작 전)
 
 // --- Line-command temp holders (for F/T/C/S/X) ---
 static float  g_cmdFreqHz = 40.0f;   // F<Hz>
 static float  g_cmdDurS = 1.0f;    // T<ms> -> sec
 static bool   g_cmdNeg = false;   // C<0|1> 0=+, 1=-
 static bool   g_cmdSideIsRadial = false; // S<0|1> 0=ulnar(A22),1=radial(A21)
+static float g_defaultGain = 3.0f;  // 기본 게인
 
 //= ======================================== =================================================
 
@@ -220,11 +221,9 @@ void setup() {
 
 //================gain setting=====================
 
-//inline int toDac_12bit_centered(int16_t v) {
-    // -32767..32767 -> 0..4095
-//    return map(v, -32767, 32767, 0, 4095);
-//}
-
+inline int toDac_12bit_centered(int16_t v) {
+    return map(v, -32767, 32767, 0, 4095);
+}
 // 256샘플짜리 파형을 'sec' 동안 원하는 Hz로 반복 재생
 void playWaveForSeconds(const int16_t* w, int N, float gain, int dacPin,
     float hz, float sec) {

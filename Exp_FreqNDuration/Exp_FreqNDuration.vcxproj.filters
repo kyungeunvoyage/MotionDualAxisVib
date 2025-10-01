@@ -9,37 +9,29 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include="Misc Files">
+    <Filter Include="Resource Files">
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>xml;json;txt;rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="src\arduino folders read me.txt">
-      <Filter>Misc Files</Filter>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="MotionOrthoVib03.ino" />
+    <ClCompile Include="Exp_FreqNDuration.ino" />
+    <ClCompile Include="MPUsetting.h">
+      <Filter>Header Files</Filter>
+    </ClCompile>
+    <ClCompile Include="MPUsetting.h.h">
+      <Filter>Header Files</Filter>
+    </ClCompile>
+    <ClCompile Include="MPUsetting.ino" />
     <ClCompile Include="waveforms.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="MPUsetting.ino" />
-    <ClCompile Include="AsymmetricVibGen.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="waveforms.h">
+      <Filter>Header Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="__vm\.MotionOrthoVib03.vsarduino.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="waveforms.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="MPUsetting.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="AsymmetricVibGen.h">
+    <ClInclude Include="__vm\.Exp_FreqNDuration.vsarduino.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

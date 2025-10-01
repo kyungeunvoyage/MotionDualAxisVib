@@ -4,13 +4,13 @@
 #define _WAVEFORMS_h
 #include <Arduino.h>
 
-// �迭 ����
+struct FDCase { float f; float t; bool neg; };
+
 extern int16_t dat[256];
 extern int16_t datCentered[170];
 extern int16_t dat2[256];
 extern int16_t asyTriangular[256];
 
-// ������ waveform ���� �迭
 extern int16_t newWave_0[256];
 extern int16_t newWave_1[256];
 extern int16_t newWave_2[256];
@@ -73,6 +73,10 @@ extern int16_t waveformC[256];
 extern int16_t waveformC_PR[256];
 extern int16_t waveformD[256];
 extern int16_t waveformD_PR[256];
+
+extern FDCase g_cases[];
+extern int g_order[];
+extern int g_caseCount, g_casePtr;
 
 
 #endif
