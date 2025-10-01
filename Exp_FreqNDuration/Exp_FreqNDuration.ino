@@ -17,6 +17,7 @@
 #include <assert.h>
 #include <Arduino.h>
 #include <Wire.h>
+#include <math.h>
 
 
 #ifndef M_PI
@@ -57,7 +58,7 @@ static const int  NT = sizeof(DURS) / sizeof(DURS[0]);
 static int   g_freqIdx = 0;
 static int   g_durIdx = 0;
 static float g_currFreqHz = FREQS[0];
-static float g_currDurS = DURS[0];
+static float g_currDurS = DURS[1];
 
 // 재생 사이드(ulnar=A22 / radial=A21) — 필요 시 HTML에서 바꿔줄 수 있게 hook
 static bool  g_sideIsRadial = false; // false: A22(ulnar), true: A21(radial)
@@ -77,6 +78,71 @@ static bool   g_cmdSideIsRadial = false; // S<0|1> 0=ulnar(A22),1=radial(A21)
 static float g_defaultGain = 3.0f;  // 기본 게인
 
 //= ======================================== =================================================
+void build_cultbersonAsy(
+    int16_t* w,           // length N
+    int N,                // 256
+    float T_ms,           // 25.0
+    float t1_ms,          // 원하는 t1
+    float t2_ms,          // 원하는 t2
+    int16_t neg,          // -32767
+    int16_t pos           // +30000
+) {
+    // 1) 인덱스 계산 (반올림)
+    int i1 = (int)lroundf(N * t1_ms / T_ms);
+    int i2 = (int)lroundf(N * t2_ms / T_ms);
+
+    // 2) 경계/일관성 보정
+    if (i1 < 1) i1 = 1;               // 0은 항상 neg를 남겨두기
+    if (i2 < i1 + 1) i2 = i1 + 1;         // 선형 구간 길이 ≥ 1
+    if (i2 > N - 1) i2 = N - 1;
+
+    // 3) 초기화: 전부 neg
+    for (int i = 0; i < N; ++i) w[i] = neg;
+
+    // 4) high 유지 (1..i1)
+    for (int i = 1; i <= i1; ++i) w[i] = pos;
+
+    // 5) 선형 하강 (i1+1..i2)
+    int start = i1 + 1;
+    int end = i2;
+    int span = end - start;          // ≥ 0 (위에서 보정)
+    for (int i = start; i <= end; ++i) {
+        float alpha = (span == 0) ? 1.0f : (float)(i - start) / (float)span; // 0→1
+        float v = (1.0f - alpha) * pos + alpha * neg;
+        if (v > 32767) v = 32767;
+        if (v < -32768) v = -32768;
+        w[i] = (int16_t)lroundf(v);
+    }
+    // 6) i2 이후는 이미 neg
+}
+
+void playWaveAtHzForDurationPolarity(
+    const int16_t* w, int N, float gain, int dacPin,
+    float freqHz, float duration_s, bool invert)
+{
+    if (freqHz <= 0.0f || duration_s <= 0.0f || N <= 0) return;
+
+    const double dt_us = (1e6 / (double)freqHz) / (double)N;
+    const double totalSamples_f = (double)freqHz * (double)duration_s * (double)N;
+    const uint32_t totalSamples = (uint32_t)floor(totalSamples_f);
+    if (totalSamples == 0) return;
+
+    long sum = 0; for (int i = 0; i < N; ++i) sum += w[i];
+    const float mean = (float)sum / (float)N;
+
+    const uint32_t t0 = micros(); double acc = 0.0;
+    for (uint32_t k = 0; k < totalSamples; ++k) {
+        const int i = (int)(k % (uint32_t)N);
+        int16_t s = invert ? (int16_t)(-w[i]) : w[i];
+        long v16 = lroundf((s - mean) * gain);
+        v16 = constrain(v16, -32767, 32767);
+        analogWrite(dacPin, toDac_12bit_centered((int16_t)v16));
+        acc += dt_us; const uint32_t tgt = (uint32_t)llround(acc);
+        while ((uint32_t)(micros() - t0) < tgt) { /* spin */ }
+    }
+}
+
+
 
 
 //================DA7280 setup====================
@@ -195,6 +261,7 @@ void setup() {
         waveformB_PR[i] = -waveformB[i];
         waveformC_PR[i] = -waveformC[i];
         waveformD_PR[i] = -waveformD[i];
+        cultberson_PR[i] = -cultbersonAsy[i];
     }
 
 
@@ -214,7 +281,6 @@ void setup() {
     // setup() 끝에 한 번 만들어두고…
     //makeCompositeF_2F_Phase(wPhase0, 256, 1.0f, 1.0f, 0.0f, true, true);   // 오른쪽 당김 쪽
     //makeCompositeF_2F_Phase(wPhase180, 256, 1.0f, 1.0f, -180.0f, true, true);  // 왼쪽 당김 쪽
-
 
 }
 //=================setup===========================
@@ -1184,13 +1250,51 @@ void loop()
                 }
             }
 
+            //void build_cultbersonAsy( int16_t* w, // length N int N, // 256 float T_ms, // 25.0 float t1_ms, // 원하는 t1 float t2_ms, // 원하는 t2 int16_t neg, // -32767 int16_t pos // +30000 )
+            else if (command == '2')
+            {
+                build_cultbersonAsy(cultbersonAsy, 256, 25.0f, 1.0f, 24.0f, -32767, 32767);
+                playWaveAtHzForDuration(cultbersonAsy, 256, g_defaultGain,
+                    g_sideIsRadial ? DAC_PIN_A21 : DAC_PIN_A22,
+                    /*freqHz=*/40.0f, /*duration_s=*/g_currDurS);
+            }
+            else if (command == '3')
+            {
+                
+                playWaveAtHzForDuration(cultbersonAsy, 256, g_defaultGain,
+                    g_sideIsRadial ? DAC_PIN_A21 : DAC_PIN_A22,
+                    40.0f, g_currDurS);
+            }
+            else if (command == '4')
+            {
+                build_cultbersonAsy(cultbersonAsy, 256, 25.0f, 7.0f, 18.0f, -32767, 30000);
+                playWaveAtHzForDuration(cultbersonAsy, 256, g_defaultGain,
+                    g_sideIsRadial ? DAC_PIN_A21 : DAC_PIN_A22,
+                    15.0f, g_currDurS);
+            }
+            else if (command == '5')
+            {
+                build_cultbersonAsy(cultbersonAsy, 256, 25.0f, 7.0f, 18.0f, -32767, 30000);
+                playWaveAtHzForDuration(cultbersonAsy, 256, g_defaultGain,
+                    g_sideIsRadial ? DAC_PIN_A21 : DAC_PIN_A22,
+                    10.0f, g_currDurS);
+            }
+            else if (command == '6')
+            {
+                build_cultbersonAsy(cultbersonAsy, 256, 25.0f, 7.0f, 18.0f, -32767, 30000);
+                playWaveAtHzForDurationPolarity(
+                    cultbersonAsy, 256, g_defaultGain,
+                    g_sideIsRadial ? DAC_PIN_A21 : DAC_PIN_A22,
+                    10.0f, g_currDurS, /*invert=*/true);
+            }
+            else if (command == '7')
+            {
+                //build_cultbersonAsy(cultbersonAsy, 256, 25.0f, 7.0f, 18.0f, -32767, 30000);
+                playWaveAtHzForDuration(cultberson_PR, 256, g_defaultGain,
+                    g_sideIsRadial ? DAC_PIN_A21 : DAC_PIN_A22,
+                    20.0f, g_currDurS);
+            }
 
-            else if (command == '4') soaControl = 30;
-            else if (command == '5') soaControl = 50;
-            else if (command == '6') soaControl = 70;
-            else if (command == '7') soaControl = 90;
-            else if (command == '8') soaControl = 110;
-            else if (command == '9') soaControl = 130;
 
 
             //imu calibration 1

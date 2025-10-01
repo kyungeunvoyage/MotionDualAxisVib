@@ -78,5 +78,8 @@ extern FDCase g_cases[];
 extern int g_order[];
 extern int g_caseCount, g_casePtr;
 
+//10.01
+extern int16_t cultbersonAsy[256];
+extern int16_t cultberson_PR[256];
 
 #endif

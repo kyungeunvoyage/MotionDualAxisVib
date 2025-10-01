@@ -397,7 +397,7 @@
                     while (i0 < W && Math.abs(vFull[i0]) <= thr) i0++;
                     while (i1 > i0 && Math.abs(vFull[i1]) <= thr) i1--;
                     samples = (i1 <= i0) ? new Float64Array(n) : resampleRange(vFull, i0, i1, n);
-                    if (n >= 2) { samples[0] = 0; samples[n - 1] = 0; }
+                    //if (n >= 2) { samples[0] = 0; samples[n - 1] = 0; }
                 } else {
                     samples = resampleRange(vFull, 0, W - 1, n);
                 }
