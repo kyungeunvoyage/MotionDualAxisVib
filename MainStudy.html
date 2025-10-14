@@ -188,6 +188,23 @@
 
 <script>
 (function(){
+
+      // 1) 세션 패턴 선택 (URL ?pattern=A|D|d 로 받기 + 표시/로그)
+    const urlParams = new URLSearchParams(location.search);
+    let sessionPattern = (urlParams.get('pattern') || 'A').toUpperCase(); // 'A'|'D'|'D' 소문자 'd' 처리
+    if (sessionPattern !== 'A' && sessionPattern !== 'D' && sessionPattern !== 'D') sessionPattern = 'A';
+    document.querySelector('.title').textContent = `Session Pattern = ${sessionPattern}`;
+
+    const TIMING_MODES = [
+    {id:'aThenUi', label:'Before'},   // A -> UI
+    {id:'uiOnly',  label:'During'},   // (UI 중간)
+    {id:'uiThenA', label:'After'}     // UI -> A
+    ];
+    function pickTiming(modeId){ selectedMode = modeId; } // runByMode가 이 값 사용
+
+    const AXES = ['LR','FB','UD']; // X,Y,Z
+    function pickAxis(ax){ setDirPreset(ax); } // 기존 렌더 함수 재사용
+
     // ===== Utilities =====
     const $ = s => document.querySelector(s);
     const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -230,6 +247,28 @@
     const btnRepulsive  = $('#btnRepulsive');
     const btnAttractive = $('#btnAttractive');
     const btnRepeat     = $('#btnRepeat');
+
+    function buildTrialList(){
+    const soaVals = getSOAValuesFromDropdown(); // [30,50,70,90,110,130]
+    const blocks = [];
+      AXES.forEach(ax=>{
+        TIMING_MODES.forEach(tm=>{
+          const soaOrder = shuffle(soaVals);
+          soaOrder.forEach(soa=>{
+            blocks.push({axis:ax, timing:tm.id, soa});
+          });
+        });
+      });
+      return shuffle(blocks); // 블록 자체도 섞기 (혹은 균형 설계면 순서 고정)
+    }
+    async function sendPatternCommand(delayMs=0){
+      if(delayMs>0) await sleep(delayMs);
+      await sendSOA();
+      const cmd = sessionPattern; // 'A'|'D'|'d' (소문자 d 허용)
+      await sendText(`${cmd}\n`);
+      //try{ await sendByte(cmd.charCodeAt(0)); }catch(_){}
+      logEvent('cmd_sent', {pattern: cmd});
+    }
 
     // ===== Serial =====
     let port=null, writer=null, demo=false;
@@ -308,9 +347,12 @@
 
     async function maybeSleepSOA(){ const {waitMs}=computeTiming(); if(syncSOA?.checked){ await sleep(waitMs); } }
 
+    let lastEffectiveSOA = null;
     function handleSerialLine(line){
         const m=line.match(/\[SOA\].*desired\s*=\s*(\d+)\s*ms/i);
         if(m){ const desired=m[1]; const opt=document.querySelector(`#soaSelect option[value="${desired}"]`); if(opt){ soaSelect.value=desired; applyTimingToUI(); } }
+        const m2 = line.match(/effective[^\d]*=\s*([0-9.]+)/i);
+        if (m2){ lastEffectiveSOA = parseFloat(m2[1]); }
     }
 
     // Response state
@@ -318,6 +360,7 @@
     let trialId=0;
     let _pendingResponseResolve=null;
     let lastTrial=null; // {soaMs, mode}
+    let tStartResp = 0;
 
     function setResponseEnabled(on){
         btnRepulsive.disabled  = !on;
@@ -325,14 +368,18 @@
         btnRepeat.disabled     = !on || !lastTrial;
         awaitingResponse=!!on;
         if(on && phaseText) phaseText.textContent='응답 대기 (J/K)';
+        if (on) tStartResp = performance.now();
     }
     function waitForResponse(){
         return new Promise(res=>{ _pendingResponseResolve=res; setResponseEnabled(true); });
     }
+
     function recordSensation(label){
         if(!awaitingResponse) return;
+        const rt = Math.round(performance.now() - tStartResp);
         const t=computeTiming();
-        logEvent('label',{ trial:trialId, sensation:label, soa_ms:t.soaMs, target_hz:t.hz, mode:selectedMode, dir:dirPreset });
+        logEvent('label',{
+          trial:trialId, sensation:label, rt_ms: rt, soa_ms:t.soaMs, target_hz:t.hz, mode:selectedMode, dir:dirPreset, pattern: sessionPattern });
         setResponseEnabled(false);
         if(phaseText) phaseText.textContent='응답 기록됨';
         if(_pendingResponseResolve){ const done=_pendingResponseResolve; _pendingResponseResolve=null; done(label); }
@@ -391,7 +438,14 @@
       captureCmdsFromPayload(str);   // ← 실제로 보낸 커맨드 표시
     }
 
-
+    // trial 종료 시 함께 로깅
+    function endTrialLog(soaMs, label){
+      logEvent('trial_end', {
+        trial: trialId, soa_ms: soaMs, response: label,
+        effective_soa_ms: (lastEffectiveSOA ?? '')
+      });
+      lastEffectiveSOA = null;
+    }
 
 
     async function sendSOA(){ const soaMs=Number(soaSelect?.value ?? 50); await sendText(`S${soaMs}\n`); }
@@ -421,7 +475,7 @@
         if(!demo && !writerReady()){ alert('시리얼이 연결되지 않았습니다.'); throw new Error('serial not ready'); }
         await sendSOA();
         try{ await sendText(`A\n`);}catch(_){}
-        try{ await sendByte('A'.charCodeAt(0)); }catch(_){}
+        //try{ await sendByte('A'.charCodeAt(0)); }catch(_){}
         logEvent('cmdA_sent',{code:'A'});
     }
 
@@ -438,11 +492,11 @@
         try{
             const {start,end,ok}=computeTargets(); if(!ok){ alert('레이아웃 측정 실패'); return; }
             bar.style.transition='none'; bar.style.left=toPx(start); await new Promise(requestAnimationFrame);
-            await showCountdown(3); if(syncSOA?.checked) await maybeSleepSOA(); await sendCommandA(0);
+            await showCountdown(3); if(syncSOA?.checked) await maybeSleepSOA(); await sendPatternCommand(0);
             phaseText.textContent='좌→우 이동 중…'; setArrows('LR');
             bar.style.transition='left var(--move-duration) linear'; bar.style.left=toPx(end);
             await new Promise(r=>bar.addEventListener('transitionend',e=>e.propertyName==='left'&&r(),{once:true}));
-            await showCountdown(3); if(syncSOA?.checked) await maybeSleepSOA(); await sendCommandA(0);
+            await showCountdown(3); if(syncSOA?.checked) await maybeSleepSOA(); await sendPatternCommand(0);
             phaseText.textContent='우→좌 이동 중…'; setArrows('RL');
             bar.style.left=toPx(start);
             await new Promise(r=>bar.addEventListener('transitionend',e=>e.propertyName==='left'&&r(),{once:true}));
@@ -455,7 +509,7 @@
         try{
             const {start,end,ok}=computeTargets(); if(!ok){ alert('레이아웃 측정 실패'); return; }
             bar.style.transition='none'; bar.style.left=toPx(start); await new Promise(requestAnimationFrame);
-            await showCountdown(3); if(syncSOA?.checked) await maybeSleepSOA(); await sendCommandA(0);
+            await showCountdown(3); if(syncSOA?.checked) await maybeSleepSOA(); await sendPatternCommand(0);
             phaseText.textContent='좌→우 이동 중…'; setArrows('LR');
             bar.style.transition='left var(--move-duration) linear'; bar.style.left=toPx(end);
             await new Promise(r=>bar.addEventListener('transitionend',e=>e.propertyName==='left'&&r(),{once:true}));
@@ -463,7 +517,7 @@
             phaseText.textContent='우→좌 이동 중…'; setArrows('RL');
             bar.style.left=toPx(start);
             await new Promise(r=>bar.addEventListener('transitionend',e=>e.propertyName==='left'&&r(),{once:true}));
-            await sendCommandA(0);
+            await sendPatternCommand(0);
             phaseText.textContent='완료';
             setResponseEnabled(true);
         } finally { running=false; disableTimingBtns(false); }
@@ -477,11 +531,11 @@
             phaseText.textContent='좌→우 이동 중…'; setArrows('LR');
             bar.style.transition='left var(--move-duration) linear'; await new Promise(requestAnimationFrame);
             bar.style.left=toPx(end);
-            await waitForLeftTransition(bar); await sendCommandA(100);
+            await waitForLeftTransition(bar); await sendPatternCommand(100);
             await showCountdown(3); if(syncSOA?.checked) await maybeSleepSOA();
             phaseText.textContent='우→좌 이동 중…'; setArrows('RL');
             bar.style.left=toPx(start);
-            await waitForLeftTransition(bar); await sendCommandA(100);
+            await waitForLeftTransition(bar); await sendPatternCommand(100);
             phaseText.textContent='완료';
             setResponseEnabled(true);
         } finally { running=false; disableTimingBtns(false); }
@@ -491,9 +545,12 @@
     function toCSV(rows){
       if(!rows.length) return '';
       const cols = [
-        'timestamp','participant_id','kind','trial','sensation',
-        /* 'code', 'side_byte',  <-- 제거 */
-        'demo_mode','rt_ms','soa_ms','target_hz','mode','dir','response','n_trials','soa_list'
+        'timestamp','participant_id',
+        'trial','pattern','timing','axis','ui_dir_first', // LR or RL 등
+        'soa_ms','effective_soa_ms','target_hz',
+        'sensation','rt_ms',
+        'group','alignment',               // ex) G1/G2, aligned/orthogonal
+        'choice_swapped','demo_mode'
       ];
       const esc=v=>{ if(v==null) return ''; const s=String(v); return /[",\n]/.test(s)?'"'+s.replaceAll('"','""')+'"' : s; };
       const header=cols.join(',');
@@ -543,6 +600,7 @@
         return a;
     }
     function setSOAValue(soaMs){
+        //
         soaSelect.value=String(soaMs);
         applyTimingToUI();
         applyDistanceScale();
@@ -569,39 +627,32 @@
 
     let runningSession=false;
     async function runSessionAuto(){
-        if(runningSession) return;
-        runningSession=true;
-        ['soaSelect','targetHz','btnUIOnly','btnUIThenA','btnAThenUI','startBtn'].forEach(id=>{ const el=document.getElementById(id); if(el) el.disabled=true; });
-        try{
-            const order = shuffle(getSOAValuesFromDropdown());
-            logEvent('session_start',{ n_trials: order.length, soa_list: order.join('/') });
+      if(runningSession) return;
+      runningSession=true;
+      try{
+        const trials = buildTrialList(); // Axis×Timing×SOA 무작위 목록
+        logEvent('session_start',{ n_trials: trials.length, pattern: sessionPattern });
 
-            demo = $('#demoMode')?.checked===true;
-            if(!demo && !writerReady()){
-                alert('시리얼이 연결되지 않았습니다. 먼저 "시리얼 연결"을 눌러주세요.');
-                runningSession=false;
-                ['soaSelect','targetHz','btnUIOnly','btnUIThenA','btnAThenUI','startBtn'].forEach(id=>{ const el=document.getElementById(id); if(el) el.disabled=false; });
-                return;
-            }
+        for (let i=0;i<trials.length;i++){
+          const {axis, timing, soa} = trials[i];
+          pickAxis(axis);
+          pickTiming(timing);
+          setSOAValue(soa);
 
-            for(let i=0;i<order.length;i++){
-                const soa=order[i];
-                phaseText.textContent=`Trial ${i+1}/${order.length} – SOA ${soa}ms`;
-                await runTrial2AFC(soa);
-                await sleep(ITI_MS);
-            }
+          // UI 이동 시작 방향도 무작위
+          const startDir = (Math.random()<0.5) ? 'LR' : 'RL';
+          setArrows(startDir==='LR' ? 'LR' : 'RL'); // 표시만, 실제 애니메이션도 대응
+          logEvent('trial_prepare', {trial: i+1, axis, timing, soa_ms: soa, ui_dir_first: startDir});
 
-            phaseText.textContent='세션 완료';
-            logEvent('session_end',{ n_trials: order.length });
-            alert('세션 완료! CSV로 저장해 주세요.');
-        }catch(e){
-            console.error(e);
-            alert('세션 도중 오류: '+(e?.message||e));
-        }finally{
-            runningSession=false;
-            ['soaSelect','targetHz','btnUIOnly','btnUIThenA','btnAThenUI','startBtn'].forEach(id=>{ const el=document.getElementById(id); if(el) el.disabled=false; });
+          await runTrial2AFC(soa); // 내부에서 sendPatternCommand() 호출되게 runByMode 경로 수정
+          await sleep(800);
         }
+
+        logEvent('session_end',{ n_trials: trials.length });
+        alert('세션 완료! CSV 저장하세요.');
+      } finally { runningSession=false; }
     }
+
 
     // Repeat
     btnRepeat.addEventListener('click', async()=>{

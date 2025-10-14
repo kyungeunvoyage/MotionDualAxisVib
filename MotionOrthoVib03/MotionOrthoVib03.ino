@@ -1022,6 +1022,8 @@ void loop()
             }
 
 
+            //자금은 command int를 보내서 soaControl 값을 받는 방향"
+            //30 제거 => 50, 90, 130 세개 
             else if (command == '4') soaControl = 30;
             else if (command == '5') soaControl = 50;
             else if (command == '6') soaControl = 70;
@@ -1126,6 +1128,7 @@ void loop()
             // + La (a -> d)
             else if (command == 'A')
             {
+                Serial.println("[RX] A");
                 updateDelayFromTargetHz();                  // targetHz 반영 (예: 40Hz)
                 const float GAIN = 5.0f;
                 const float cycle_ms = 1000.0f / targetHz;  // 40Hz → 25ms
