@@ -87,10 +87,6 @@
       <FileType>CppCode</FileType>
       <DeploymentContent>true</DeploymentContent>
     </ClCompile>
-    <ClCompile Include="MPUsetting.h.h">
-      <FileType>CppCode</FileType>
-      <DeploymentContent>true</DeploymentContent>
-    </ClCompile>
     <ClCompile Include="waveforms.h">
       <FileType>CppCode</FileType>
       <DeploymentContent>true</DeploymentContent>

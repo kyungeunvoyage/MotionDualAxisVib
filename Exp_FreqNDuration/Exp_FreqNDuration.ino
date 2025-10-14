@@ -116,31 +116,6 @@ void build_cultbersonAsy(
     // 6) i2 이후는 이미 neg
 }
 
-void playWaveAtHzForDurationPolarity(
-    const int16_t* w, int N, float gain, int dacPin,
-    float freqHz, float duration_s, bool invert)
-{
-    if (freqHz <= 0.0f || duration_s <= 0.0f || N <= 0) return;
-
-    const double dt_us = (1e6 / (double)freqHz) / (double)N;
-    const double totalSamples_f = (double)freqHz * (double)duration_s * (double)N;
-    const uint32_t totalSamples = (uint32_t)floor(totalSamples_f);
-    if (totalSamples == 0) return;
-
-    long sum = 0; for (int i = 0; i < N; ++i) sum += w[i];
-    const float mean = (float)sum / (float)N;
-
-    const uint32_t t0 = micros(); double acc = 0.0;
-    for (uint32_t k = 0; k < totalSamples; ++k) {
-        const int i = (int)(k % (uint32_t)N);
-        int16_t s = invert ? (int16_t)(-w[i]) : w[i];
-        long v16 = lroundf((s - mean) * gain);
-        v16 = constrain(v16, -32767, 32767);
-        analogWrite(dacPin, toDac_12bit_centered((int16_t)v16));
-        acc += dt_us; const uint32_t tgt = (uint32_t)llround(acc);
-        while ((uint32_t)(micros() - t0) < tgt) { /* spin */ }
-    }
-}
 
 
 
@@ -1123,6 +1098,36 @@ static bool playNextFDCase(float gain = 3.0f) {
 static void setSideUlnar() { g_sideIsRadial = false; Serial.println("[FD] side = ulnar (A22)"); }
 static void setSideRadial() { g_sideIsRadial = true; Serial.println("[FD] side = radial (A21)"); }
 
+// 보정 게인을 자동 적용해서 지정 시간(duration_s) 재생
+inline void playWaveForSeconds_Comp(
+    const int16_t* w, int N,
+    float baseGain, int dacPin,
+    float freqHz, float duration_s
+) {
+    if (freqHz <= 0.0f || duration_s <= 0.0f) return;
+    const float g = compensatedGain(baseGain, freqHz);
+    playWaveAtHzForDuration(w, N, g, dacPin, freqHz, duration_s);
+}
+
+// 보정 포함 버전 (기존 runFreqDurCommand 대체용)
+inline void runFreqDurCommand_Compensated(
+    float freqHz,           // 예: 10,20,30...
+    float duration_s,       // 예: 0.5, 1.0, ...
+    bool  useNegativeWave,  // true: 음극(negDatTrial), false: 양극(dat)
+    bool  sideIsRadial,     // true: A21(radial), false: A22(ulnar)
+    float baseGain          // 보정 전 기준 게인 (예: g_defaultGain)
+) {
+    const int16_t* wav = useNegativeWave ? negDatTrial : dat;
+    const int dacPin = sideIsRadial ? DAC_PIN_A21 : DAC_PIN_A22;
+    const float g = compensatedGain(baseGain, freqHz);
+
+    playWaveAtHzForDuration(wav, /*N=*/256, g, dacPin, freqHz, duration_s);
+
+    Serial.printf("[FD/LUT] %.0f Hz, %.1f s, sign=%c, side=%s, base=%.2f, applied=%.2f\n",
+        freqHz, duration_s, useNegativeWave ? '-' : '+',
+        sideIsRadial ? "radial(A21)" : "ulnar(A22)", baseGain, g);
+}
+
 
 //=================================================================================================================
 
@@ -1200,6 +1205,10 @@ static void processLine(const String& raw) {
 void loop()
 {
     //generate new waveform
+    targetHz = 10.0f;
+    float baseG = 5.0f;
+    float appliedG = compensatedGain(baseG, targetHz);
+    float G22 = compensatedGain(baseG, targetHz);
 
     if (vibrating && millis() - vibStart >= vibDuration)
     {
@@ -1256,43 +1265,43 @@ void loop()
                 build_cultbersonAsy(cultbersonAsy, 256, 25.0f, 1.0f, 24.0f, -32767, 32767);
                 playWaveAtHzForDuration(cultbersonAsy, 256, g_defaultGain,
                     g_sideIsRadial ? DAC_PIN_A21 : DAC_PIN_A22,
-                    /*freqHz=*/40.0f, /*duration_s=*/g_currDurS);
+                    /*freqHz=*/5.0f, /*duration_s=*/g_currDurS);
             }
             else if (command == '3')
             {
-                
+                build_cultbersonAsy(cultbersonAsy, 256, 25.0f, 3.0f, 22.0f, -32767, 30000);
                 playWaveAtHzForDuration(cultbersonAsy, 256, g_defaultGain,
                     g_sideIsRadial ? DAC_PIN_A21 : DAC_PIN_A22,
-                    40.0f, g_currDurS);
+                    3.0f, g_currDurS);
             }
             else if (command == '4')
             {
-                build_cultbersonAsy(cultbersonAsy, 256, 25.0f, 7.0f, 18.0f, -32767, 30000);
-                playWaveAtHzForDuration(cultbersonAsy, 256, g_defaultGain,
-                    g_sideIsRadial ? DAC_PIN_A21 : DAC_PIN_A22,
-                    15.0f, g_currDurS);
+                //build_cultbersonAsy(cultbersonAsy, 256, 25.0f, 5.0f, 20.0f, -32767, 30000);
+                //playArrayWithGainCentered_1cycle(cultberson_PR, 256, G22, DAC_PIN_A22, 10.0f);
+                playWaveForSeconds_Comp(cultberson_PR, 256, g_defaultGain, g_sideIsRadial ? DAC_PIN_A21 : DAC_PIN_A22, 3.0f, g_currDurS);
+
             }
             else if (command == '5')
             {
-                build_cultbersonAsy(cultbersonAsy, 256, 25.0f, 7.0f, 18.0f, -32767, 30000);
+                playWaveForSeconds_Comp(cultbersonAsy, 256, g_defaultGain, g_sideIsRadial ? DAC_PIN_A21 : DAC_PIN_A22, 3.0f, g_currDurS);
+                //build_cultbersonAsy(cultbersonAsy, 256, 25.0f, 7.0f, 18.0f, -32767, 30000);
+                //playWaveAtHzForDuration(cultbersonAsy, 256, g_defaultGain,
+                    //g_sideIsRadial ? DAC_PIN_A21 : DAC_PIN_A22,
+                    //10.0f, g_currDurS);
+            }
+            else if (command == '6')
+            {
+                build_cultbersonAsy(cultbersonAsy, 256, 25.0f, 9.0f, 16.0f, -32767, 30000);
                 playWaveAtHzForDuration(cultbersonAsy, 256, g_defaultGain,
                     g_sideIsRadial ? DAC_PIN_A21 : DAC_PIN_A22,
                     10.0f, g_currDurS);
             }
-            else if (command == '6')
-            {
-                build_cultbersonAsy(cultbersonAsy, 256, 25.0f, 7.0f, 18.0f, -32767, 30000);
-                playWaveAtHzForDurationPolarity(
-                    cultbersonAsy, 256, g_defaultGain,
-                    g_sideIsRadial ? DAC_PIN_A21 : DAC_PIN_A22,
-                    10.0f, g_currDurS, /*invert=*/true);
-            }
             else if (command == '7')
             {
-                //build_cultbersonAsy(cultbersonAsy, 256, 25.0f, 7.0f, 18.0f, -32767, 30000);
-                playWaveAtHzForDuration(cultberson_PR, 256, g_defaultGain,
+                build_cultbersonAsy(cultbersonAsy, 256, 25.0f, 11.0f, 14.0f, -32767, 30000);
+                playWaveAtHzForDuration(cultbersonAsy, 256, g_defaultGain,
                     g_sideIsRadial ? DAC_PIN_A21 : DAC_PIN_A22,
-                    20.0f, g_currDurS);
+                    10.0f, g_currDurS);
             }
 
 

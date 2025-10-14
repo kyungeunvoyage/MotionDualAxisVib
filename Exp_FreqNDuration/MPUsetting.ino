@@ -1,4 +1,6 @@
-﻿#define MPU_ADDR 0x68
+﻿//#warning "Building MPUsetting.ino"
+
+#define MPU_ADDR 0x68
 #define REG_PWR_MGMT_1 0x6B
 #define REG_SMPLRT_DIV       0x19
 #define REG_CONFIG           0x1A

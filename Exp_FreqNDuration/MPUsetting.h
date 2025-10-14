@@ -19,7 +19,7 @@ float mpu9250_readAccelAxisG(char axis = 'z'); // 'z' 처럼 작은따옴표!
 
 // ==== 보정 LUT (정의는 .ino에, 여기엔 extern만) ====
 struct FG { float f; float g; };
-extern FG  kGainLUT[];
+//extern FG  kGainLUT[];
 extern int kGainLUT_N;
 
 float interpGainLUT(float f);

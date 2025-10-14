@@ -19,9 +19,6 @@
     <ClCompile Include="MPUsetting.h">
       <Filter>Header Files</Filter>
     </ClCompile>
-    <ClCompile Include="MPUsetting.h.h">
-      <Filter>Header Files</Filter>
-    </ClCompile>
     <ClCompile Include="MPUsetting.ino" />
     <ClCompile Include="waveforms.cpp">
       <Filter>Source Files</Filter>
