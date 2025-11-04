@@ -1308,8 +1308,17 @@ void loop()
 
             //imu calibration 1
 
-            else if (command == 'z') {
-                
+            else if (command == 'z') 
+            {
+                // 주파수 고정(예: 40Hz)에서 baseGain = 3~8까지 1초씩 측정 
+                static const float baseGList[] = { 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f };
+                const int M = sizeof(baseGList) / sizeof(baseGList[0]);
+
+                // 40 Hz 추이 
+                runFixedFreqGainSweep_MPU9250(dat, waveformSize, DAC_PIN_A22, /*freqHz=*/40.0f, baseGList, M, /*secPerGain=*/1.0f, /*imu_rate_hz=*/1000, /*warmup_s=*/0.20f, /*useMagnitude=*/true, /*axis=*/'z' ); 
+                // 필요하면 10 Hz도 추가로 
+                runFixedFreqGainSweep_MPU9250( dat, waveformSize, DAC_PIN_A22, /*freqHz=*/10.0f, baseGList, M, /*secPerGain=*/1.0f, /*imu_rate_hz=*/1000, /*warmup_s=*/0.20f, /*useMagnitude=*/true, /*axis=*/'z' );
+
             }
             //imu calibration 2
             else if (command == 'Z')
